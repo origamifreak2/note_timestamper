@@ -1,0 +1,3390 @@
+/**
+ * Note Timestamper - Renderer Process
+ *
+ * This is the main frontend JavaScript file that runs in the Electron renderer process.
+ * It handles:
+ * - Rich text editing with Quill.js
+ * - Audio/video recording with MediaRecorder API
+ * - Timestamp insertion and playback navigation
+ * - Device selection and live switching
+ * - Session save/load functionality
+ * - HTML export with embedded media
+ */
+
+// =============================================================================
+// DOM ELEMENT REFERENCES
+// =============================================================================
+
+// Media player and recording controls
+const player = document.getElementById('player');           // Video/audio playback element
+const btnStart = document.getElementById('btnStart');       // Start recording button
+const btnPause = document.getElementById('btnPause');       // Pause/resume recording button
+const btnStop = document.getElementById('btnStop');         // Stop recording button
+
+// File operations
+const btnSave = document.getElementById('btnSave');         // Save session as .notepack
+const btnLoad = document.getElementById('btnLoad');         // Load existing session
+const btnExport = document.getElementById('btnExport');     // Main export button
+const exportDropdown = document.getElementById('exportDropdown'); // Export dropdown menu
+const btnExportEmbedded = document.getElementById('btnExportEmbedded'); // Export as embedded HTML
+const btnExportSeparate = document.getElementById('btnExportSeparate'); // Export as HTML + video
+const btnReset = document.getElementById('btnReset');       // Reset/clear session
+
+// UI elements
+const audioOnly = document.getElementById('audioOnly');     // Audio-only mode checkbox
+const htmlOut = document.getElementById('htmlOut');         // HTML preview textarea
+const statusEl = document.getElementById('status');         // Status text display
+const tNow = document.getElementById('tNow');               // Current time display
+
+// Device selection UI
+const micSelect = document.getElementById('micSelect');     // Microphone selector dropdown
+const camSelect = document.getElementById('camSelect');     // Camera selector dropdown
+const resSelect = document.getElementById('resSelect');     // Recording resolution dropdown
+const btnRefreshDevs = document.getElementById('btnRefreshDevs'); // Refresh device list button
+
+// Audio level meter UI elements
+const audioLevelMeter = document.getElementById('audioLevelMeter'); // Audio level meter container
+const audioLevelFill = document.getElementById('audioLevelFill');   // Audio level bar fill
+const audioLevelText = document.getElementById('audioLevelText');   // Audio level percentage text
+
+// =============================================================================
+// GLOBAL STATE VARIABLES
+// =============================================================================
+
+// Recording state
+let mediaStream = null;          // Current MediaStream from getUserMedia
+let mediaRecorder = null;        // MediaRecorder instance for recording
+let chunks = [];                 // Array of recorded data chunks
+let recordedBlob = null;         // Final assembled recording as Blob
+let mediaExt = 'webm';          // File extension for the recorded media
+let lastDataChunk = null;        // Most recent data chunk from recorder
+let isRecordingPaused = false;   // Flag to track if recording is paused (stops timer updates)
+
+// Add new global variables for recording timer
+let recordingStartTime = 0;      // When recording actually started
+let recordingElapsed = 0;        // Total recorded time (excluding paused periods)
+let recordingPauseStart = 0;     // When current pause began
+let recordingTimer = null;       // Timer interval for updating display during recording
+let playbackTimer = null;       // Timer interval for tracking video playback position
+
+// Audio level monitoring
+let audioLevelAnalyser = null;   // Web Audio analyser node for audio level detection
+let audioLevelTimer = null;      // Timer for updating audio level display
+let audioLevelDataArray = null;  // Buffer for audio analysis data
+
+/**
+ * TIMER SYSTEM OVERVIEW:
+ * - During recording: Uses recordingTimer and internal time tracking (excludes paused periods)
+ * - During playback: Uses playbackTimer and player.currentTime for loaded media
+ * - This ensures timestamps always match the relevant time context
+ */
+
+/**
+ * Gets the current recording time (excludes paused periods) or playback time
+ * When recording: uses internal timer that excludes paused periods
+ * When playing back loaded media: uses video player's currentTime
+ * @returns {number} Current time in seconds for timestamps
+ */
+function getCurrentRecordingTime() {
+  // If we have a loaded media file and we're not actively recording, use playback time
+  if (player && player.src && !player.srcObject &&
+      (!mediaRecorder || mediaRecorder.state === 'inactive')) {
+    return player.currentTime || 0;
+  }
+
+  // Otherwise use recording timer (original behavior)
+  if (!mediaRecorder) return 0;
+
+  const now = Date.now();
+
+  if (isRecordingPaused) {
+    // During pause: return time up to when pause started
+    return recordingElapsed;
+  } else {
+    // During recording: add time since last resume/start
+    const sessionStart = recordingPauseStart || recordingStartTime;
+    return recordingElapsed + (now - sessionStart) / 1000;
+  }
+}
+
+/**
+ * Updates the timer display with current recording or playback time
+ */
+function updateRecordingTimer() {
+  tNow.textContent = fmtTime(getCurrentRecordingTime());
+}
+
+/**
+ * Starts the playback timer to track video position when playing loaded media
+ * This allows timestamp insertion during playback of previously recorded sessions
+ */
+function startPlaybackTimer() {
+  if (playbackTimer) {
+    clearInterval(playbackTimer);
+  }
+  playbackTimer = setInterval(updateRecordingTimer, 100);
+}
+
+/**
+ * Stops the playback timer when no longer needed
+ */
+function stopPlaybackTimer() {
+  if (playbackTimer) {
+    clearInterval(playbackTimer);
+    playbackTimer = null;
+  }
+}
+
+/**
+ * Updates the audio level meter display with current microphone input level
+ */
+function updateAudioLevel() {
+  if (!audioLevelAnalyser || !audioLevelDataArray) return;
+
+  // Get frequency data from analyser
+  audioLevelAnalyser.getByteFrequencyData(audioLevelDataArray);
+
+  // Calculate average volume level
+  let sum = 0;
+  for (let i = 0; i < audioLevelDataArray.length; i++) {
+    sum += audioLevelDataArray[i];
+  }
+  const average = sum / audioLevelDataArray.length;
+
+  // Convert to percentage (0-100)
+  const percentage = Math.round((average / 255) * 100);
+
+  // Update UI elements
+  if (audioLevelFill) {
+    audioLevelFill.style.width = `${percentage}%`;
+  }
+  if (audioLevelText) {
+    audioLevelText.textContent = `${percentage}%`;
+  }
+}
+
+/**
+ * Starts the audio level monitoring timer
+ */
+function startAudioLevelMonitoring() {
+  if (audioLevelTimer) {
+    clearInterval(audioLevelTimer);
+  }
+  audioLevelTimer = setInterval(updateAudioLevel, 100); // Update every 100ms
+}
+
+/**
+ * Stops the audio level monitoring timer
+ */
+function stopAudioLevelMonitoring() {
+  if (audioLevelTimer) {
+    clearInterval(audioLevelTimer);
+    audioLevelTimer = null;
+  }
+
+  // Reset UI
+  if (audioLevelFill) {
+    audioLevelFill.style.width = '0%';
+  }
+  if (audioLevelText) {
+    audioLevelText.textContent = '0%';
+  }
+}
+
+/**
+ * Shows or hides the audio level meter based on recording mode
+ */
+function toggleAudioLevelMeter(show) {
+  if (audioLevelMeter) {
+    audioLevelMeter.style.display = show ? 'block' : 'none';
+  }
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+/**
+ * Formats seconds as MM:SS.CC (minutes:seconds.centiseconds)
+ * Used for timestamp display and timestamp button labels
+ * @param {number} s - Time in seconds (can include fractional part)
+ * @returns {string} Formatted time string like "02:34.56"
+ */
+function fmtTime(s) {
+  const ms = Math.floor((s % 1) * 100);  // Extract centiseconds (0-99)
+  s = Math.floor(s);                     // Get whole seconds
+  const m = Math.floor(s / 60);          // Extract minutes
+  const sec = s % 60;                    // Get remaining seconds
+  const pad = (n) => String(n).padStart(2, '0');  // Zero-pad helper
+  return `${pad(m)}:${pad(sec)}.${pad(ms)}`;
+}
+
+/**
+ * Converts ArrayBuffer to base64 string for embedding in HTML
+ * Used when exporting sessions as self-contained HTML files
+ * @param {ArrayBuffer} ab - Binary data to convert
+ * @returns {string} Base64-encoded string
+ */
+function arrayBufferToBase64(ab) {
+  const bytes = new Uint8Array(ab);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+/**
+ * Promise-based sleep function for adding delays
+ * Used in recording stop process to ensure proper data flushing
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise} Resolves after the delay
+ */
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// =============================================================================
+// QUILL.JS CUSTOM TIMESTAMP BLOT
+// =============================================================================
+
+const Delta = Quill.import('delta');
+const Embed = Quill.import('blots/embed');
+
+/**
+ * Custom Quill.js blot for embedding clickable timestamps in the editor
+ * Creates <button> elements that store timestamp data and jump to that time when clicked
+ */
+class TimestampBlot extends Embed {
+  static blotName = 'timestamp';    // Internal Quill name for this blot type
+  static tagName = 'BUTTON';        // HTML tag to create
+  static className = 'ts';          // CSS class name
+
+  /**
+   * Creates a new timestamp button element
+   * @param {Object} value - Object with ts (timestamp in seconds) and label properties
+   * @returns {HTMLButtonElement} The created button element
+   */
+  static create(value) {
+    const node = super.create();
+    const ts = Number(value?.ts || 0);
+    const label = value?.label || fmtTime(ts);
+
+    // Configure button attributes
+    node.setAttribute('type', 'button');
+    node.setAttribute('contenteditable', 'false');  // Prevent editing the button text
+    node.dataset.ts = String(ts);                   // Store timestamp data
+    node.textContent = label;                       // Display formatted time
+    return node;
+  }
+
+  /**
+   * Extracts timestamp data from an existing button element
+   * @param {HTMLButtonElement} node - The button element to read from
+   * @returns {Object} Object with ts and label properties
+   */
+  static value(node) {
+    return {
+      ts: Number(node.dataset.ts || 0),
+      label: node.textContent || fmtTime(Number(node.dataset.ts || 0))
+    };
+  }
+}
+
+// Register the custom blot with Quill
+Quill.register(TimestampBlot);
+
+// =============================================================================
+// CUSTOM IMAGE BLOT WITH DIMENSIONS SUPPORT
+// =============================================================================
+
+const BlockEmbed = Quill.import('blots/block/embed');
+
+/**
+ * Custom Image blot that supports width and height attributes
+ * Extends Quill's default image handling to persist dimensions
+ */
+class CustomImage extends BlockEmbed {
+  static blotName = 'image';
+  static tagName = 'img';
+
+  static create(value) {
+    const node = super.create();
+
+    if (typeof value === 'string') {
+      // Handle both simple URL and URL with dimensions (format: "url|widthxheight" or "url|width")
+      const [src, dimensions] = value.split('|');
+      node.setAttribute('src', src);
+
+      if (dimensions) {
+        const [width, height] = dimensions.split('x');
+        if (width) {
+          node.style.width = `${width}px`;
+        }
+        if (height) {
+          node.style.height = `${height}px`;
+        } else {
+          node.style.height = 'auto';
+        }
+      }
+    } else if (typeof value === 'object' && value.src) {
+      // Handle object format: { src: "url", width: 100, height: 200 }
+      node.setAttribute('src', value.src);
+      if (value.width) {
+        node.style.width = `${value.width}px`;
+      }
+      if (value.height) {
+        node.style.height = `${value.height}px`;
+      } else {
+        node.style.height = 'auto';
+      }
+    }
+
+    return node;
+  }
+
+  static value(node) {
+    const src = node.getAttribute('src');
+    const width = node.style.width ? parseInt(node.style.width) : null;
+    const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+
+    if (width || height) {
+      // Return format with dimensions
+      if (height) {
+        return `${src}|${width}x${height}`;
+      } else {
+        return `${src}|${width}`;
+      }
+    }
+
+    return src;
+  }
+}
+
+// Register the custom image blot
+Quill.register(CustomImage, true);
+
+// =============================================================================
+// SESSION CONTENT HELPERS
+// =============================================================================
+
+/**
+ * Checks if the current session has any content (notes or recording)
+ * Used to determine when to prompt user about saving before reset/exit
+ * @returns {boolean} True if there's content worth saving
+ */
+function hasContent() {
+  const text = quill.getText().trim();
+  return !!recordedBlob || text.length > 0;
+}
+
+/**
+ * Packages current session state for saving via IPC to main process
+ * Converts the current notes and recording into a format for .notepack creation
+ * @returns {Promise<Object>} Result from main process save operation
+ */
+async function saveSessionFromState() {
+  const noteHtml = quill.root.innerHTML;  // Get rich text HTML from editor
+  let mediaBuffer = null;
+  if (recordedBlob) {
+    mediaBuffer = await recordedBlob.arrayBuffer();  // Convert Blob to ArrayBuffer for IPC
+  }
+  return window.api.saveSession({ noteHtml, mediaBuffer, mediaSuggestedExt: mediaExt });
+}
+
+// =============================================================================
+// QUILL.JS EDITOR SETUP
+// =============================================================================
+
+/**
+ * Initialize the main Quill.js rich text editor
+ * Configured with custom toolbar handlers and supported formats including our custom timestamp blot
+ */
+const quill = new Quill('#editor', {
+  theme: 'snow',  // Use the "Snow" theme (white background with toolbar)
+  modules: {
+    toolbar: {
+      container: '#toolbar',  // Use custom toolbar HTML from index.html
+      handlers: {
+        // Custom handlers for toolbar buttons
+        undo: () => quill.history.undo(),
+        redo: () => quill.history.redo(),
+        image: async () => {
+          // Handle image insertion via file picker
+          const res = await window.api.pickImage();  // Call main process via IPC
+          if (!res?.ok) return;
+          await insertDataUrlImage(res.dataUrl);     // Insert the selected image
+        },
+        camera: async () => {
+          // Handle camera photo capture
+          statusEl.textContent = 'Opening camera...';
+          try {
+            const dataUrl = await capturePhotoFromCamera();
+            if (dataUrl) {
+              await insertDataUrlImage(dataUrl);       // Insert the captured image
+              statusEl.textContent = 'Photo captured and inserted.';
+            } else {
+              statusEl.textContent = 'Photo capture cancelled.';
+            }
+          } catch (error) {
+            console.error('Camera capture error:', error);
+            statusEl.textContent = 'Camera capture failed.';
+          }
+        },
+        drawing: async () => {
+          // Handle drawing modal
+          statusEl.textContent = 'Opening drawing canvas...';
+          try {
+            const dataUrl = await openDrawingModal();
+            if (dataUrl) {
+              await insertDataUrlImage(dataUrl);       // Insert the drawing as image
+              statusEl.textContent = 'Drawing inserted.';
+            } else {
+              statusEl.textContent = 'Drawing cancelled.';
+            }
+          } catch (error) {
+            console.error('Drawing error:', error);
+            statusEl.textContent = 'Drawing failed.';
+          }
+        }
+      }
+    },
+    history: {
+      delay: 500,      // Delay before saving history state (ms)
+      maxStack: 200,   // Maximum number of undo/redo operations
+      userOnly: true   // Only track user changes, not programmatic ones
+    }
+  },
+  formats: [
+    // Standard text formatting
+    'header', 'bold', 'italic', 'underline', 'strike',
+    // Lists and alignment
+    'list', 'indent', 'align', 'color', 'background',
+    // Advanced formatting
+    'link', 'blockquote', 'code-block',
+    // Media and custom content
+    'image',
+    'timestamp'  // Our custom timestamp blot
+  ]
+});
+
+// =============================================================================
+// CUSTOM TOOLBAR BUTTON HANDLERS
+// =============================================================================
+
+// Connect custom toolbar buttons to their respective functions
+// These buttons are defined in the HTML but need JavaScript handlers
+document.querySelector('#toolbar .ql-undo')
+  ?.addEventListener('click', () => quill.getModule('toolbar').handlers.undo());
+document.querySelector('#toolbar .ql-redo')
+  ?.addEventListener('click', () => quill.getModule('toolbar').handlers.redo());
+document.querySelector('#toolbar .ql-timestamp')
+  ?.addEventListener('click', () => insertTimestamp());
+// Note: ql-drawing is handled by Quill toolbar handlers, no separate listener needed
+
+// =============================================================================
+// CAMERA CAPTURE FUNCTIONALITY
+// =============================================================================
+
+/**
+ * DRAWING SYSTEM
+ *
+ * This system allows users to create drawings using Fabric.js canvas and insert them
+ * into their notes. The drawing functionality includes:
+ *
+ * Features:
+ * - Free-hand drawing with customizable brush size and color
+ * - Basic shapes (rectangles, circles)
+ * - Text insertion with custom colors
+ * - Clear canvas functionality
+ * - High-quality canvas export as images
+ * - Responsive canvas sizing
+ * - Keyboard shortcuts (Escape to cancel)
+ *
+ * Usage:
+ * 1. Click the drawing button (✏️) in the toolbar
+ * 2. Drawing modal opens with Fabric.js canvas
+ * 3. Select tools and draw on the canvas
+ * 4. Click "Insert Drawing" to add it to notes at cursor position
+ * 5. Drawing is automatically inserted as a high-quality image
+ */
+
+/**
+ * Opens drawing modal with Fabric.js canvas for creating drawings
+ * Returns a Promise that resolves with the drawing as a data URL
+ */
+// Global flag to prevent multiple simultaneous drawing modals
+let isDrawingModalOpen = false;
+
+async function openDrawingModal() {
+  // Prevent multiple simultaneous modals
+  if (isDrawingModalOpen) {
+    return null;
+  }
+
+  isDrawingModalOpen = true;
+  let drawingModal = null;
+  let canvas = null;
+
+  try {
+    // Check if Fabric.js is loaded
+    if (typeof fabric === 'undefined') {
+      throw new Error('Fabric.js library not loaded');
+    }
+
+    // Create modal overlay
+    drawingModal = createDrawingModal();
+    document.body.appendChild(drawingModal);
+
+    // Wait for DOM to be ready and force a reflow
+    await new Promise(resolve => {
+      drawingModal.offsetHeight; // Force reflow
+      setTimeout(resolve, 50);
+    });
+
+    // Set canvas size (responsive but with reasonable limits)
+    const maxWidth = Math.min(window.innerWidth * 0.7, 800);
+    const maxHeight = Math.min(window.innerHeight * 0.5, 600);
+
+    // Create a completely fresh canvas element to avoid Fabric.js conflicts
+    console.log('Creating fresh canvas element...');
+
+    // Find the canvas container in the modal
+    let canvasContainer = drawingModal.querySelector('canvas')?.parentElement;
+    if (!canvasContainer) {
+      // Fallback: look for any div that might contain the canvas
+      const divs = drawingModal.querySelectorAll('div');
+      for (let div of divs) {
+        if (div.innerHTML.includes('canvas') || div.querySelector('canvas')) {
+          canvasContainer = div;
+          break;
+        }
+      }
+    }
+
+    if (!canvasContainer) {
+      throw new Error('Could not find canvas container in modal');
+    }
+
+    // Remove any existing canvas (which may have Fabric.js applied)
+    const existingCanvas = canvasContainer.querySelector('canvas');
+    if (existingCanvas) {
+      console.log('Removing existing canvas with Fabric artifacts');
+      existingCanvas.remove();
+    }
+
+    // Create completely fresh canvas element
+    const canvasElement = document.createElement('canvas');
+    canvasElement.id = 'drawingCanvas';
+
+    // Set dimensions to prevent scaling issues
+    canvasElement.width = maxWidth;
+    canvasElement.height = maxHeight;
+    canvasElement.style.cssText = `
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      background: white;
+      width: ${maxWidth}px;
+      height: ${maxHeight}px;
+    `;
+
+    console.log('Canvas element after dimension setting:');
+    console.log('- HTML width/height:', canvasElement.width, canvasElement.height);
+    console.log('- CSS width/height:', canvasElement.style.width, canvasElement.style.height);
+
+    // Insert fresh canvas into container
+    canvasContainer.appendChild(canvasElement);
+
+    console.log('Created fresh canvas:', canvasElement);
+    console.log('Canvas dimensions:', maxWidth, 'x', maxHeight);
+
+    // Double check canvas element before setting dimensions
+    console.log('About to set width, canvasElement is:', canvasElement);
+    console.log('canvasElement type:', typeof canvasElement);
+    console.log('canvasElement null check:', canvasElement === null);
+    console.log('canvasElement undefined check:', canvasElement === undefined);
+
+    if (!canvasElement) {
+      throw new Error('Canvas element became undefined before setting dimensions');
+    }
+
+    // Important: Set canvas dimensions BEFORE Fabric.js processes it
+    // This prevents scaling issues
+    // Ensure integer dimensions to avoid offset issues
+    const finalWidth = Math.floor(maxWidth);
+    const finalHeight = Math.floor(maxHeight);
+
+    canvasElement.width = finalWidth;
+    canvasElement.height = finalHeight;
+    canvasElement.style.width = finalWidth + 'px';
+    canvasElement.style.height = finalHeight + 'px';
+    console.log('Set canvas dimensions to:', finalWidth, 'x', finalHeight);
+
+    // Check if canvas already has Fabric.js applied
+    if (canvasElement.hasAttribute('data-fabric')) {
+      console.log('Canvas already has Fabric.js applied, disposing first...');
+      // Try to get existing canvas instance and dispose it
+      const existingCanvas = canvasElement.__fabric_canvas;
+      if (existingCanvas) {
+        existingCanvas.dispose();
+      }
+      // Remove fabric attributes
+      canvasElement.removeAttribute('data-fabric');
+      canvasElement.className = '';
+      canvasElement.style.cssText = 'border: 2px solid #d1d5db; border-radius: 4px; background: white;';
+    }
+
+    // Check if Fabric.js has already been applied to this canvas
+    let canvas;
+    if (canvasElement.hasAttribute('data-fabric')) {
+      console.log('Canvas already has Fabric.js applied, using existing instance');
+      // Get the existing Fabric canvas instance
+      canvas = canvasElement.__fabric || window.fabric.getCanvasFromElement(canvasElement);
+      if (!canvas) {
+        // If we can't get the existing instance, dispose and recreate
+        console.log('Could not get existing instance, disposing and recreating...');
+        if (canvasElement.__fabric_canvas) {
+          canvasElement.__fabric_canvas.dispose();
+        }
+        canvas = new fabric.Canvas(canvasElement, {
+          backgroundColor: 'white',
+          selection: true,
+          preserveObjectStacking: true
+        });
+      }
+    } else {
+      console.log('Creating new Fabric canvas');
+      canvas = new fabric.Canvas(canvasElement, {
+        backgroundColor: 'white',
+        selection: true,
+        preserveObjectStacking: true
+      });
+    }
+
+    // Debug what we got
+    console.log('Canvas instance:', canvas);
+    console.log('Canvas type:', typeof canvas);
+    console.log('Canvas methods:', Object.getOwnPropertyNames(canvas));
+
+    // CRITICAL FIX: Force canvas element dimensions before Fabric.js processes them
+    canvasElement.width = maxWidth;
+    canvasElement.height = maxHeight;
+    canvasElement.style.width = maxWidth + 'px';
+    canvasElement.style.height = maxHeight + 'px';
+
+    // Set Fabric dimensions and clear
+    canvas.setDimensions({width: maxWidth, height: maxHeight});
+
+    // Force all canvas elements to correct size (Fabric creates multiple canvases)
+    // Ensure all canvas elements have integer dimensions
+    const syncWidth = Math.floor(maxWidth);
+    const syncHeight = Math.floor(maxHeight);
+
+    const allCanvases = canvas.wrapperEl.querySelectorAll('canvas');
+    allCanvases.forEach(canvasEl => {
+      canvasEl.width = syncWidth;
+      canvasEl.height = syncHeight;
+      canvasEl.style.width = syncWidth + 'px';
+      canvasEl.style.height = syncHeight + 'px';
+    });
+
+    // Update Fabric canvas size to match
+    canvas.setDimensions({width: syncWidth, height: syncHeight});
+
+    canvas.clear();
+    canvas.backgroundColor = 'white';
+    canvas.renderAll();
+
+    console.log('FINAL canvas check - HTML size:', canvasElement.width, 'x', canvasElement.height);
+    console.log('FINAL canvas check - Fabric size:', canvas.width, 'x', canvas.height);
+
+    console.log('Fabric canvas created:', canvas);
+    console.log('Canvas freeDrawingBrush:', canvas.freeDrawingBrush);
+
+    // Debug canvas context and rendering
+    console.log('Canvas context debug:');
+    console.log('- lowerCanvasEl:', canvas.lowerCanvasEl);
+    console.log('- upperCanvasEl:', canvas.upperCanvasEl);
+    console.log('- contextContainer:', canvas.contextContainer);
+    console.log('- contextTop:', canvas.contextTop);
+    console.log('- Canvas lost context?', canvas.hasLostContext);
+
+    // Canvas is working - no need for test rectangle anymore
+
+    // Canvas rendering is working - no need for debug squares
+
+    // FIX: Make upper canvas transparent but keep mouse events
+    if (canvas.upperCanvasEl) {
+      console.log('Making upper canvas transparent but keeping mouse events...');
+      canvas.upperCanvasEl.style.backgroundColor = 'transparent';
+      canvas.upperCanvasEl.style.background = 'transparent';
+    }
+
+    // CRITICAL: Recalculate canvas offset to fix mouse position
+    canvas.calcOffset();
+    console.log('Recalculated canvas offset for proper mouse positioning');
+
+    console.log('Added test rectangle - can you see a red/blue rectangle or green square?');
+
+    // Configure drawing mode with proper settings
+    canvas.isDrawingMode = true;
+    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+    canvas.freeDrawingBrush.width = 3;
+    canvas.freeDrawingBrush.color = '#000000';
+
+    console.log('Drawing setup complete. Brush color: black, width: 3');
+
+    // Save initial canvas state for undo/redo
+    setTimeout(() => {
+      saveCanvasState();
+    }, 100);
+
+    // Minimal path handler
+    canvas.on('path:created', function(e) {
+      console.log('Path created! Color:', e.path.stroke || e.path.fill);
+      console.log('Objects on canvas:', canvas.getObjects().length);
+      saveCanvasState(); // Save state after drawing path
+    });
+
+    // Track object modifications for undo/redo
+    canvas.on('object:modified', function(e) {
+      console.log('Object modified:', e.target.type);
+      saveCanvasState(); // Save state after object modification
+    });
+
+    canvas.on('object:moved', function(e) {
+      console.log('Object moved:', e.target.type);
+      // Note: object:modified is also fired after moving, so we don't need to save state here
+    });
+
+    canvas.on('object:scaled', function(e) {
+      console.log('Object scaled:', e.target.type);
+      // Note: object:modified is also fired after scaling, so we don't need to save state here
+    });
+
+    canvas.on('object:rotated', function(e) {
+      console.log('Object rotated:', e.target.type);
+      // Note: object:modified is also fired after rotation, so we don't need to save state here
+    });
+
+    // Get UI elements
+    const toolButtons = drawingModal.querySelectorAll('.drawing-tool-btn');
+    const colorPicker = drawingModal.querySelector('#drawingColorPicker');
+    const fillColorPicker = drawingModal.querySelector('#drawingFillColorPicker');
+    const noFillCheckbox = drawingModal.querySelector('#drawingNoFill');
+    const brushSizeSlider = drawingModal.querySelector('#drawingBrushSize');
+    const brushSizeValue = drawingModal.querySelector('#drawingBrushSizeValue');
+    const clearBtn = drawingModal.querySelector('#drawingClearBtn');
+    const deleteBtn = drawingModal.querySelector('#drawingDeleteBtn');
+    const undoBtn = drawingModal.querySelector('#drawingUndoBtn');
+    const redoBtn = drawingModal.querySelector('#drawingRedoBtn');
+    const saveBtn = drawingModal.querySelector('#drawingSaveBtn');
+    const cancelBtn = drawingModal.querySelector('#drawingCancelBtn');
+
+    let currentTool = 'freedraw';
+    let isDrawing = false;
+    let startPoint = null;
+
+    // History system for undo/redo
+    let canvasHistory = [];
+    let historyStep = -1;
+    const maxHistorySteps = 50; // Limit history to prevent memory issues
+
+    // Save initial state
+    const saveCanvasState = () => {
+      // Remove any states after current step (when user made new action after undo)
+      canvasHistory = canvasHistory.slice(0, historyStep + 1);
+
+      // Add new state
+      const canvasData = JSON.stringify(canvas.toObject());
+      canvasHistory.push(canvasData);
+      historyStep++;
+
+      // Limit history size
+      if (canvasHistory.length > maxHistorySteps) {
+        canvasHistory = canvasHistory.slice(1);
+        historyStep = maxHistorySteps - 1;
+      }
+
+      // Update button states
+      updateUndoRedoButtons();
+    };
+
+    const updateUndoRedoButtons = () => {
+      // Undo button
+      const canUndo = historyStep > 0;
+      undoBtn.disabled = !canUndo;
+      undoBtn.style.opacity = canUndo ? '1' : '0.5';
+      undoBtn.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+
+      // Redo button
+      const canRedo = historyStep < canvasHistory.length - 1;
+      redoBtn.disabled = !canRedo;
+      redoBtn.style.opacity = canRedo ? '1' : '0.5';
+      redoBtn.style.cursor = canRedo ? 'pointer' : 'not-allowed';
+    };
+
+    // Tool button handlers
+    toolButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update button styles
+        toolButtons.forEach(b => {
+          b.style.border = '2px solid #d1d5db';
+          b.style.background = 'white';
+          b.style.color = '#374151';
+          b.classList.remove('active');
+        });
+
+        btn.style.border = '2px solid #2563eb';
+        btn.style.background = '#2563eb';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+
+        currentTool = btn.dataset.tool;
+
+        // Configure canvas for selected tool
+        switch(currentTool) {
+          case 'freedraw':
+            canvas.isDrawingMode = true;
+            canvas.selection = false;
+            break;
+          case 'rect':
+          case 'circle':
+          case 'text':
+            canvas.isDrawingMode = false;
+            canvas.selection = true;
+            break;
+        }
+      });
+    });
+
+    // Color picker handler
+    colorPicker.addEventListener('change', (e) => {
+      const color = e.target.value;
+      canvas.freeDrawingBrush.color = color;
+
+      // Update color for selected objects
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          if (obj.type === 'path') {
+            obj.set('stroke', color);
+          } else if (obj.type === 'i-text') {
+            obj.set('fill', color);
+          } else {
+            obj.set('stroke', color);
+          }
+        });
+        canvas.renderAll();
+      }
+    });
+
+    // Fill color picker handler
+    fillColorPicker.addEventListener('change', (e) => {
+      const fillColor = e.target.value;
+
+      // Automatically uncheck "No Fill" when user selects a fill color
+      if (noFillCheckbox.checked) {
+        noFillCheckbox.checked = false;
+        fillColorPicker.disabled = false;
+        fillColorPicker.style.opacity = '1';
+      }
+
+      // Update fill for selected objects
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          if (obj.type !== 'path' && obj.type !== 'i-text') {
+            obj.set('fill', fillColor);
+          }
+        });
+        canvas.renderAll();
+      }
+    });
+
+    // No fill checkbox handler
+    noFillCheckbox.addEventListener('change', (e) => {
+      const isNoFill = e.target.checked;
+      fillColorPicker.disabled = isNoFill;
+      fillColorPicker.style.opacity = isNoFill ? '0.5' : '1';
+
+      // Update fill for selected objects
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          if (obj.type !== 'path' && obj.type !== 'i-text') {
+            obj.set('fill', isNoFill ? 'transparent' : fillColorPicker.value);
+          }
+        });
+        canvas.renderAll();
+      }
+    });
+
+    // Brush size handler
+    brushSizeSlider.addEventListener('input', (e) => {
+      const size = parseInt(e.target.value);
+      brushSizeValue.textContent = size + 'px';
+      canvas.freeDrawingBrush.width = size;
+
+      // Update stroke width for selected objects
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          if (obj.type !== 'i-text') {
+            obj.set('strokeWidth', size);
+          }
+        });
+        canvas.renderAll();
+      }
+    });
+
+    // Canvas mouse events for shape drawing
+    canvas.on('mouse:down', (options) => {
+      if (currentTool === 'rect' || currentTool === 'circle') {
+        // Don't start drawing if clicking on an existing object
+        if (options.target) {
+          isDrawing = false;
+          return;
+        }
+
+        isDrawing = true;
+        const pointer = canvas.getPointer(options.e);
+        startPoint = pointer;
+      }
+    });
+
+    canvas.on('mouse:up', (options) => {
+      if (isDrawing && (currentTool === 'rect' || currentTool === 'circle')) {
+        const pointer = canvas.getPointer(options.e);
+
+        // Only create shape if we have a valid start point and moved the mouse
+        const distance = Math.sqrt(Math.pow(pointer.x - startPoint.x, 2) + Math.pow(pointer.y - startPoint.y, 2));
+        if (distance < 5) {
+          // Too small movement, don't create shape
+          isDrawing = false;
+          return;
+        }
+
+        if (currentTool === 'rect') {
+          const rect = new fabric.Rect({
+            left: Math.min(startPoint.x, pointer.x),
+            top: Math.min(startPoint.y, pointer.y),
+            width: Math.abs(pointer.x - startPoint.x),
+            height: Math.abs(pointer.y - startPoint.y),
+            fill: noFillCheckbox.checked ? 'transparent' : fillColorPicker.value,
+            stroke: colorPicker.value,
+            strokeWidth: parseInt(brushSizeSlider.value)
+          });
+          canvas.add(rect);
+          saveCanvasState(); // Save state after adding rectangle
+        } else if (currentTool === 'circle') {
+          // Draw circle using bounding box method (like rectangles)
+          const width = Math.abs(pointer.x - startPoint.x);
+          const height = Math.abs(pointer.y - startPoint.y);
+          const radius = Math.min(width, height) / 2; // Use the smaller dimension for a perfect circle
+
+          const centerX = (startPoint.x + pointer.x) / 2;
+          const centerY = (startPoint.y + pointer.y) / 2;
+
+          const circle = new fabric.Circle({
+            left: centerX - radius,
+            top: centerY - radius,
+            radius: radius,
+            fill: noFillCheckbox.checked ? 'transparent' : fillColorPicker.value,
+            stroke: colorPicker.value,
+            strokeWidth: parseInt(brushSizeSlider.value)
+          });
+          canvas.add(circle);
+          saveCanvasState(); // Save state after adding circle
+        }
+
+        isDrawing = false;
+        startPoint = null;
+      }
+    });
+
+    // Text tool double-click handler
+    canvas.on('mouse:dblclick', (options) => {
+      if (currentTool === 'text') {
+        const pointer = canvas.getPointer(options.e);
+        const text = new fabric.IText('Click to edit', {
+          left: pointer.x,
+          top: pointer.y,
+          fill: colorPicker.value,
+          fontSize: parseInt(brushSizeSlider.value) * 4 + 12,
+          fontFamily: 'Arial'
+        });
+        canvas.add(text);
+        saveCanvasState(); // Save state after adding text
+        canvas.setActiveObject(text);
+        text.enterEditing();
+      }
+    });
+
+    // Clear button handler
+    clearBtn.addEventListener('click', () => {
+      canvas.clear();
+      canvas.backgroundColor = 'white';
+      canvas.renderAll();
+      saveCanvasState(); // Save state after clearing
+    });
+
+    // Delete selected objects handler
+    const deleteSelectedObjects = () => {
+      const activeObjects = canvas.getActiveObjects();
+      if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => {
+          canvas.remove(obj);
+        });
+        canvas.discardActiveObject();
+        canvas.renderAll();
+      }
+    };
+
+    deleteBtn.addEventListener('click', () => {
+      deleteSelectedObjects();
+      saveCanvasState(); // Save state after deletion
+    });
+
+    // Undo button handler
+    undoBtn.addEventListener('click', () => {
+      if (historyStep > 0) {
+        historyStep--;
+        const previousState = canvasHistory[historyStep];
+        canvas.loadFromJSON(previousState, () => {
+          // Force complete re-render of all canvas layers
+          canvas.requestRenderAll();
+          canvas.calcOffset();
+
+          // Additional render cycle to ensure visibility
+          setTimeout(() => {
+            canvas.renderAll();
+            updateUndoRedoButtons();
+          }, 10);
+        });
+      }
+    });
+
+    // Redo button handler
+    redoBtn.addEventListener('click', () => {
+      if (historyStep < canvasHistory.length - 1) {
+        historyStep++;
+        const nextState = canvasHistory[historyStep];
+        canvas.loadFromJSON(nextState, () => {
+          // Force complete re-render of all canvas layers
+          canvas.requestRenderAll();
+          canvas.calcOffset();
+
+          // Additional render cycle to ensure visibility
+          setTimeout(() => {
+            canvas.renderAll();
+            updateUndoRedoButtons();
+          }, 10);
+        });
+      }
+    });
+
+    // Keyboard handler for delete/backspace and undo/redo
+    const handleKeyDown = (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedObjects();
+        saveCanvasState();
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Ctrl+Shift+Z = Redo
+            redoBtn.click();
+          } else {
+            // Ctrl+Z = Undo
+            undoBtn.click();
+          }
+        } else if (e.key === 'y' || e.key === 'Y') {
+          e.preventDefault();
+          // Ctrl+Y = Redo
+          redoBtn.click();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Return Promise that resolves with canvas data or null if cancelled
+    return new Promise((resolve) => {
+      // Save button handler
+      saveBtn.addEventListener('click', () => {
+        try {
+          // Export canvas as high-quality PNG
+          const dataUrl = canvas.toDataURL({
+            format: 'png',
+            quality: 1.0,
+            multiplier: 2 // Higher resolution export
+          });
+
+          // Clean up
+          document.removeEventListener('keydown', handleKeyDown);
+          document.body.removeChild(drawingModal);
+          canvas.dispose();
+          isDrawingModalOpen = false;
+
+          resolve(dataUrl);
+        } catch (error) {
+          console.error('Failed to export drawing:', error);
+          alert('Failed to export drawing. Please try again.');
+        }
+      });
+
+      // Cancel button handler
+      cancelBtn.addEventListener('click', () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.removeChild(drawingModal);
+        canvas.dispose();
+        isDrawingModalOpen = false;
+        resolve(null);
+      });
+    });
+
+  } catch (error) {
+    console.error('Drawing modal error:', error);
+
+    // Clean up on error
+    if (drawingModal && document.body.contains(drawingModal)) {
+      document.body.removeChild(drawingModal);
+    }
+    if (canvas) {
+      canvas.dispose();
+    }
+    isDrawingModalOpen = false;
+
+    throw error;
+  }
+}
+
+/**
+ * CAMERA PHOTO CAPTURE SYSTEM
+ *
+ * This system allows users to take photos using their device camera while recording
+ * audio/video. The camera functionality is completely independent from the recording
+ * system to avoid conflicts:
+ *
+ * Features:
+ * - Opens device camera in a modal overlay
+ * - Shows live preview before capture
+ * - Works while audio/video recording is active
+ * - Inserts captured photos directly into notes at cursor position
+ * - Supports keyboard shortcuts (Escape to cancel)
+ * - Provides user-friendly error messages
+ * - Automatically cleans up camera resources
+ *
+ * Usage:
+ * 1. Click the camera button (📷) in the toolbar next to the image button
+ * 2. Camera modal opens with live preview
+ * 3. Click "Capture Photo" to take the photo
+ * 4. Photo is automatically inserted into notes at cursor position
+ * 5. Camera resources are cleaned up automatically
+ *
+ * The system uses getUserMedia() with separate constraints from the recording
+ * system to ensure both can operate simultaneously without conflicts.
+ */
+
+/**
+ * Opens device camera to take a photo and insert it into the editor
+ * Uses a separate MediaStream from the recording to avoid interference
+ * Creates a modal overlay with video preview and capture button
+ */
+async function capturePhotoFromCamera() {
+  let cameraStream = null;
+  let cameraModal = null;
+  let availableCameras = [];
+
+  try {
+    // Create modal overlay for camera interface first
+    cameraModal = createCameraModal();
+    document.body.appendChild(cameraModal);
+
+    // Get video element and canvas from modal
+    const videoElement = cameraModal.querySelector('#cameraVideo');
+    const canvas = cameraModal.querySelector('#cameraCanvas');
+    const ctx = canvas.getContext('2d');
+    const captureBtn = cameraModal.querySelector('#captureBtn');
+    const cancelBtn = cameraModal.querySelector('#cancelBtn');
+    const cameraSelector = cameraModal.querySelector('#cameraSelector');
+
+    // Populate camera selector with available devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(d => d.kind === 'videoinput');
+
+    cameraSelector.innerHTML = '';
+
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'System Default';
+    cameraSelector.appendChild(defaultOption);
+
+    // Add each camera option
+    availableCameras.forEach(camera => {
+      const option = document.createElement('option');
+      option.value = camera.deviceId;
+      option.textContent = camera.label || `Camera (${camera.deviceId.slice(0, 6)}...)`;
+      cameraSelector.appendChild(option);
+    });
+
+    // Set initial camera selection (use recording camera selection as default)
+    const recordingCameraId = selectedDeviceId(camSelect);
+    if (recordingCameraId && availableCameras.some(c => c.deviceId === recordingCameraId)) {
+      cameraSelector.value = recordingCameraId;
+    }
+
+    // Function to start camera stream with selected device
+    async function startCameraStream(deviceId) {
+      // Stop existing stream
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+
+      const resolution = getSelectedResolution();
+      const constraints = {
+        video: deviceId ?
+          { deviceId: { exact: deviceId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } } :
+          { width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+      };
+
+      cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoElement.srcObject = cameraStream;
+      await videoElement.play();
+    }
+
+    // Start with initial camera
+    await startCameraStream(cameraSelector.value);
+
+    // Handle camera selection changes
+    cameraSelector.addEventListener('change', async () => {
+      try {
+        await startCameraStream(cameraSelector.value);
+      } catch (error) {
+        console.error('Failed to switch camera:', error);
+        alert('Failed to switch to selected camera. Please try another one.');
+      }
+    });
+
+    // Set canvas dimensions to match video and ensure proper aspect ratio
+    // This handler will fire whenever the video metadata loads (including when switching cameras)
+    videoElement.addEventListener('loadedmetadata', () => {
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+
+      // Debug: log actual video dimensions
+      console.log(`Camera video dimensions: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+      console.log(`Aspect ratio: ${videoElement.videoWidth / videoElement.videoHeight}`);
+
+      // Force video element to respect its natural dimensions
+      const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+      const maxWidth = Math.min(window.innerWidth * 0.8, 640);
+      const calculatedHeight = maxWidth / aspectRatio;
+
+      console.log(`Setting video display size: ${maxWidth}x${calculatedHeight}`);
+
+      videoElement.style.width = `${maxWidth}px`;
+      videoElement.style.height = `${calculatedHeight}px`;
+    });
+
+    // Return a Promise that resolves when photo is taken or cancelled
+    return new Promise((resolve) => {
+      // Capture button handler
+      captureBtn.addEventListener('click', () => {
+        // Ensure canvas is set to full video resolution
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+
+        console.log(`Capturing photo at: ${canvas.width}x${canvas.height}`);
+
+        // Draw current video frame to canvas at full resolution
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to data URL with high quality
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+        cleanup();
+        resolve(dataUrl);
+      });
+
+      // Cancel button handler
+      cancelBtn.addEventListener('click', () => {
+        cleanup();
+        resolve(null);
+      });
+
+      // Cleanup function
+      function cleanup() {
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+        }
+        if (cameraModal && cameraModal.parentNode) {
+          cameraModal.parentNode.removeChild(cameraModal);
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Camera access failed:', error);
+
+    // Cleanup on error
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+    if (cameraModal && cameraModal.parentNode) {
+      cameraModal.parentNode.removeChild(cameraModal);
+    }
+
+    // More specific error messages
+    let errorMessage = 'Camera access failed. ';
+    if (error.name === 'NotAllowedError') {
+      errorMessage += 'Please allow camera access and try again.';
+    } else if (error.name === 'NotFoundError') {
+      errorMessage += 'No camera device found.';
+    } else if (error.name === 'NotReadableError') {
+      errorMessage += 'Camera is already in use by another application.';
+    } else {
+      errorMessage += 'Please check permissions and try again.';
+    }
+
+    alert(errorMessage);
+    return null;
+  }
+}
+
+/**
+ * Creates the modal overlay interface for camera capture
+ * Returns a DOM element with video preview and control buttons
+ */
+function createCameraModal() {
+  const modal = document.createElement('div');
+  modal.className = 'camera-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    font-family: system-ui, sans-serif;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    ">
+      <h3 style="margin: 0; color: #333; font-size: 18px;">Take Photo</h3>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <label style="font-size: 14px; color: #666; font-weight: 500;">
+          <i class="fa-solid fa-camera" style="margin-right: 6px;"></i>Camera:
+        </label>
+        <select id="cameraSelector" style="
+          padding: 6px 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          background: white;
+          font-size: 14px;
+          min-width: 200px;
+          cursor: pointer;
+        ">
+          <option value="">Loading cameras...</option>
+        </select>
+      </div>
+
+      <div style="position: relative; display: flex; justify-content: center;">
+        <video id="cameraVideo"
+               style="
+                 max-width: min(80vw, 640px);
+                 width: 100%;
+                 height: auto;
+                 border-radius: 4px;
+                 background: #000;
+               "
+               muted playsinline>
+        </video>
+        <canvas id="cameraCanvas" style="display: none;"></canvas>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button id="captureBtn" style="
+          padding: 10px 20px;
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <i class="fa-solid fa-camera"></i> Capture Photo
+        </button>
+        <button id="cancelBtn" style="
+          padding: 10px 20px;
+          background: #6b7280;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <i class="fa-solid fa-times"></i> Cancel
+        </button>
+      </div>
+
+      <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center;">
+        Click capture to take a photo, or click outside to cancel
+      </p>
+    </div>
+  `;
+
+  // Close modal on outside click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      const cancelBtn = modal.querySelector('#cancelBtn');
+      cancelBtn.click();
+    }
+  });
+
+  // Handle escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      const cancelBtn = modal.querySelector('#cancelBtn');
+      cancelBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  return modal;
+}
+
+/**
+ * Creates the modal overlay interface for drawing
+ * Returns a DOM element with Fabric.js canvas and drawing tools
+ */
+function createDrawingModal() {
+  const modal = document.createElement('div');
+  modal.className = 'drawing-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    font-family: system-ui, sans-serif;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 95vw;
+      max-height: 95vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    ">
+      <h3 style="margin: 0; color: #333; font-size: 18px;">Draw</h3>
+
+      <!-- Drawing Tools -->
+      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;">
+        <!-- Drawing Mode -->
+        <div style="display: flex; gap: 8px;">
+          <button id="drawingFreeDrawBtn" class="drawing-tool-btn active" data-tool="freedraw" style="
+            padding: 8px 12px;
+            border: 2px solid #2563eb;
+            background: #2563eb;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <i class="fa-solid fa-pencil"></i> Draw
+          </button>
+          <button id="drawingRectBtn" class="drawing-tool-btn" data-tool="rect" style="
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <i class="fa-regular fa-square"></i> Rectangle
+          </button>
+          <button id="drawingCircleBtn" class="drawing-tool-btn" data-tool="circle" style="
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <i class="fa-regular fa-circle"></i> Circle
+          </button>
+          <button id="drawingTextBtn" class="drawing-tool-btn" data-tool="text" style="
+            padding: 8px 12px;
+            border: 2px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <i class="fa-solid fa-font"></i> Text
+          </button>
+        </div>
+
+        <!-- Stroke Color Picker -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 12px; color: #666;">Stroke:</label>
+          <input type="color" id="drawingColorPicker" value="#000000" style="
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          ">
+        </div>
+
+        <!-- Fill Color Picker -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 12px; color: #666;">Fill:</label>
+          <input type="color" id="drawingFillColorPicker" value="#ffffff" style="
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          ">
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer;">
+            <input type="checkbox" id="drawingNoFill" checked style="margin: 0;">
+            No Fill
+          </label>
+        </div>
+
+        <!-- Brush Size -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 12px; color: #666;">Size:</label>
+          <input type="range" id="drawingBrushSize" min="1" max="20" value="3" style="
+            width: 80px;
+          ">
+          <span id="drawingBrushSizeValue" style="font-size: 12px; color: #666; min-width: 20px;">3px</span>
+        </div>
+
+        <!-- Clear Button -->
+        <button id="drawingClearBtn" style="
+          padding: 8px 12px;
+          border: 2px solid #ef4444;
+          background: white;
+          color: #ef4444;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <i class="fa-solid fa-trash"></i> Clear All
+        </button>
+
+        <!-- Delete Selected Button -->
+        <button id="drawingDeleteBtn" style="
+          padding: 8px 12px;
+          border: 2px solid #f97316;
+          background: white;
+          color: #f97316;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <i class="fa-solid fa-minus"></i> Delete Selected
+        </button>
+
+        <!-- Undo Button -->
+        <button id="drawingUndoBtn" style="
+          padding: 8px 12px;
+          border: 2px solid #6366f1;
+          background: white;
+          color: #6366f1;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <i class="fa-solid fa-undo"></i> Undo
+        </button>
+
+        <!-- Redo Button -->
+        <button id="drawingRedoBtn" style="
+          padding: 8px 12px;
+          border: 2px solid #8b5cf6;
+          background: white;
+          color: #8b5cf6;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        ">
+          <i class="fa-solid fa-redo"></i> Redo
+        </button>
+      </div>
+
+      <!-- Canvas Container -->
+      <div style="position: relative; display: flex; justify-content: center;">
+        <canvas id="drawingCanvas" style="
+          border: 2px solid #d1d5db;
+          border-radius: 4px;
+          background: white;
+        "></canvas>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 12px;">
+        <button id="drawingSaveBtn" style="
+          padding: 10px 20px;
+          background: #16a34a;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <i class="fa-solid fa-check"></i> Insert Drawing
+        </button>
+        <button id="drawingCancelBtn" style="
+          padding: 10px 20px;
+          background: #6b7280;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <i class="fa-solid fa-times"></i> Cancel
+        </button>
+      </div>
+
+      <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center;">
+        Use the tools above to draw, then click "Insert Drawing" to add it to your notes
+      </p>
+    </div>
+  `;
+
+  // Close modal on outside click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      const cancelBtn = modal.querySelector('#drawingCancelBtn');
+      cancelBtn.click();
+    }
+  });
+
+  // Handle escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      const cancelBtn = modal.querySelector('#drawingCancelBtn');
+      cancelBtn.click();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  return modal;
+}
+
+// =============================================================================
+// IMAGE HANDLING AND DRAG-DROP SUPPORT
+// =============================================================================
+
+/**
+ * Calculates appropriate default dimensions for an image
+ * Ensures images don't appear too large while maintaining aspect ratio
+ * @param {string} dataUrl - Base64 data URL of the image
+ * @returns {Promise<Object>} Object with width and height properties
+ */
+async function calculateDefaultImageDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const naturalWidth = img.width;
+      const naturalHeight = img.height;
+
+      // Get editor container width for responsive sizing
+      const editorContainer = quill.root;
+      const containerWidth = editorContainer ? editorContainer.offsetWidth : 600;
+
+      // Set maximum width to 80% of container width, but at least 300px and at most 800px
+      const maxWidth = Math.max(300, Math.min(800, containerWidth * 0.8));
+
+      let targetWidth = naturalWidth;
+      let targetHeight = naturalHeight;
+
+      // If image is wider than max width, scale it down
+      if (naturalWidth > maxWidth) {
+        const aspectRatio = naturalHeight / naturalWidth;
+        targetWidth = maxWidth;
+        targetHeight = Math.round(maxWidth * aspectRatio);
+      }
+
+      // If image is very small, don't upscale it
+      if (naturalWidth < 150) {
+        targetWidth = naturalWidth;
+        targetHeight = naturalHeight;
+      }
+
+      resolve({ width: targetWidth, height: targetHeight });
+    };
+
+    img.onerror = () => {
+      // Fallback dimensions if image can't be loaded
+      resolve({ width: 400, height: 300 });
+    };
+
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Inserts an image from a data URL into the editor at current cursor position
+ * Now includes default dimensions to prevent huge images in exports
+ * @param {string} dataUrl - Base64 data URL of the image
+ */
+async function insertDataUrlImage(dataUrl) {
+  try {
+    // Calculate appropriate default dimensions
+    const dimensions = await calculateDefaultImageDimensions(dataUrl);
+
+    // Get current selection or default to end of document
+    const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+
+    // Create image value with dimensions using our custom format
+    const imageValueWithDimensions = `${dataUrl}|${dimensions.width}x${dimensions.height}`;
+
+    // Insert image at cursor position with default dimensions
+    quill.insertEmbed(range.index, 'image', imageValueWithDimensions, 'user');
+
+    // Move cursor after the inserted image
+    quill.setSelection(range.index + 1, 0, 'silent');
+
+    // Update HTML preview pane
+    syncHtmlPane();
+  } catch (error) {
+    console.warn('Failed to calculate image dimensions, inserting without dimensions:', error);
+
+    // Fallback: insert without dimensions (original behavior)
+    const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+    quill.insertEmbed(range.index, 'image', dataUrl, 'user');
+    quill.setSelection(range.index + 1, 0, 'silent');
+    syncHtmlPane();
+  }
+}
+
+/**
+ * Handles dropped or pasted files, filtering for images and converting to data URLs
+ * @param {FileList} files - Files from drag/drop or paste event
+ */
+async function handleFiles(files) {
+  // Find first image file in the list
+  const file = [...files].find(f => /^image\//.test(f.type));
+  if (!file) return;
+
+  // Size limit check (15MB)
+  if (file.size > 15 * 1024 * 1024) {
+    alert('Image too large (>15MB).');
+    return;
+  }
+
+  // Convert file to data URL and insert
+  const r = new FileReader();
+  r.onload = async () => await insertDataUrlImage(r.result);
+  r.readAsDataURL(file);
+}
+// Set up drag-and-drop and paste handlers for images
+quill.root.addEventListener('paste', async (e) => {
+  // Handle pasted images from clipboard
+  const items = e.clipboardData?.items || [];
+  const file = [...items].map(i => i.getAsFile?.()).find(f => f && /^image\//.test(f.type));
+  if (file) {
+    e.preventDefault();
+    await handleFiles([file]);
+  }
+});
+
+quill.root.addEventListener('drop', async (e) => {
+  // Handle dropped image files
+  if (!e.dataTransfer?.files?.length) return;
+  const hasImg = [...e.dataTransfer.files].some(f => /^image\//.test(f.type));
+  if (!hasImg) return;
+
+  e.preventDefault();
+
+  // Ensure editor has focus and cursor position
+  const range = quill.getSelection(true);
+  if (!range) {
+    quill.focus();
+    quill.setSelection(quill.getLength(), 0);
+  }
+
+  await handleFiles(e.dataTransfer.files);
+});
+
+quill.root.addEventListener('dragover', (e) => {
+  // Allow dropping if dragging images
+  if ([...e.dataTransfer?.items || []].some(i => i.type?.startsWith('image/'))) {
+    e.preventDefault();
+  }
+});
+
+// =============================================================================
+// TIMESTAMP FUNCTIONALITY
+// =============================================================================
+
+// Convert pasted/loaded <button class="ts"> HTML back to our custom blot format
+// This allows timestamps to work when loading saved sessions or pasting from exported HTML
+quill.clipboard.addMatcher('button.ts', (node, delta) => {
+  const ts = Number(node.getAttribute('data-ts') || '0');
+  const label = node.textContent || fmtTime(ts);
+  return new Delta().insert({ timestamp: { ts, label } }).insert(' ');
+});
+
+// Convert pasted/loaded images with dimensions back to our custom format
+// This preserves image dimensions when loading saved sessions
+quill.clipboard.addMatcher('img', (node, delta) => {
+  const src = node.getAttribute('src');
+  if (!src) return delta;
+
+  const width = node.style.width ? parseInt(node.style.width) : null;
+  const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+
+  let imageValue = src;
+  if (width || height) {
+    if (height) {
+      imageValue = `${src}|${width}x${height}`;
+    } else {
+      imageValue = `${src}|${width}`;
+    }
+  }
+
+  return new Delta().insert({ image: imageValue });
+});
+
+// Handle clicks on timestamp buttons in the editor
+quill.root.addEventListener('click', (e) => {
+  const btn = e.target.closest('button.ts');
+  if (!btn) return;
+
+  const ts = Number(btn.dataset.ts || '0');
+  if (!Number.isFinite(ts)) return;
+
+  // Jump to the timestamp in the video/audio player
+  player.currentTime = ts;
+  player.play();
+});
+
+// =============================================================================
+// HTML PREVIEW SYNCHRONIZATION
+// =============================================================================
+
+/**
+ * Updates the HTML preview textarea with current editor content
+ * Allows users to see the raw HTML that will be saved/exported
+ */
+function syncHtmlPane() {
+  htmlOut.value = quill.root.innerHTML;
+}
+
+// Keep HTML preview in sync with editor changes and update save button state
+quill.on('text-change', () => {
+  syncHtmlPane();
+  updateSaveState();  // Update save button when notes content changes
+});
+syncHtmlPane();  // Initial sync
+updateSaveState();  // Initial save button state
+
+/**
+ * Inserts a timestamp button at the current cursor position
+ * Uses the current playback time of the video/audio player
+ * Called by toolbar button click or keyboard shortcut (Cmd/Ctrl+Alt+T)
+ */
+function insertTimestamp() {
+  if (!quill) return;
+
+  // Use recording time instead of player time!
+  const currentTime = getCurrentRecordingTime();
+  const timeStr = fmtTime(currentTime);
+
+  const range = quill.getSelection(true);
+
+  // Insert the timestamp embed
+  quill.insertEmbed(range.index, 'timestamp', { ts: currentTime, label: timeStr }, 'user');
+
+  // Insert a space after the timestamp to ensure proper cursor positioning
+  quill.insertText(range.index + 1, ' ', 'user');
+
+  // Position cursor after the timestamp and space
+  quill.setSelection(range.index + 2);
+
+  syncHtmlPane();
+}
+
+// =============================================================================
+// KEYBOARD SHORTCUTS
+// =============================================================================
+
+/**
+ * Detects if running on macOS (affects which modifier key to use)
+ * @returns {boolean} True if on macOS
+ */
+function isMac() {
+  return navigator.platform.includes('Mac') || navigator.userAgent.includes('Mac');
+}
+
+/**
+ * Ensures the editor has focus and cursor is positioned for timestamp insertion
+ * If not in editor, focuses it and moves cursor to end
+ */
+function focusEditorEndIfNeeded() {
+  const inEditor = document.activeElement?.closest?.('.ql-editor');
+  if (!inEditor) {
+    quill.focus();
+    quill.setSelection(quill.getLength(), 0);
+  }
+}
+
+/**
+ * Global keyboard shortcut handler for timestamp insertion
+ * Handles Cmd+Alt+T on Mac, Ctrl+Alt+T on other platforms
+ * @param {KeyboardEvent} e - The keyboard event
+ */
+function handleTsHotkey(e) {
+  const want = (isMac() ? e.metaKey : e.ctrlKey) && e.altKey &&
+               (e.code === 'KeyT' || e.key === 't' || e.key === 'T');
+  if (!want) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  focusEditorEndIfNeeded();
+  insertTimestamp();
+}
+
+// Register keyboard shortcuts
+// Quill's internal shortcut system (works when editor is focused)
+quill.keyboard.addBinding({ key: 'T', shortKey: true, altKey: true }, () => insertTimestamp());
+
+// Global document shortcut (works regardless of focus)
+document.addEventListener('keydown', handleTsHotkey, true);
+
+// =============================================================================
+// DEVICE SELECTION AND MEDIA CONSTRAINTS
+// =============================================================================
+
+// LocalStorage keys for remembering device selections across sessions
+const LS_KEYS = { mic: 'nt_selected_mic', cam: 'nt_selected_cam', res: 'nt_selected_res' };
+
+/**
+ * Gets the selected device ID from a dropdown, filtering out special values
+ * @param {HTMLSelectElement} selectEl - The device selection dropdown
+ * @returns {string|undefined} Device ID or undefined for default/none
+ */
+function selectedDeviceId(selectEl) {
+  const v = selectEl?.value;
+  return (v && v !== 'default' && v !== 'none') ? v : undefined;
+}
+
+/**
+ * Gets the selected recording resolution from the dropdown
+ * @returns {Object} Object with width and height properties
+ */
+function getSelectedResolution() {
+  const resValue = resSelect?.value || '1280x720';
+  const [width, height] = resValue.split('x').map(Number);
+  return { width: width || 1280, height: height || 720 };
+}
+
+/**
+ * Builds MediaStream constraints based on current UI selections
+ * Handles audio-only mode, specific device selection, and video resolution preferences
+ * @returns {Object} MediaStream constraints object for getUserMedia()
+ */
+function buildConstraints() {
+  const audioId = selectedDeviceId(micSelect);
+  const videoId = audioOnly.checked ? undefined : selectedDeviceId(camSelect);
+  const resolution = getSelectedResolution();
+
+  // Audio constraints: specific device or default
+  const audio = audioId ? { deviceId: { exact: audioId } } : true;
+
+  // Video constraints: disabled for audio-only, specific device or default with resolution
+  const video = audioOnly.checked ? false
+    : (videoId ?
+        { deviceId: { exact: videoId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+        : { width: { ideal: resolution.width }, height: { ideal: resolution.height } });
+
+  return { audio, video };
+}
+/**
+ * Saves current device selections to localStorage for persistence across sessions
+ */
+function persistSelection() {
+  const micId = selectedDeviceId(micSelect);
+  const camId = selectedDeviceId(camSelect);
+  const resValue = resSelect?.value;
+
+  if (micId) localStorage.setItem(LS_KEYS.mic, micId);
+  else localStorage.removeItem(LS_KEYS.mic);
+
+  if (camId) localStorage.setItem(LS_KEYS.cam, camId);
+  else localStorage.removeItem(LS_KEYS.cam);
+
+  if (resValue) localStorage.setItem(LS_KEYS.res, resValue);
+  else localStorage.removeItem(LS_KEYS.res);
+}
+
+/**
+ * Requests media permissions to enable device enumeration with proper labels
+ * Tries audio+video first, falls back to audio-only if video fails
+ * Immediately stops tracks after permission grant to avoid keeping devices active
+ */
+async function ensurePermissions() {
+  try {
+    // Try to get both audio and video permissions
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    tmp.getTracks().forEach(t => t.stop());  // Stop immediately, just needed for permissions
+  } catch (e) {
+    try {
+      // Fallback: audio-only permissions
+      const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+      tmp.getTracks().forEach(t => t.stop());
+    } catch {
+      // If both fail, continue anyway - devices will show as "Camera (abc123...)"
+    }
+  }
+}
+/**
+ * Populates device selection dropdowns with available audio/video devices
+ * Restores previously selected devices from localStorage if they're still available
+ */
+async function loadDevices() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const audios = devices.filter(d => d.kind === 'audioinput');
+  const videos = devices.filter(d => d.kind === 'videoinput');
+
+  // Build microphone dropdown
+  micSelect.innerHTML = '';
+  const optA = document.createElement('option');
+  optA.value = 'default';
+  optA.textContent = 'System default';
+  micSelect.appendChild(optA);
+
+  audios.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    // Use device label if available, otherwise show truncated ID
+    o.textContent = d.label || `Microphone (${d.deviceId.slice(0, 6)}…)`;
+    micSelect.appendChild(o);
+  });
+
+  // Build camera dropdown
+  camSelect.innerHTML = '';
+  const optV = document.createElement('option');
+  optV.value = 'default';
+  optV.textContent = 'System default';
+  camSelect.appendChild(optV);
+
+  videos.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    o.textContent = d.label || `Camera (${d.deviceId.slice(0, 6)}…)`;
+    camSelect.appendChild(o);
+  });
+
+  // Restore previously selected devices if they still exist
+  const savedMic = localStorage.getItem(LS_KEYS.mic);
+  const savedCam = localStorage.getItem(LS_KEYS.cam);
+  const savedRes = localStorage.getItem(LS_KEYS.res);
+
+  if (savedMic && [...micSelect.options].some(o => o.value === savedMic)) {
+    micSelect.value = savedMic;
+  }
+  if (savedCam && [...camSelect.options].some(o => o.value === savedCam)) {
+    camSelect.value = savedCam;
+  }
+  if (savedRes && [...resSelect.options].some(o => o.value === savedRes)) {
+    resSelect.value = savedRes;
+  }
+
+  // Disable camera and resolution selection if in audio-only mode or no cameras available
+  camSelect.disabled = audioOnly.checked || videos.length === 0;
+  resSelect.disabled = audioOnly.checked || videos.length === 0;
+}
+
+/**
+ * Stops and removes tracks of a specific kind (audio/video) from the current stream
+ * @param {string} kind - Track kind to stop ('audio' or 'video')
+ */
+function stopTrackKind(kind) {
+  if (!mediaStream) return;
+  mediaStream.getTracks()
+    .filter(t => t.kind === kind)
+    .forEach(t => {
+      try { t.stop(); } catch { }
+      mediaStream.removeTrack(t);
+    });
+}
+
+
+// =============================================================================
+// MEDIA RECORDING SYSTEM
+// =============================================================================
+
+/**
+ * MIXER STREAM ARCHITECTURE
+ *
+ * The mixer system creates a combined MediaStream from separate audio and video sources:
+ * - Audio: Uses Web Audio API to mix microphone input
+ * - Video: Uses canvas to capture camera feed at specified frame rate
+ * This allows for better device switching and audio/video synchronization
+ */
+
+// Mixer object structure: { stream, audioCtx, dest, camVideo, canvas, rafId, micSrc, micStream, camStream }
+let mixer = null;
+
+/**
+ * Creates a mixed MediaStream combining audio from Web Audio API and video from canvas
+ * Supports live device switching and handles fallbacks when devices are unavailable
+ * @returns {Object} Mixer object containing the combined stream and component references
+ */
+async function createMixerStream() {
+  const audioId = selectedDeviceId(micSelect);
+  const camId = selectedDeviceId(camSelect);
+  const wantVideo = !audioOnly.checked;
+
+  // =============================================================================
+  // AUDIO PROCESSING SETUP
+  // =============================================================================
+
+  let micStream = null;
+  try {
+    // Get microphone stream with specific device or default
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: audioId ? { deviceId: { exact: audioId } } : true
+    });
+  } catch (e) {
+    console.warn('Mic getUserMedia failed, proceeding without audio', e);
+  }
+
+  // Create Web Audio context for mixing
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const dest = audioCtx.createMediaStreamDestination();  // Output destination
+
+  let micSrc = null, analyser = null;
+  if (micStream) {
+    try {
+      // Connect microphone to audio context destination
+      micSrc = audioCtx.createMediaStreamSource(micStream);
+
+      // Create analyser for audio level monitoring
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+
+      // Connect: micSrc -> analyser -> dest
+      micSrc.connect(analyser);
+      analyser.connect(dest);
+
+      // Store analyser globally for level monitoring
+      audioLevelAnalyser = analyser;
+      audioLevelDataArray = new Uint8Array(analyser.frequencyBinCount);
+    } catch (e) {
+      console.warn('Mic source connect failed', e);
+    }
+  }
+
+  // =============================================================================
+  // VIDEO PROCESSING SETUP (Canvas-based for better control)
+  // =============================================================================
+
+  let camStream = null, camVideo = null, canvas = null, rafId = null, fps = 30;
+  if (wantVideo) {
+    try {
+      // Get camera stream with specific device or default + resolution preferences
+      const resolution = getSelectedResolution();
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: camId ?
+          { deviceId: { exact: camId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+          : { width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+      });
+
+      // Create hidden video element to display camera feed
+      camVideo = document.createElement('video');
+      camVideo.playsInline = true;
+      camVideo.muted = true;           // Prevent audio feedback
+      camVideo.srcObject = camStream;
+      await camVideo.play();
+
+      // Create canvas to capture video frames at controlled frame rate
+      canvas = document.createElement('canvas');
+      const vw = camVideo.videoWidth || 1280;
+      const vh = camVideo.videoHeight || 720;
+      canvas.width = vw;
+      canvas.height = vh;
+      const ctx = canvas.getContext('2d');
+
+      // Animation loop to continuously draw video frames to canvas
+      const draw = () => {
+        try {
+          ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
+        } catch { }
+        rafId = setTimeout(draw, Math.round(1000 / fps));  // Maintain consistent frame rate
+      };
+      draw();  // Start the drawing loop
+    } catch (e) {
+      console.warn('Camera getUserMedia failed, proceeding audio-only', e);
+    }
+  }
+
+  // =============================================================================
+  // COMBINE AUDIO AND VIDEO INTO SINGLE STREAM
+  // =============================================================================
+
+  const stream = new MediaStream();
+
+  // Add audio track from Web Audio API destination
+  if (dest.stream.getAudioTracks().length) {
+    stream.addTrack(dest.stream.getAudioTracks()[0]);
+  }
+
+  // Add video track from canvas capture
+  if (wantVideo && canvas) {
+    const vTrack = canvas.captureStream(fps).getVideoTracks()[0];
+    if (vTrack) stream.addTrack(vTrack);
+  }
+
+  // Store all components for later cleanup and live switching
+  mixer = { stream, audioCtx, dest, camVideo, canvas, rafId, micSrc, micStream, camStream, analyser };
+  return mixer;
+}
+
+/**
+ * Cleanly shuts down the mixer system, stopping all streams and timers
+ * Called when stopping recording or resetting the session
+ */
+function destroyMixer() {
+  if (!mixer) return;
+
+  try { if (mixer.rafId) clearTimeout(mixer.rafId); } catch { }  // Stop canvas drawing loop
+  try { mixer.audioCtx?.close(); } catch { }                    // Close Web Audio context
+  try { mixer.camVideo?.pause(); } catch { }                    // Stop video playback
+  try { mixer.camStream?.getTracks().forEach(t => t.stop()); } catch { }  // Stop camera tracks
+  try { mixer.micStream?.getTracks().forEach(t => t.stop()); } catch { }  // Stop microphone tracks
+
+  // Clean up audio level monitoring
+  audioLevelAnalyser = null;
+  audioLevelDataArray = null;
+  stopAudioLevelMonitoring();
+
+  mixer = null;
+}
+
+/**
+ * Switches the microphone input to a new device while recording is active
+ * Maintains audio continuity by seamlessly reconnecting Web Audio nodes
+ * @param {string} deviceId - ID of the new microphone device
+ */
+async function switchMicLive(deviceId) {
+  if (!mixer) return;
+
+  try {
+    // Get stream from new microphone device
+    const gum = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: deviceId } }
+    });
+    const newStream = gum;
+
+    // Disconnect and stop old microphone
+    try { mixer.micSrc?.disconnect(); } catch { }
+    try { mixer.micStream?.getTracks().forEach(t => t.stop()); } catch { }
+
+    // Connect new microphone to audio pipeline
+    mixer.micStream = newStream;
+    mixer.micSrc = mixer.audioCtx.createMediaStreamSource(newStream);
+
+    // Connect through analyzer if it exists (for audio level monitoring)
+    if (mixer.analyser) {
+      mixer.micSrc.connect(mixer.analyser);
+      // analyzer is already connected to dest from initial setup
+      // Update global reference for audio level monitoring
+      audioLevelAnalyser = mixer.analyser;
+    } else {
+      mixer.micSrc.connect(mixer.dest);
+    }
+
+    // Request new data chunk to maintain recording continuity
+    try {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.requestData();
+      }
+    } catch { }
+  } catch (e) {
+    console.error('switchMicLive failed', e);
+    alert('Unable to switch mic live on this system.');
+  }
+}
+
+/**
+ * Switches the camera input to a new device while recording is active
+ * Updates the canvas source video to maintain video continuity
+ * @param {string} deviceId - ID of the new camera device
+ */
+async function switchCamLive(deviceId) {
+  if (!mixer || audioOnly.checked) return;
+
+  try {
+    // Get stream from new camera device
+    const resolution = getSelectedResolution();
+    const gum = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+    });
+    const newStream = gum;
+
+    // Stop old camera stream
+    try { mixer.camStream?.getTracks().forEach(t => t.stop()); } catch { }
+
+    // Update video element with new stream (canvas drawing loop continues automatically)
+    mixer.camStream = newStream;
+    mixer.camVideo.srcObject = newStream;
+    await mixer.camVideo.play();
+
+    // Request new data chunk to maintain recording continuity
+    try {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.requestData();
+      }
+    } catch { }
+  } catch (e) {
+    console.error('switchCamLive failed', e);
+    alert('Unable to switch camera live on this system.');
+  }
+}
+// =============================================================================
+// MEDIARECORDER RECORDING FUNCTIONS
+// =============================================================================
+
+/**
+ * Starts a new recording session
+ * Sets up MediaRecorder with optimal codec support, initializes UI state,
+ * and begins capturing the mixed audio/video stream
+ */
+async function startRec() {
+  try {
+    statusEl.textContent = 'Requesting devices…';
+
+    // Clean up any existing mixer and start fresh
+    destroyMixer();
+    await ensurePermissions();
+    await createMixerStream();
+
+    // Set up preview in the player element
+    mediaStream = mixer.stream;
+    player.srcObject = mediaStream;
+    player.muted = true;  // Prevent feedback during recording
+    await player.play();
+
+    // =============================================================================
+    // CODEC SELECTION - Try best quality formats first
+    // =============================================================================
+    const mimeCandidates = [
+      'video/webm;codecs=vp9,opus',   // Best quality video + audio
+      'video/webm;codecs=vp8,opus',   // Good compatibility video + audio
+      'video/webm',                   // Basic video format
+      'audio/webm;codecs=opus',       // High quality audio-only
+      'audio/webm'                    // Basic audio-only
+    ];
+
+    let mime = '';
+    for (const m of mimeCandidates) {
+      if (MediaRecorder.isTypeSupported(m)) {
+        mime = m;
+        break;
+      }
+    }
+
+    // Set file extension based on selected format
+    mediaExt = mime.startsWith('audio/') ? 'webm' : 'webm';
+
+    // =============================================================================
+    // MEDIARECORDER SETUP
+    // =============================================================================
+    chunks = [];
+    lastDataChunk = null;
+    mediaRecorder = new MediaRecorder(mediaStream, mime ? { mimeType: mime } : undefined);
+
+    // Event handlers for recording lifecycle
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size) {
+        lastDataChunk = e.data;
+        chunks.push(e.data);
+      }
+    };
+    mediaRecorder.onstop = handleStop;
+    mediaRecorder.onpause = () => { statusEl.textContent = 'Paused'; };
+    mediaRecorder.onresume = () => { statusEl.textContent = 'Recording…'; };
+    mediaRecorder.onerror = (e) => {
+      console.error('MediaRecorder error:', e?.error || e);
+      statusEl.textContent = 'Recorder error — see console';
+    };
+
+    // Start recording and update UI
+    mediaRecorder.start(); // No timeslice - get complete blob on stop
+    isRecordingPaused = false;
+
+    // Initialize recording timer
+    recordingStartTime = Date.now();
+    recordingElapsed = 0;
+    recordingPauseStart = 0;
+    isRecordingPaused = false;
+
+    // Start timer update interval (every 100ms for smooth display)
+    recordingTimer = setInterval(updateRecordingTimer, 100);
+
+    // Stop playback timer when recording starts (timer now tracks recording time)
+    stopPlaybackTimer();
+
+    // Show audio level meter for audio-only recording
+    if (audioOnly.checked) {
+      toggleAudioLevelMeter(true);
+      startAudioLevelMonitoring();
+    } else {
+      toggleAudioLevelMeter(false);
+    }
+
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnPause.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+    btnStop.disabled = false;
+    updateSaveState();  // Update save button state when recording starts
+    updateLoadState();  // Update load button state when recording starts
+    updateResolutionState();  // Update resolution selector state when recording starts
+    updateAudioOnlyState();  // Update audio-only checkbox state when recording starts
+    statusEl.textContent = 'Recording…';
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'Error: ' + err.message;
+  }
+}
+
+/**
+ * Assembles recorded chunks into final blob and sets up playback
+ * Called after recording stops to prepare the media for preview and export
+ */
+function finalizePreview() {
+  // Ensure the last data chunk is included (might not be in chunks array yet)
+  if (lastDataChunk && (!chunks.length || chunks[chunks.length - 1] !== lastDataChunk)) {
+    chunks.push(lastDataChunk);
+  }
+
+  if (chunks.length) {
+    // Combine all chunks into a single blob
+    recordedBlob = new Blob(chunks, { type: chunks[0]?.type || 'video/webm' });
+    const url = URL.createObjectURL(recordedBlob);
+
+    // Switch player from live preview to recorded playback
+    player.srcObject = null;  // Clear live stream
+    player.muted = false;     // Enable audio for playback
+    player.src = url;         // Set recorded media as source
+
+    // Start playback timer to track video position for timestamps
+    startPlaybackTimer();
+  } else {
+    // No recording data available
+    recordedBlob = null;
+    player.srcObject = null;
+    player.removeAttribute('src');
+    player.load();
+
+    // Stop playback timer when no media is available
+    stopPlaybackTimer();
+  }
+
+  statusEl.textContent = 'Ready to play.';
+  updateExportState();  // Enable/disable export button based on recording availability
+  updateSaveState();    // Enable/disable save button based on content availability
+  updateLoadState();    // Enable/disable load button based on recording status
+  updateAudioOnlyState();  // Enable/disable audio-only checkbox based on recording status
+}
+
+
+
+/**
+ * Updates the save button state based on whether there's content worth saving
+ * Enables the Save button when there are notes or a completed recording
+ * Disables during active recording to prevent saving incomplete sessions
+ */
+function updateSaveState() {
+  if (btnSave) {
+    const hasNotes = quill && quill.getText().trim().length > 0;
+    const hasCompletedRecording = !!recordedBlob;
+    const isCurrentlyRecording = mediaRecorder && mediaRecorder.state !== 'inactive';
+
+    // Save is available when:
+    // - There are notes AND no active recording, OR
+    // - There's a completed recording (regardless of recording state)
+    const canSave = (hasNotes && !isCurrentlyRecording) || hasCompletedRecording;
+
+    btnSave.disabled = !canSave;
+
+    // Update tooltip based on state
+    if (isCurrentlyRecording && hasNotes && !hasCompletedRecording) {
+      btnSave.title = 'Stop recording first to save session';
+    } else if (canSave) {
+      btnSave.title = 'Save session as .notepack folder';
+    } else {
+      btnSave.title = 'No content to save (add notes or complete a recording)';
+    }
+  }
+}
+
+/**
+ * Updates the export button state based on whether there's recorded media available
+ * Enables the Export dropdown only when there's a recording to export
+ */
+function updateExportState() {
+  if (btnExport) {
+    btnExport.disabled = !recordedBlob;
+    btnExport.title = recordedBlob ?
+      'Export notes and recording' :
+      'No recording available to export';
+  }
+
+  // Also update individual dropdown options
+  if (btnExportEmbedded) {
+    btnExportEmbedded.title = recordedBlob ?
+      'Export as single HTML file with embedded video (larger file size)' :
+      'No recording available to export';
+  }
+
+  if (btnExportSeparate) {
+    btnExportSeparate.title = recordedBlob ?
+      'Export as HTML file + separate video file (smaller HTML, better for large videos)' :
+      'No recording available to export';
+  }
+}
+
+/**
+ * Updates the load button state based on recording status
+ * Disables the Load button during active recording to prevent data loss
+ */
+function updateLoadState() {
+  if (btnLoad) {
+    const isCurrentlyRecording = mediaRecorder && mediaRecorder.state !== 'inactive';
+
+    btnLoad.disabled = isCurrentlyRecording;
+    btnLoad.title = isCurrentlyRecording ?
+      'Stop recording first to load a different session' :
+      'Load a previously saved session';
+  }
+}
+
+/**
+ * Updates the resolution selector state based on recording status
+ * Disables resolution changes during active recording
+ */
+function updateResolutionState() {
+  if (resSelect) {
+    const isCurrentlyRecording = mediaRecorder && mediaRecorder.state !== 'inactive';
+
+    resSelect.disabled = isCurrentlyRecording || audioOnly.checked;
+    resSelect.title = isCurrentlyRecording ?
+      'Stop recording first to change resolution' :
+      (audioOnly.checked ? 'Resolution not applicable for audio-only recording' : 'Select recording resolution');
+  }
+}
+
+/**
+ * Updates the audio-only checkbox state based on recording status
+ * Disables audio-only mode changes during active recording
+ */
+function updateAudioOnlyState() {
+  if (audioOnly) {
+    const isCurrentlyRecording = mediaRecorder && mediaRecorder.state !== 'inactive';
+
+    audioOnly.disabled = isCurrentlyRecording;
+    audioOnly.title = isCurrentlyRecording ?
+      'Stop recording first to change audio-only mode' :
+      'Record audio only (no video)';
+  }
+}
+
+/**
+ * Stops the recording with robust data flushing to prevent data loss
+ *
+ * This is complex because MediaRecorder can lose final chunks if stopped abruptly.
+ * The function implements multiple safety measures:
+ * - Resumes if paused (paused recorders may not flush properly)
+ * - Requests data explicitly before stopping
+ * - Waits for final data events with timeout protection
+ * - Has fallback timeout to prevent hanging
+ */
+async function stopRec() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    console.warn('stopRec: recorder not active');
+    return;
+  }
+
+  // =============================================================================
+  // DATA FLUSHING PREPARATION
+  // =============================================================================
+
+  // If recording is paused, resume it briefly to ensure proper data flushing
+  if (mediaRecorder.state === 'paused') {
+    try { mediaRecorder.requestData(); } catch { }  // Request any buffered data
+    try { mediaRecorder.resume(); } catch { }       // Resume for clean stop
+  }
+
+  // Request final data chunk before stopping
+  try { mediaRecorder.requestData(); } catch { }
+  await sleep(100);  // Give MediaRecorder time to process the request
+
+  // =============================================================================
+  // ROBUST STOP WITH TIMEOUT PROTECTION
+  // =============================================================================
+
+  let stopped = false;
+  let dataListener = null;
+
+  await new Promise((resolve) => {
+    // Failsafe: resolve after 3 seconds regardless of state
+    const hardTimeout = setTimeout(() => { cleanup(); resolve(); }, 3000);
+
+    // Listen for final data chunks
+    dataListener = (e) => {
+      if (e.data && e.data.size) {
+        lastDataChunk = e.data;
+        chunks.push(e.data);
+      }
+    };
+    mediaRecorder.addEventListener('dataavailable', dataListener);
+
+    // Listen for stop completion
+    const onStopped = () => {
+      stopped = true;
+      cleanup();
+      resolve();
+    };
+    mediaRecorder.addEventListener('stop', onStopped, { once: true });
+
+    // Cleanup function to remove listeners and timeout
+    function cleanup() {
+      clearTimeout(hardTimeout);
+      if (dataListener) mediaRecorder.removeEventListener('dataavailable', dataListener);
+      mediaRecorder.removeEventListener('stop', onStopped);
+    }
+
+    // Actually stop the recorder (may throw if already stopped)
+    try { mediaRecorder.stop(); } catch { cleanup(); resolve(); }
+  });
+
+  // =============================================================================
+  // CLEANUP AND UI RESET
+  // =============================================================================
+
+  // Stop all media tracks and clean up mixer
+  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  destroyMixer();
+
+  // Finalize the recording if stop event didn't fire
+  if (!stopped) finalizePreview();
+
+  // Stop and clear the recording timer
+  if (recordingTimer) {
+    clearInterval(recordingTimer);
+    recordingTimer = null;
+  }
+
+  // Stop audio level monitoring
+  stopAudioLevelMonitoring();
+  toggleAudioLevelMeter(false);
+
+  // Reset recording time tracking
+  recordingStartTime = 0;
+  recordingElapsed = 0;
+  recordingPauseStart = 0;
+  isRecordingPaused = false;
+
+  // Reset UI state
+  isRecordingPaused = false;
+  btnStart.disabled = false;
+  btnPause.disabled = true;
+  btnPause.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+  btnStop.disabled = true;
+  updateResolutionState();  // Re-enable resolution selector when recording stops
+  updateAudioOnlyState();  // Re-enable audio-only checkbox when recording stops
+  statusEl.textContent = 'Finalized.';
+}
+
+/**
+ * Handler for MediaRecorder 'stop' event - finalizes the recording
+ */
+function handleStop() { finalizePreview(); }
+
+// =============================================================================
+// FILE OPERATIONS (SAVE/LOAD/EXPORT)
+// =============================================================================
+btnSave?.addEventListener('click', async () => {
+  const res = await saveSessionFromState();
+  statusEl.textContent = res.ok ? `Saved → ${res.dir}` : 'Save canceled';
+});
+btnLoad?.addEventListener('click', async () => {
+  const res = await window.api.loadSession();
+  if (!res?.ok) return;
+  const html = res.notesHtml || '';
+  if (html.trim()) {
+    const delta = quill.clipboard.convert({ html });
+    quill.setContents(delta, 'api');
+  } else {
+    quill.setText('');
+  }
+  syncHtmlPane();
+  if (res.mediaArrayBuffer) {
+    const blob = new Blob([res.mediaArrayBuffer], { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    recordedBlob = blob;
+    player.srcObject = null;
+    player.muted = false;
+    player.src = url;
+
+    // Start playback timer to track video position for timestamps
+    startPlaybackTimer();
+  } else {
+    recordedBlob = null;
+    player.srcObject = null;
+    player.removeAttribute('src');
+    player.load();
+
+    // Stop playback timer when no media is loaded
+    stopPlaybackTimer();
+  }
+  updateExportState();
+  updateSaveState();
+  updateLoadState();
+  updateResolutionState();
+  updateAudioOnlyState();
+  statusEl.textContent = 'Session loaded.';
+});
+// =============================================================================
+// EXPORT DROPDOWN FUNCTIONALITY
+// =============================================================================
+
+/**
+ * Toggle the export dropdown menu visibility
+ */
+function toggleExportDropdown() {
+  if (!exportDropdown) return;
+
+  const isVisible = exportDropdown.style.display !== 'none';
+  exportDropdown.style.display = isVisible ? 'none' : 'block';
+}
+
+/**
+ * Hide the export dropdown menu
+ */
+function hideExportDropdown() {
+  if (exportDropdown) {
+    exportDropdown.style.display = 'none';
+  }
+}
+
+// Export dropdown button click handler
+btnExport?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleExportDropdown();
+});
+
+// Click outside to close dropdown
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.export-dropdown')) {
+    hideExportDropdown();
+  }
+});
+
+// =============================================================================
+// EXPORT METHODS
+// =============================================================================
+
+/**
+ * Export as embedded HTML (original functionality)
+ * Creates a single HTML file with base64-encoded video
+ */
+async function exportAsEmbeddedHtml() {
+  hideExportDropdown();
+
+  const notesHtml = quill.root.innerHTML;
+  let mediaMime = 'video/webm';
+  let mediaB64 = '';
+  if (recordedBlob) {
+    const ab = await recordedBlob.arrayBuffer();
+    mediaB64 = arrayBufferToBase64(ab);
+    mediaMime = recordedBlob.type || 'video/webm';
+  }
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Notes + Recording</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 16px; }
+  video, audio { max-width: 100%; border-radius: 8px; background: #000; }
+  .ts { padding: .1rem .35rem; border-radius: 6px; border: 1px solid #999; background: #f7f7f7; cursor: pointer; }
+  .ts:focus { outline: 2px solid #a3d3ff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <section>
+      <h2>Playback</h2>
+      <video id="player" controls></video>
+      <div>Current: <span id="tNow">00:00.00</span></div>
+    </section>
+    <section>
+      <h2>Notes</h2>
+      <div id="notes">__NOTES_HTML__</div>
+    </section>
+  </div>
+<script>
+  function b64ToUint8(b64){ const bin=atob(b64), len=bin.length, bytes=new Uint8Array(len); for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
+  function fmtTime(s){ const ms=Math.floor((s%1)*100); s=Math.floor(s); const m=Math.floor(s/60); const sec=s%60; const pad=n=>String(n).padStart(2,'0'); return \`\${pad(m)}:\${pad(sec)}.\${pad(ms)}\`; }
+  const player=document.getElementById('player'); const tNow=document.getElementById('tNow');
+  const _MEDIA_MIME = '__MEDIA_MIME__';
+  const _MEDIA_B64  = '__MEDIA_B64__';
+  if(_MEDIA_B64){
+    const url = URL.createObjectURL(new Blob([b64ToUint8(_MEDIA_B64)], { type: _MEDIA_MIME }));
+    player.src = url;
+  } else {
+    player.replaceWith(document.createTextNode('No media in this export.'));
+  }
+  document.getElementById('notes').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button.ts'); if(!btn) return;
+    const ts = Number(btn.dataset.ts||'0'); if(!Number.isFinite(ts)) return;
+    player.currentTime = ts; player.play();
+  });
+  player?.addEventListener('timeupdate', ()=>{ tNow.textContent = fmtTime(player.currentTime || 0); });
+</script>
+</body>
+</html>`
+    .replace('__NOTES_HTML__', notesHtml.replace(/<\/script>/gi, '<\\/script>'))
+    .replace('__MEDIA_MIME__', mediaMime)
+    .replace('__MEDIA_B64__', mediaB64);
+  const res = await window.api.saveHtml({ html });
+  statusEl.textContent = res.ok ? `Exported → ${res.path}` : 'Export canceled';
+}
+
+/**
+ * Export as separate HTML + video files
+ * Creates two files: HTML with notes and a separate video file
+ */
+async function exportAsSeparateFiles() {
+  hideExportDropdown();
+
+  const notesHtml = quill.root.innerHTML;
+  let mediaMime = 'video/webm';
+  let mediaBuffer = null;
+
+  if (recordedBlob) {
+    mediaBuffer = await recordedBlob.arrayBuffer();
+    mediaMime = recordedBlob.type || 'video/webm';
+  }
+
+  // Generate HTML that references external video file
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Notes + Recording</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 16px; }
+  video, audio { max-width: 100%; border-radius: 8px; background: #000; }
+  .ts { padding: .1rem .35rem; border-radius: 6px; border: 1px solid #999; background: #f7f7f7; cursor: pointer; }
+  .ts:focus { outline: 2px solid #a3d3ff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <section>
+      <h2>Playback</h2>
+      <video id="player" controls></video>
+      <div>Current: <span id="tNow">00:00.00</span></div>
+    </section>
+    <section>
+      <h2>Notes</h2>
+      <div id="notes">__NOTES_HTML__</div>
+    </section>
+  </div>
+<script>
+  function fmtTime(s){ const ms=Math.floor((s%1)*100); s=Math.floor(s); const m=Math.floor(s/60); const sec=s%60; const pad=n=>String(n).padStart(2,'0'); return \`\${pad(m)}:\${pad(sec)}.\${pad(ms)}\`; }
+  const player=document.getElementById('player'); const tNow=document.getElementById('tNow');
+
+  // Set video source to external file
+  const videoFileName = '__VIDEO_FILE__';
+  if(videoFileName){
+    player.src = videoFileName;
+  } else {
+    player.replaceWith(document.createTextNode('No media file found. Make sure __VIDEO_FILE__ is in the same folder as this HTML file.'));
+  }
+
+  document.getElementById('notes').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button.ts'); if(!btn) return;
+    const ts = Number(btn.dataset.ts||'0'); if(!Number.isFinite(ts)) return;
+    player.currentTime = ts; player.play();
+  });
+  player?.addEventListener('timeupdate', ()=>{ tNow.textContent = fmtTime(player.currentTime || 0); });
+</script>
+</body>
+</html>`.replace('__NOTES_HTML__', notesHtml.replace(/<\/script>/gi, '<\\/script>'));
+
+  const res = await window.api.saveHtmlVideo({
+    html,
+    mediaBuffer,
+    mediaExt: mediaExt
+  });
+
+  if (res.ok) {
+    if (res.videoPath) {
+      statusEl.textContent = `Exported → HTML + ${res.videoFileName}`;
+    } else {
+      statusEl.textContent = `Exported → HTML (no video)`;
+    }
+  } else {
+    statusEl.textContent = 'Export canceled';
+  }
+}
+
+// Event handlers for export options
+btnExportEmbedded?.addEventListener('click', exportAsEmbeddedHtml);
+btnExportSeparate?.addEventListener('click', exportAsSeparateFiles);
+
+// Reset handler with "Save before Reset?"
+async function resetSession(ask = true) {
+  if (ask && hasContent()) {
+    const wantSave = window.confirm('Save before resetting?\n\nOK = Save, Cancel = Don’t Save');
+    if (wantSave) {
+      const res = await saveSessionFromState();
+      if (!res?.ok) {
+        const stillReset = window.confirm('Save canceled.\n\nReset without saving?');
+        if (!stillReset) return;
+      }
+    } else {
+      const sure = window.confirm('Reset without saving?');
+      if (!sure) return;
+    }
+  }
+  try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch { }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  destroyMixer();
+  recordedBlob = null; chunks = []; lastDataChunk = null;
+  isRecordingPaused = false;
+  player.pause(); player.srcObject = null; player.removeAttribute('src'); player.load();
+
+  // Stop all timers when resetting
+  stopPlaybackTimer();
+
+  tNow.textContent = '00:00.00';
+  quill.setText(''); htmlOut.value = '';
+  btnStart.disabled = false; btnPause.disabled = true; btnPause.innerHTML = '<i class="fa-solid fa-pause"></i> Pause'; btnStop.disabled = true;
+  updateExportState();
+  updateSaveState();
+  updateLoadState();
+  updateResolutionState();
+  updateAudioOnlyState();
+  statusEl.textContent = 'Session reset.';
+}
+btnReset.addEventListener('click', () => resetSession(true));
+
+// Start button with overwrite warning if a recording exists
+btnStart.addEventListener('click', async () => {
+  if (recordedBlob) {
+    const sure = window.confirm("Starting a new recording will overwrite the existing one.\n\nContinue?");
+    if (!sure) return;
+    recordedBlob = null; chunks = []; lastDataChunk = null;
+    player.pause(); player.srcObject = null; player.removeAttribute('src'); player.load();
+
+    // Stop playback timer when clearing existing recording
+    stopPlaybackTimer();
+
+    updateExportState();
+    updateSaveState();
+    updateLoadState();
+    updateResolutionState();
+    updateAudioOnlyState();
+  }
+  startRec();
+});
+
+// =============================================================================
+// RECORDING CONTROL FUNCTIONS
+// =============================================================================
+
+/**
+ * Toggles between pause and resume states during recording
+ * Also controls timer display and UI button states
+ */
+function togglePause() {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+
+  if (mediaRecorder.state === 'recording') {
+    // Pausing: accumulate elapsed time and mark pause start
+    const now = Date.now();
+    recordingElapsed += (now - (recordingPauseStart || recordingStartTime)) / 1000;
+    recordingPauseStart = now;
+    isRecordingPaused = true;
+
+    mediaRecorder.pause();
+    btnPause.innerHTML = '<i class="fa-solid fa-play"></i> Resume';
+    statusEl.textContent = 'Paused';
+  } else if (mediaRecorder.state === 'paused') {
+    // Resuming: reset pause tracking
+    recordingPauseStart = Date.now();
+    isRecordingPaused = false;
+
+    mediaRecorder.resume();
+    btnPause.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+    statusEl.textContent = 'Recording...';
+  }
+}
+
+// =============================================================================
+// BUTTON EVENT HANDLERS
+// =============================================================================
+
+btnPause.addEventListener('click', togglePause);
+
+btnStop.addEventListener('click', () => {
+  console.log('Stop clicked');
+  stopRec();
+});
+
+// =============================================================================
+// DEVICE SELECTION UI HANDLERS
+// =============================================================================
+
+// Audio-only mode toggle
+audioOnly.addEventListener('change', async () => {
+  camSelect.disabled = audioOnly.checked;  // Disable camera selection in audio-only mode
+  resSelect.disabled = audioOnly.checked;  // Disable resolution selection in audio-only mode
+  persistSelection();                      // Save preference
+
+  // If switching to audio-only during active recording, stop video tracks
+  if (audioOnly.checked) {
+    stopTrackKind('video');
+    player.srcObject = mediaStream;  // Refresh player display
+
+    // Show audio level meter if currently recording
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      toggleAudioLevelMeter(true);
+      startAudioLevelMonitoring();
+    }
+  } else {
+    // Hide audio level meter when switching back to video mode
+    toggleAudioLevelMeter(false);
+    stopAudioLevelMonitoring();
+  }
+});
+
+// Microphone selection change - switch device live if recording
+micSelect.addEventListener('change', async () => {
+  persistSelection();
+  const id = selectedDeviceId(micSelect);
+  if (id) await switchMicLive(id);
+});
+
+// Camera selection change - switch device live if recording
+camSelect.addEventListener('change', async () => {
+  persistSelection();
+  const id = selectedDeviceId(camSelect);
+  if (id) await switchCamLive(id);
+});
+
+// Resolution selection change - save selection (cannot switch live during recording)
+resSelect.addEventListener('change', () => {
+  persistSelection();
+});
+
+// Refresh device list - re-enumerate available devices
+btnRefreshDevs.addEventListener('click', async () => {
+  await ensurePermissions();
+  await loadDevices();
+});
+
+// Auto-refresh device list when devices are plugged/unplugged
+navigator.mediaDevices.addEventListener?.('devicechange', loadDevices);
+
+// =============================================================================
+// INITIALIZATION
+// =============================================================================
+
+// Initialize device lists on startup
+(async () => {
+  await ensurePermissions();
+  await loadDevices();
+})();
+
+// Set initial button states
+updateExportState();
+updateSaveState();
+updateLoadState();
+updateResolutionState();
+updateAudioOnlyState();
+
+// =============================================================================
+// IMAGE RESIZER MODULE
+// =============================================================================
+/**
+ * INTERACTIVE IMAGE RESIZING SYSTEM
+ *
+ * Provides drag handles for resizing images directly in the Quill editor.
+ * Features:
+ * - Corner drag handles (NW, NE, SW, SE)
+ * - Shift+drag to maintain aspect ratio
+ * - Visual overlay showing resize area
+ * - Automatic cleanup when images are deleted
+ * - Responsive to editor scrolling and resizing
+ */
+(function addImageResizer(quill) {
+  const wrap = document.getElementById('editorWrap');
+  if (!wrap) return;
+  const scrollHost = wrap.closest('section') || wrap;
+  let targetImg = null;
+  let overlay = null;
+  let start = null;
+
+  function createOverlay() {
+    overlay = document.createElement('div');
+    overlay.className = 'img-resize-overlay';
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+      const h = document.createElement('div');
+      h.className = `img-resize-handle img-h-${pos}`;
+      h.dataset.pos = pos;
+      h.addEventListener('mousedown', onHandleDown);
+      overlay.appendChild(h);
+    });
+    wrap.appendChild(overlay);
+  }
+  function removeOverlay() {
+    if (overlay) {
+      overlay.querySelectorAll('.img-resize-handle')
+        .forEach(h => h.removeEventListener('mousedown', onHandleDown));
+      overlay.remove();
+    }
+    overlay = null; targetImg = null; start = null;
+  }
+  function positionOverlayFor(img) {
+    if (!overlay || !img) return;
+    const br = img.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const top = br.top - wr.top + (scrollHost.scrollTop || 0);
+    const left = br.left - wr.left + (scrollHost.scrollLeft || 0);
+    overlay.style.top = `${top}px`;
+    overlay.style.left = `${left}px`;
+    overlay.style.width = `${br.width}px`;
+    overlay.style.height = `${br.height}px`;
+  }
+  function selectImage(img) {
+    targetImg = img;
+    if (!overlay) createOverlay();
+    positionOverlayFor(targetImg);
+  }
+
+  /**
+   * Updates Quill's Delta to persist image dimensions
+   * Finds the image embed in Quill and updates it with current dimensions
+   */
+  function updateImageInQuill(img) {
+    if (!img || !quill) return;
+
+    try {
+      // Get the current dimensions from the image
+      const width = parseInt(img.style.width) || img.width;
+      const height = img.style.height === 'auto' ? null : (parseInt(img.style.height) || img.height);
+
+      // Find the image's position in the Quill editor
+      const blot = Quill.find(img);
+      if (!blot) return;
+
+      // Get the image source (data URL or URL)
+      const src = img.src;
+      if (!src) return;
+
+      // Create new image value with dimensions
+      const imageValue = height ? `${src}|${width}x${height}` : `${src}|${width}`;
+
+      // Update the image embed in Quill without triggering user history
+      const index = quill.getIndex(blot);
+      quill.deleteText(index, 1, 'silent');
+      quill.insertEmbed(index, 'image', imageValue, 'silent');
+
+      // Select the updated image to maintain the overlay
+      setTimeout(() => {
+        const newImg = quill.root.querySelector(`img[src="${src}"]`);
+        if (newImg) {
+          targetImg = newImg;
+          positionOverlayFor(targetImg);
+        }
+      }, 10);
+
+      // Update HTML preview
+      if (typeof syncHtmlPane === 'function') syncHtmlPane();
+    } catch (error) {
+      console.warn('Failed to update image in Quill:', error);
+    }
+  }
+  function onHandleDown(e) {
+    if (!targetImg) return;
+    e.preventDefault();
+    const br = targetImg.getBoundingClientRect();
+    start = {
+      x: e.clientX, y: e.clientY,
+      w: br.width, h: br.height,
+      ar: br.width / br.height,
+      handle: e.currentTarget.dataset.pos,
+      keepAR: e.shiftKey
+    };
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', onUp, { once: true });
+  }
+  function onDrag(e) {
+    if (!start || !targetImg) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    let dw = 0, dh = 0;
+    switch (start.handle) {
+      case 'se': dw = dx; dh = dy; break;
+      case 'ne': dw = dx; dh = -dy; break;
+      case 'sw': dw = -dx; dh = dy; break;
+      case 'nw': dw = -dx; dh = -dy; break;
+    }
+    let newW = Math.max(20, start.w + dw);
+    let newH = Math.max(20, start.h + dh);
+    if (start.keepAR) {
+      if (Math.abs(dw) > Math.abs(dh)) newH = Math.round(newW / start.ar);
+      else newW = Math.round(newH * start.ar);
+    }
+    targetImg.style.width = `${newW}px`;
+    targetImg.style.height = 'auto';
+    positionOverlayFor(targetImg);
+    if (typeof syncHtmlPane === 'function') syncHtmlPane();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onDrag);
+
+    // Update Quill's Delta to persist the image dimensions
+    if (targetImg && start) {
+      updateImageInQuill(targetImg);
+    }
+
+    start = null;
+  }
+
+  quill.root.addEventListener('click', (e) => {
+    const img = e.target.closest('img');
+    if (img) selectImage(img);
+    else if (!e.target.closest('.img-resize-overlay')) removeOverlay();
+  });
+
+  const ro = new ResizeObserver(() => { if (targetImg && overlay) positionOverlayFor(targetImg); });
+  ro.observe(quill.root);
+  window.addEventListener('scroll', () => { if (targetImg && overlay) positionOverlayFor(targetImg); }, true);
+  scrollHost.addEventListener('scroll', () => { if (targetImg && overlay) positionOverlayFor(targetImg); });
+
+  quill.on('text-change', () => {
+    if (targetImg && !document.body.contains(targetImg)) removeOverlay();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') removeOverlay(); });
+})(quill);
+
+// =============================================================================
+// VIDEO PLAYER EVENT HANDLERS
+// =============================================================================
+
+/**
+ * Handle video player play/pause events to control timer display
+ * When playing loaded media, timer should track with video position
+ * When paused, timer should stop updating
+ */
+player.addEventListener('play', () => {
+  // Only start playback timer if we have loaded media (not live recording)
+  if (player.src && !player.srcObject && (!mediaRecorder || mediaRecorder.state === 'inactive')) {
+    startPlaybackTimer();
+  }
+});
+
+player.addEventListener('pause', () => {
+  // Pause the playback timer when video is paused
+  if (player.src && !player.srcObject && (!mediaRecorder || mediaRecorder.state === 'inactive')) {
+    stopPlaybackTimer();
+    // Update display one final time with current position
+    updateRecordingTimer();
+  }
+});

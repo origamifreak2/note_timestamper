@@ -1,0 +1,69 @@
+{
+  "name": "note-timestamper",
+  "version": "0.8.0",
+  "private": true,
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "postinstall": "node scripts/fetch-quill.mjs && node scripts/fetch-fabric.mjs && node scripts/copy-fa.mjs",
+    "build:mac": "electron-builder --mac dmg --publish never && ./scripts/sign-mac-app.sh",
+    "build:win": "electron-builder --win nsis --publish never"
+  },
+  "build": {
+    "appId": "com.yourdomain.note-timestamper",
+    "productName": "Note Timestamper",
+    "files": [
+      "main.js",
+      "preload.cjs",
+      "index.html",
+      "src/**",
+      "vendor/**",
+      "scripts/**",
+      "static/**",
+      "build/entitlements.mac.plist",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "identity": null,
+      "extendInfo": {
+        "NSCameraUsageDescription": "This app records video for timestamped notes.",
+        "NSMicrophoneUsageDescription": "This app records audio for timestamped notes."
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Note Timestamper-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "quill": "^2.0.2"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "fabric": "^6.7.1"
+  }
+}
