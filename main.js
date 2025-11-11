@@ -1,5 +1,5 @@
 // Import Electron modules for creating desktop apps
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, session } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
@@ -37,6 +37,24 @@ async function createWindow() {
 
 // Initialize the app when Electron is ready
 app.whenReady().then(() => {
+  // Handle permission requests from renderer (e.g. getUserMedia)
+  // We explicitly allow 'media' permissions so the camera/microphone prompt works in the renderer.
+  // SECURITY: In a production app you may want to check `details.requestingUrl` and only allow
+  // permissions for trusted origins. This example keeps it simple and allows media requests.
+  try {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+      if (permission === 'media') {
+        // Allow camera/microphone access
+        callback(true);
+      } else {
+        // Default deny for other permissions
+        callback(false);
+      }
+    });
+  } catch (err) {
+    console.warn('Could not set permission request handler:', err);
+  }
+
   createWindow();
 
   // macOS: Re-create window when app is activated (dock icon clicked) if no windows exist

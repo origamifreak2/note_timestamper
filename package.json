@@ -12,6 +12,7 @@
     "build:win": "electron-builder --win nsis --publish never"
   },
   "build": {
+    "icon": "build/icon.ico",
     "appId": "com.yourdomain.note-timestamper",
     "productName": "Note Timestamper",
     "files": [
@@ -48,7 +49,10 @@
           ]
         }
       ],
-      "artifactName": "Note Timestamper-${version}-win-${arch}.${ext}"
+      "artifactName": "Note Timestamper-${version}-win-${arch}.${ext}",
+      "certificateFile": null,
+      "certificatePassword": null,
+      "sign": false
     },
     "nsis": {
       "oneClick": true,

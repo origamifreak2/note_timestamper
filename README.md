@@ -74,6 +74,12 @@ npm run build:mac
 npm run build:win
 ```
 
+Notes for Windows builds
+------------------------
+- electron-builder expects a Windows icon file at `build/icon.ico`. Add your .ico file there before running `npm run build:win`. If you don't have an icon yet, you can generate one from a PNG using many online tools or ImageMagick (convert sample.png -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico).
+- Building a Windows installer from macOS or Linux requires extra tooling (wine and nsis). It's recommended to run `npm run build:win` on a Windows machine. If you must build cross-platform, install Wine and the NSIS binaries and follow electron-builder docs: https://www.electron.build/multi-platform-build
+- Code signing for Windows is optional for creating an installer, but required if you want the installer/app to be signed. See electron-builder docs for signing instructions and CI configuration.
+
 ## 🎯 Usage
 
 1. **Start Recording**: Click "Start Rec" to begin audio/video capture
