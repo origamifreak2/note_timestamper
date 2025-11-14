@@ -2,6 +2,35 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.9.1] - 2025-11-14
+### Added
+- **Centralized CONFIG system** (`src/config.js`) with organized constants:
+  - Recording settings (MIME types, resolutions, framerates, audio bitrates)
+  - Audio analyzer configuration and level monitoring settings
+  - UI constants (z-index values, modal dimensions)
+  - Standardized STATES, ERRORS, and MESSAGES objects
+  - LocalStorage key management through STORAGE_KEYS
+- **Enhanced mixer system architecture** (`src/recording/mixerSystem.js`):
+  - Sophisticated Web Audio API + Canvas video mixing
+  - Live device switching without stopping recording
+  - AudioContext with MediaStreamSource and AnalyserNode integration
+  - Canvas-based video capture with controlled framerate
+- **Advanced state management** in main app coordinator:
+  - Specialized UI update methods (`updateUIState`, `updateContentState`, `updateRecordingControlsState`)
+  - Pre-emptive control state updates to prevent race conditions
+  - Proper separation of concerns between recording and content state
+
+### Enhanced
+- **Audio level monitoring** (`src/modules/audioLevel.js`) integrated with Web Audio analyzer
+- **Recording system** with improved MediaRecorder lifecycle management
+- **Device manager** with enhanced permission handling and device persistence
+- **Module initialization** with proper dependency injection patterns
+
+### Fixed
+- Race conditions in UI state updates during recording state changes
+- Proper cleanup and destruction of Web Audio contexts and canvas streams
+- Enhanced recording control synchronization to prevent UI flicker
+
 ## [0.9.0] - 2025-11-01
 ### Added
 - **Mic & Camera selectors** with live device switching **without stopping** the recording via a stable **mixer stream** (WebAudio + canvas capture).

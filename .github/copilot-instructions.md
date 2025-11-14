@@ -1,20 +1,105 @@
 # Note Timestamper - AI Coding Instructions
 
-This Electron app records audio/video with timestamped notes using a modular ES6 architecture. Understanding the module system and data flows is key to being effective in this codebase.
+This Electron app records audio/video with timestamped notes using a sophisticated modular ES6 architecture. A core innovation is a Web Audio + Canvas mixing system that enables live device switching during recording.
 
 ## 🏗️ Core Architecture
 
-The app has been refactored from a monolithic structure into modules:
+The app uses a layered modular architecture:
 
 ```
 src/main.js                 # Main coordinator (NoteTimestamperApp class)
-src/modules/                # Core utilities (timer, devices, export, etc.)
+src/config.js              # Centralized configuration and constants
+src/modules/                # Core utilities (timer, devices, export, audioLevel)
 src/editor/                 # Quill.js customizations (blots, images, resizing)
-src/recording/              # MediaRecorder + Web Audio mixing
+src/recording/              # Advanced MediaRecorder + Web Audio mixing
+│   ├── mixerSystem.js      # Web Audio API + Canvas video mixing
+│   └── recordingSystem.js  # MediaRecorder lifecycle management
 src/ui/                     # Modal dialogs (camera, drawing)
 ```
 
-**Key Pattern**: Each module exports a singleton instance (e.g., `timerSystem`, `deviceManager`) that gets initialized in `src/main.js`. The main app acts as a coordinator that wires modules together.
+**Key Patterns**:
+- Each module exports a singleton instance (e.g., `timerSystem`, `deviceManager`)
+- All singletons are initialized in `src/main.js` with proper dependency injection
+- The main `NoteTimestamperApp` class acts as a coordinator that wires modules together
+- Centralized configuration through `CONFIG` object in `src/config.js`
+
+## 🎯 Web Audio + Canvas Mixing Architecture
+
+A core innovation is a sophisticated mixing system that combines separate audio and video sources:
+
+### Audio Path: Web Audio API
+```javascript
+// Audio flow: Microphone → Web Audio Context → MediaStreamDestination
+micStream → createMediaStreamSource() → analyser → destination.stream
+```
+
+**Key Components:**
+- **AudioContext**: Creates isolated audio processing environment
+- **MediaStreamSource**: Converts microphone input to Web Audio nodes
+- **AnalyserNode**: Provides real-time audio level monitoring
+- **MediaStreamDestination**: Outputs processed audio as MediaStream
+
+### Video Path: Canvas Capture
+```javascript
+// Video flow: Camera → HTMLVideoElement → Canvas → captureStream()
+cameraStream → videoElement → canvas.drawImage() → canvas.captureStream(fps)
+```
+
+**Key Components:**
+- **HTMLVideoElement**: Plays camera stream for canvas drawing
+- **Canvas 2D Context**: Draws video frames at controlled framerate
+- **RequestAnimationFrame Loop**: Maintains consistent video rendering
+- **Canvas.captureStream()**: Outputs canvas as MediaStream at specified FPS
+
+### Stream Combination
+```javascript
+// Final stream: Web Audio output + Canvas output
+const finalStream = new MediaStream();
+finalStream.addTrack(audioDestination.stream.getAudioTracks()[0]);
+finalStream.addTrack(canvas.captureStream(fps).getVideoTracks()[0]);
+```
+
+### Live Device Switching
+The mixer enables seamless device switching during recording:
+- **Audio switching**: Reconnects Web Audio nodes without interrupting recording
+- **Video switching**: Updates canvas source video element dynamically
+- **Recording continuity**: MediaRecorder.requestData() ensures no gaps in output
+
+## ⚙️ Configuration System
+
+All app settings are centralized in `src/config.js`:
+
+### Usage Patterns
+```javascript
+import { CONFIG, STATES, ERRORS, MESSAGES } from './config.js';
+
+// Recording settings
+const defaultRes = CONFIG.RECORDING.DEFAULT_RESOLUTION; // { width: 1280, height: 720 }
+const supportedMimes = CONFIG.RECORDING.SUPPORTED_MIME_TYPES;
+
+// UI constants
+const modalZ = CONFIG.UI.MODAL_Z_INDEX; // 10000
+const imageMaxSize = CONFIG.IMAGE.MAX_FILE_SIZE; // 15MB
+
+// LocalStorage keys
+localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_MIC);
+
+// State constants
+if (recordingState === STATES.RECORDING.PAUSED) { /* ... */ }
+
+// Consistent messaging
+statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
+```
+
+### Key Configuration Categories
+- **RECORDING**: MediaRecorder settings, codecs, framerates, bitrates
+- **AUDIO**: Web Audio API settings, analyser configuration
+- **TIMER**: Update intervals, timeout handling
+- **IMAGE**: File size limits, quality settings, dimension constraints
+- **UI**: Z-index values, modal dimensions, layout constants
+- **STORAGE_KEYS**: LocalStorage key names for persistence
+- **STATES**: Enumerated state values for consistency
+- **ERRORS/MESSAGES**: Standardized user-facing text
 
 ## 🔧 Development Workflows
 
@@ -24,9 +109,11 @@ src/ui/                     # Modal dialogs (camera, drawing)
 - **Electron**: `npm start` for dev, `npm run build:mac/build:win` for packaging
 
 ### Key Files to Modify
-- **Recording logic**: `src/recording/recordingSystem.js` (MediaRecorder lifecycle)
+- **Mixing logic**: `src/recording/mixerSystem.js` (Web Audio + Canvas coordination)
+- **Recording lifecycle**: `src/recording/recordingSystem.js` (MediaRecorder management)
 - **Device handling**: `src/modules/deviceManager.js` (enumerating mics/cameras)
 - **Editor features**: `src/editor/customBlots.js` (Quill.js timestamp/image embeds)
+- **Configuration**: `src/config.js` (centralized constants and settings)
 - **UI coordination**: `src/main.js` (event handling, state management)
 
 ## 📦 Critical Patterns
@@ -41,10 +128,35 @@ class MySystem {
 export const mySystem = new MySystem(); // singleton
 ```
 
-### State Management
-- **Recording State**: Managed in `recordingSystem`, triggers `onStateChange()` callbacks
-- **UI Updates**: Main app has `updateUIState()` methods that sync DOM with app state
-- **Device Persistence**: `deviceManager` saves selections to localStorage with `LS_KEYS`
+### State Management Architecture
+- **Recording State**: Managed in `recordingSystem` with `isRecording()` method and `onStateChange()` callbacks
+- **UI Synchronization**: Multiple specialized update methods prevent state conflicts:
+  - `updateUIState()`: Full UI refresh for major state changes
+  - `updateContentState()`: Content-only updates (excludes recording controls)
+  - `updateRecordingControlsState()`: Recording button states and device controls
+  - `updateRecordingControlsStateForRecording()`: Pre-emptive control updates
+- **Device Persistence**: `deviceManager` saves selections to localStorage with `CONFIG.STORAGE_KEYS`
+- **Centralized Constants**: State values defined in `STATES` object prevent magic strings
+
+### State Synchronization Patterns
+```javascript
+// Recording state changes trigger UI updates
+recordingSystem.onStateChange = () => {
+  this.updateUIState(); // Full refresh
+};
+
+// Content changes only update relevant controls
+this.quill.on('text-change', () => {
+  this.updateContentState(); // Excludes recording controls
+});
+
+// Pre-emptive control updates prevent race conditions
+async handleStartRecording() {
+  this.updateRecordingControlsStateForRecording(true); // Disable before start
+  await recordingSystem.startRecording();
+  // Controls already disabled, no flash/flicker
+}
+```
 
 ### Custom Quill.js Blots
 - **TimestampBlot**: Creates `<button class="ts" data-ts="123.45">` for clickable timestamps
@@ -88,7 +200,7 @@ export const mySystem = new MySystem(); // singleton
 ### State Synchronization
 - DOM changes must trigger `updateUIState()` to sync button states
 - Recording state changes propagate via `onStateChange` callbacks
-- Device selection persistence uses localStorage keys in `LS_KEYS`
+- Device selection persistence uses localStorage keys in `CONFIG.STORAGE_KEYS`
 
 ## �️ Planned Feature Areas
 
