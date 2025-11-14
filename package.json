@@ -8,7 +8,8 @@
     "start": "electron .",
     "dev": "electron .",
     "postinstall": "node scripts/fetch-quill.mjs && node scripts/fetch-fabric.mjs && node scripts/copy-fa.mjs",
-    "build:mac": "electron-builder --mac dmg --publish never && ./scripts/sign-mac-app.sh",
+    "build:mac": "electron-builder --mac dmg --publish never --x64 && ./scripts/sign-mac-app.sh",
+    "build:mac:universal": "electron-builder --mac dmg --publish never --x64 --arm64 && ./scripts/sign-mac-app.sh",
     "build:win": "electron-builder --win nsis --publish never"
   },
   "build": {
