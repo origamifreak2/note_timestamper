@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Note + Timestamp (Quill)</title>
+  <title>Note + Timestamp</title>
   <style>
     :root {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -229,6 +229,109 @@
     .ql-editor::-webkit-scrollbar-thumb:hover {
       background: #a1a1a1;
     }
+
+    /* Progress modal styles */
+    .save-progress-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .save-progress-modal.visible {
+      display: flex;
+    }
+
+    .save-progress-content {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      min-width: 350px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .save-progress-content h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+    }
+
+    .save-progress-text {
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .save-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .save-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50, #81c784);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .save-progress-percent {
+      text-align: right;
+      font-size: 0.85rem;
+      color: #999;
+      margin-bottom: 1rem;
+    }
+
+    /* Spinner animation for indefinite loading */
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e0e0e0;
+      border-top-color: #4caf50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    /* Indefinite progress bar (pulsing animation) */
+    @keyframes pulse-progress {
+      0% {
+        width: 30%;
+        opacity: 0.6;
+      }
+      50% {
+        width: 70%;
+        opacity: 1;
+      }
+      100% {
+        width: 30%;
+        opacity: 0.6;
+      }
+    }
+
+    .save-progress-fill.indefinite {
+      animation: pulse-progress 2s ease-in-out infinite;
+      width: 30%;
+    }
   </style>
   <!-- Quill (local, vendored by postinstall) -->
   <link rel="stylesheet" href="./vendor/quill.core.css">
@@ -261,17 +364,7 @@
   <header>
     <button id="btnStart"><i class="fa-solid fa-circle-dot"></i> Start Rec</button>
     <button id="btnPause" disabled><i class="fa-solid fa-pause"></i> Pause</button>
-    <button id="btnStop" disabled><i class="fa-solid fa-stop"></i> Stop Rec</button>
-    <button id="btnSave" disabled><i class="fa-solid fa-floppy-disk"></i> Save</button>
-    <button id="btnLoad"><i class="fa-solid fa-folder-open"></i> Load</button>
-    <div class="export-dropdown" style="position: relative; display: inline-block;">
-      <button id="btnExport" disabled><i class="fa-solid fa-file-export"></i> Export <i class="fa-solid fa-caret-down"></i></button>
-      <div id="exportDropdown" class="export-dropdown-content" style="display: none; position: absolute; background-color: #f9f9f9; min-width: 200px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1000; border-radius: 4px; border: 1px solid #ddd;">
-        <button id="btnExportEmbedded" style="display: block; width: 100%; padding: 8px 16px; text-align: left; border: none; background: none; cursor: pointer;"><i class="fa-solid fa-file-code"></i> Export as HTML (embedded)</button>
-        <button id="btnExportSeparate" style="display: block; width: 100%; padding: 8px 16px; text-align: left; border: none; background: none; cursor: pointer;"><i class="fa-solid fa-file-video"></i> Export as HTML + Video</button>
-      </div>
-    </div>
-    <button id="btnReset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+  <button id="btnStop" disabled><i class="fa-solid fa-stop"></i> Stop Rec</button>
     <label><input type="checkbox" id="audioOnly" /> Audio only</label>
     <label>Mic: <select id="micSelect"></select>
     </label>
@@ -365,6 +458,30 @@
       <p>Type notes here. Use the <strong><i class="fa-solid fa-stopwatch"></i> Timestamp</strong> button or <strong>Cmd+Alt+T</strong> to drop jump points. Click <strong><i class="fa-solid fa-camera"></i> Camera</strong> to take photos while recording.</p>
     </section>
   </main>
+
+  <!-- Save progress modal -->
+  <div id="saveProgressModal" class="save-progress-modal">
+    <div class="save-progress-content">
+      <h3 id="saveProgressTitle">Saving...</h3>
+      <div class="save-progress-text" id="saveProgressStatus">Initializing...</div>
+      <div class="save-progress-bar">
+        <div class="save-progress-fill" id="saveProgressFill"></div>
+      </div>
+      <div class="save-progress-percent"><span id="saveProgressPercent">0</span>%</div>
+    </div>
+  </div>
+
+  <!-- File loading modal (reuses progress modal structure) -->
+  <div id="fileLoadingModal" class="save-progress-modal">
+    <div class="save-progress-content">
+      <h3 id="fileLoadingTitle"><span class="spinner"></span>Opening file...</h3>
+      <div class="save-progress-text" id="fileLoadingStatus">Reading notepack...</div>
+      <div class="save-progress-bar">
+        <div class="save-progress-fill indefinite" id="fileLoadingFill"></div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="src/main.js"></script>
   <script>
     // Dynamically adjust main section padding based on header height

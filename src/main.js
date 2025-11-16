@@ -32,11 +32,15 @@ class NoteTimestamperApp {
     // Application state
     this.isInitialized = false;
 
+    // Current save session ID for progress tracking
+    this.currentSaveSessionId = null;
+
     // Bind methods
     this.onStateChange = this.onStateChange.bind(this);
     this.onTimestampClick = this.onTimestampClick.bind(this);
     this.onQuillTextChange = this.onQuillTextChange.bind(this);
     this.onKeyboardShortcut = this.onKeyboardShortcut.bind(this);
+    this.onSaveProgress = this.onSaveProgress.bind(this);
   }
 
   /**
@@ -65,6 +69,15 @@ class NoteTimestamperApp {
 
     // Note: Removed periodic monitor - no longer needed with proper state management
 
+    // Set up menu action listener
+    this.setupMenuListener();
+
+    // Listen for save progress events from main process
+    if (window.menu && window.menu.onAction) {
+      // We need a way to listen to IPC messages; add it to the menu channel if available
+      // For now, we'll handle this in the IPC listener setup below
+    }
+
     // Update initial UI state
     this.updateUIState();      this.isInitialized = true;
       console.log('Note Timestamper initialized successfully');
@@ -88,13 +101,7 @@ class NoteTimestamperApp {
     this.elements.btnStop = document.getElementById('btnStop');
 
     // File operations
-    this.elements.btnSave = document.getElementById('btnSave');
-    this.elements.btnLoad = document.getElementById('btnLoad');
-    this.elements.btnExport = document.getElementById('btnExport');
-    this.elements.exportDropdown = document.getElementById('exportDropdown');
-    this.elements.btnExportEmbedded = document.getElementById('btnExportEmbedded');
-    this.elements.btnExportSeparate = document.getElementById('btnExportSeparate');
-    this.elements.btnReset = document.getElementById('btnReset');
+  // File operations moved to menu
 
     // UI elements
     this.elements.audioOnly = document.getElementById('audioOnly');
@@ -116,6 +123,18 @@ class NoteTimestamperApp {
 
     // Editor elements
     this.elements.editorWrap = document.getElementById('editorWrap');
+
+    // Progress modal elements
+    this.elements.saveProgressModal = document.getElementById('saveProgressModal');
+    this.elements.saveProgressTitle = document.getElementById('saveProgressTitle');
+    this.elements.saveProgressStatus = document.getElementById('saveProgressStatus');
+    this.elements.saveProgressFill = document.getElementById('saveProgressFill');
+    this.elements.saveProgressPercent = document.getElementById('saveProgressPercent');
+
+    // File loading modal elements
+    this.elements.fileLoadingModal = document.getElementById('fileLoadingModal');
+    this.elements.fileLoadingTitle = document.getElementById('fileLoadingTitle');
+    this.elements.fileLoadingStatus = document.getElementById('fileLoadingStatus');
   }
 
   /**
@@ -226,27 +245,8 @@ class NoteTimestamperApp {
       this.elements.btnStop.addEventListener('click', () => this.handleStopRecording());
     }
 
-    // File operations
-    if (this.elements.btnSave) {
-      this.elements.btnSave.addEventListener('click', () => this.handleSaveSession());
-    }
-    if (this.elements.btnLoad) {
-      this.elements.btnLoad.addEventListener('click', () => this.handleLoadSession());
-    }
-    if (this.elements.btnReset) {
-      this.elements.btnReset.addEventListener('click', () => this.handleResetSession());
-    }
-
-    // Export functionality
-    if (this.elements.btnExport) {
-      this.elements.btnExport.addEventListener('click', (e) => this.toggleExportDropdown(e));
-    }
-    if (this.elements.btnExportEmbedded) {
-      this.elements.btnExportEmbedded.addEventListener('click', () => this.exportAsEmbeddedHtml());
-    }
-    if (this.elements.btnExportSeparate) {
-      this.elements.btnExportSeparate.addEventListener('click', () => this.exportAsSeparateFiles());
-    }
+    // File operations moved to menu - no longer bound to header buttons
+    // Reset is now in the File menu; header button removed
 
     // Device selection
     if (this.elements.audioOnly) {
@@ -289,13 +289,6 @@ class NoteTimestamperApp {
       this.elements.player.addEventListener('play', () => this.handlePlayerPlay());
       this.elements.player.addEventListener('pause', () => this.handlePlayerPause());
     }
-
-    // Close export dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.export-dropdown')) {
-        this.hideExportDropdown();
-      }
-    });
 
     // Auto-refresh device list when devices change
     if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
@@ -430,6 +423,73 @@ class NoteTimestamperApp {
     await deviceManager.loadDevices();
   }
 
+  /**
+   * Set up menu action listener for File menu interactions
+   */
+  setupMenuListener() {
+    if (window.menu && window.menu.onAction) {
+      window.menu.onAction((action) => {
+        switch (action) {
+          case 'save':
+            this.handleSaveSession();
+            break;
+          case 'save-as':
+            this.handleSaveSessionAs();
+            break;
+          case 'load':
+            this.handleLoadSession();
+            break;
+          case 'export-embedded':
+            this.exportAsEmbeddedHtml();
+            break;
+          case 'export-separate':
+            this.exportAsSeparateFiles();
+            break;
+          case 'reset':
+            this.handleResetSession();
+            break;
+          default:
+            console.warn('Unknown menu action:', action);
+        }
+      });
+    }
+
+    // Listen for save progress events from main process
+    if (window.menu && typeof window.menu.onSaveProgress === 'function') {
+      window.menu.onSaveProgress((progress) => this.onSaveProgress(progress));
+    }
+
+    // Listen for file loading events from main process
+    if (window.menu && typeof window.menu.onFileLoadingStart === 'function') {
+      window.menu.onFileLoadingStart(() => this.onFileLoadingStart());
+    }
+    if (window.menu && typeof window.menu.onFileLoadingComplete === 'function') {
+      window.menu.onFileLoadingComplete(() => this.onFileLoadingComplete());
+    }
+  }
+
+  /**
+   * Send menu state to main process for updating menu item enabled states
+   */
+  sendMenuState() {
+    if (!window.menu || !window.menu.sendState) return;
+
+    const hasNotes = this.quill && this.quill.getText().trim().length > 0;
+    const hasCompletedRecording = !!recordingSystem.getRecordedBlob();
+    const isCurrentlyRecording = recordingSystem.isRecording();
+    const hasRecording = !!recordingSystem.getRecordedBlob();
+
+    const menuState = {
+      canSave: (hasNotes && !isCurrentlyRecording) || hasCompletedRecording,
+      canSaveAs: (hasNotes && !isCurrentlyRecording) || hasCompletedRecording,
+      canLoad: !isCurrentlyRecording,
+      canExport: hasRecording,
+      canReset: this.hasContent()
+    };
+
+    window.menu.sendState(menuState);
+  }
+
   // =====================================================================
   // EVENT HANDLERS
   // =====================================================================
@@ -448,6 +508,51 @@ class NoteTimestamperApp {
   onQuillTextChange() {
     // Only update content-related UI state, not recording controls
     this.updateContentState();
+  }
+
+  /**
+   * Handle save progress updates from main process
+   */
+  onSaveProgress({ id, phase, percent, bytesWritten, statusText }) {
+    // Only show progress if this is our current save session
+    if (id !== this.currentSaveSessionId) return;
+
+    // Update progress UI
+    if (this.elements.saveProgressFill) {
+      this.elements.saveProgressFill.style.width = `${percent}%`;
+    }
+    if (this.elements.saveProgressPercent) {
+      this.elements.saveProgressPercent.textContent = percent;
+    }
+    if (this.elements.saveProgressStatus) {
+      this.elements.saveProgressStatus.textContent = statusText || phase;
+    }
+
+    // Hide modal when complete
+    if (phase === 'completed' && this.elements.saveProgressModal) {
+      setTimeout(() => {
+        this.elements.saveProgressModal.classList.remove('visible');
+        this.currentSaveSessionId = null;
+      }, 500);
+    }
+  }
+
+  /**
+   * Handle file loading start event from main process
+   */
+  onFileLoadingStart() {
+    if (this.elements.fileLoadingModal) {
+      this.elements.fileLoadingModal.classList.add('visible');
+    }
+  }
+
+  /**
+   * Handle file loading complete event from main process
+   */
+  onFileLoadingComplete() {
+    if (this.elements.fileLoadingModal) {
+      this.elements.fileLoadingModal.classList.remove('visible');
+    }
   }
 
   /**
@@ -622,20 +727,150 @@ class NoteTimestamperApp {
    */
   async handleSaveSession() {
     const noteHtml = this.quill.root.innerHTML;
-    let mediaBuffer = null;
+    // Generate a unique session ID for progress tracking
+    const sessionId = `save-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.currentSaveSessionId = sessionId;
 
+    // Show progress modal
+    if (this.elements.saveProgressModal) {
+      this.elements.saveProgressModal.classList.add('visible');
+      this.elements.saveProgressTitle.textContent = 'Saving Session...';
+      this.elements.saveProgressPercent.textContent = '0';
+      this.elements.saveProgressFill.style.width = '0%';
+    }
+
+    // Stream media to main process temp file to avoid buffering into memory
     const recordedBlob = recordingSystem.getRecordedBlob();
+    let mediaFilePath = null;
+
     if (recordedBlob) {
-      mediaBuffer = await recordedBlob.arrayBuffer();
+      // Ask main process to create a temp file for the media
+      const tmp = await window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId });
+      if (!tmp || !tmp.ok) {
+        this.elements.status.textContent = 'Failed to create temp media file.';
+        if (this.elements.saveProgressModal) {
+          this.elements.saveProgressModal.classList.remove('visible');
+        }
+        return;
+      }
+      const id = tmp.id;
+
+      // Stream blob to main process in chunks
+      try {
+        const stream = recordedBlob.stream();
+        const reader = stream.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          // value is a Uint8Array — send to main
+          await window.api.appendTempMedia(id, value, sessionId);
+        }
+        const closed = await window.api.closeTempMedia(id);
+        if (!closed || !closed.ok) {
+          this.elements.status.textContent = 'Failed to finalize temp media file.';
+          if (this.elements.saveProgressModal) {
+            this.elements.saveProgressModal.classList.remove('visible');
+          }
+          return;
+        }
+        mediaFilePath = closed.path;
+      } catch (err) {
+        console.error('Error streaming media to temp file', err);
+        this.elements.status.textContent = 'Failed to stream media to temp file.';
+        if (this.elements.saveProgressModal) {
+          this.elements.saveProgressModal.classList.remove('visible');
+        }
+        return;
+      }
     }
 
     const result = await window.api.saveSession({
       noteHtml,
-      mediaBuffer,
-      mediaSuggestedExt: recordingSystem.getMediaExtension()
+      // pass mediaFilePath when available so main can stream into zip
+      mediaFilePath,
+      mediaSuggestedExt: recordingSystem.getMediaExtension(),
+      sessionId
     });
 
-    this.elements.status.textContent = result.ok ? `Saved → ${result.dir}` : 'Save canceled';
+    // Hide progress modal (it should already be hidden on completion, but ensure it)
+    if (this.elements.saveProgressModal) {
+      this.elements.saveProgressModal.classList.remove('visible');
+    }
+    this.elements.status.textContent = result.ok ? `Saved → ${result.path || result.dir}` : 'Save canceled';
+  }
+
+  /**
+   * Save current session (Save As - always prompt for location)
+   */
+  async handleSaveSessionAs() {
+    const noteHtml = this.quill.root.innerHTML;
+    // Generate a unique session ID for progress tracking
+    const sessionId = `save-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.currentSaveSessionId = sessionId;
+
+    // Show progress modal
+    if (this.elements.saveProgressModal) {
+      this.elements.saveProgressModal.classList.add('visible');
+      this.elements.saveProgressTitle.textContent = 'Saving Session...';
+      this.elements.saveProgressPercent.textContent = '0';
+      this.elements.saveProgressFill.style.width = '0%';
+    }
+
+    // Stream media to main process temp file to avoid buffering into memory
+    const recordedBlob = recordingSystem.getRecordedBlob();
+    let mediaFilePath = null;
+
+    if (recordedBlob) {
+      const tmp = await window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId });
+      if (!tmp || !tmp.ok) {
+        this.elements.status.textContent = 'Failed to create temp media file.';
+        if (this.elements.saveProgressModal) {
+          this.elements.saveProgressModal.classList.remove('visible');
+        }
+        return;
+      }
+      const id = tmp.id;
+
+      try {
+        const stream = recordedBlob.stream();
+        const reader = stream.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await window.api.appendTempMedia(id, value, sessionId);
+        }
+        const closed = await window.api.closeTempMedia(id);
+        if (!closed || !closed.ok) {
+          this.elements.status.textContent = 'Failed to finalize temp media file.';
+          if (this.elements.saveProgressModal) {
+            this.elements.saveProgressModal.classList.remove('visible');
+          }
+          return;
+        }
+        mediaFilePath = closed.path;
+      } catch (err) {
+        console.error('Error streaming media to temp file', err);
+        this.elements.status.textContent = 'Failed to stream media to temp file.';
+        if (this.elements.saveProgressModal) {
+          this.elements.saveProgressModal.classList.remove('visible');
+        }
+        return;
+      }
+    }
+
+    const result = await window.api.saveSession({
+      noteHtml,
+      mediaFilePath,
+      mediaSuggestedExt: recordingSystem.getMediaExtension(),
+      forceSaveAs: true,
+      sessionId
+    });
+
+    // Hide progress modal
+    if (this.elements.saveProgressModal) {
+      this.elements.saveProgressModal.classList.remove('visible');
+    }
+    this.elements.status.textContent = result.ok ? `Saved → ${result.path || result.dir}` : 'Save canceled';
   }
 
   /**
@@ -675,6 +910,15 @@ class NoteTimestamperApp {
       }
     }
 
+    // Clear last opened session so subsequent Save behaves like a new Save
+    try {
+      if (window.session && window.session.clearLastOpenedSession) {
+        await window.session.clearLastOpenedSession();
+      }
+    } catch (err) {
+      console.warn('Failed to clear last opened session:', err);
+    }
+
     // Reset recording system
     recordingSystem.reset();
 
@@ -691,31 +935,9 @@ class NoteTimestamperApp {
   // =====================================================================
 
   /**
-   * Toggle export dropdown visibility
-   */
-  toggleExportDropdown(e) {
-    e.stopPropagation();
-    const isVisible = this.elements.exportDropdown && this.elements.exportDropdown.style.display !== 'none';
-    if (this.elements.exportDropdown) {
-      this.elements.exportDropdown.style.display = isVisible ? 'none' : 'block';
-    }
-  }
-
-  /**
-   * Hide export dropdown
-   */
-  hideExportDropdown() {
-    if (this.elements.exportDropdown) {
-      this.elements.exportDropdown.style.display = 'none';
-    }
-  }
-
-  /**
    * Export as embedded HTML
    */
   async exportAsEmbeddedHtml() {
-    this.hideExportDropdown();
-
     try {
       const result = await exportSystem.exportAsEmbeddedHtml();
       this.elements.status.textContent = result.ok ? `Exported → ${result.path}` : 'Export canceled';
@@ -729,8 +951,6 @@ class NoteTimestamperApp {
    * Export as separate files
    */
   async exportAsSeparateFiles() {
-    this.hideExportDropdown();
-
     try {
       const result = await exportSystem.exportAsSeparateFiles();
       if (result.ok) {
@@ -844,6 +1064,7 @@ class NoteTimestamperApp {
     this.updateLoadState();
     this.updateExportState();
     this.updateRecordingControlsState();
+    this.sendMenuState();
   }
 
   /**
@@ -853,6 +1074,7 @@ class NoteTimestamperApp {
     this.updateSaveState();
     this.updateLoadState();
     this.updateExportState();
+    this.sendMenuState();
     // Intentionally NOT calling updateRecordingControlsState() here
     // Recording controls should only be updated on recording state changes
   }
@@ -861,63 +1083,24 @@ class NoteTimestamperApp {
    * Update save button state
    */
   updateSaveState() {
-    if (!this.elements.btnSave) return;
-
-    const hasNotes = this.quill && this.quill.getText().trim().length > 0;
-    const hasCompletedRecording = !!recordingSystem.getRecordedBlob();
-    const isCurrentlyRecording = recordingSystem.isRecording();
-
-    const canSave = (hasNotes && !isCurrentlyRecording) || hasCompletedRecording;
-
-    this.elements.btnSave.disabled = !canSave;
-
-    if (isCurrentlyRecording && hasNotes && !hasCompletedRecording) {
-      this.elements.btnSave.title = 'Stop recording first to save session';
-    } else if (canSave) {
-      this.elements.btnSave.title = 'Save session as .notepack folder';
-    } else {
-      this.elements.btnSave.title = 'No content to save (add notes or complete a recording)';
-    }
+    // Save/Save As logic is now handled via menu; no button UI updates needed
+    // But we still track the state for sendMenuState()
   }
 
   /**
    * Update load button state
    */
   updateLoadState() {
-    if (!this.elements.btnLoad) return;
-
-    const isCurrentlyRecording = recordingSystem.isRecording();
-
-    this.elements.btnLoad.disabled = isCurrentlyRecording;
-    this.elements.btnLoad.title = isCurrentlyRecording ?
-      'Stop recording first to load a different session' :
-      'Load a previously saved session';
+    // Load logic is now handled via menu; no button UI updates needed
+    // But we still track the state for sendMenuState()
   }
 
   /**
    * Update export button state
    */
   updateExportState() {
-    const hasRecording = !!recordingSystem.getRecordedBlob();
-
-    if (this.elements.btnExport) {
-      this.elements.btnExport.disabled = !hasRecording;
-      this.elements.btnExport.title = hasRecording ?
-        'Export notes and recording' :
-        'No recording available to export';
-    }
-
-    if (this.elements.btnExportEmbedded) {
-      this.elements.btnExportEmbedded.title = hasRecording ?
-        'Export as single HTML file with embedded video (larger file size)' :
-        'No recording available to export';
-    }
-
-    if (this.elements.btnExportSeparate) {
-      this.elements.btnExportSeparate.title = hasRecording ?
-        'Export as HTML file + separate video file (smaller HTML, better for large videos)' :
-        'No recording available to export';
-    }
+    // Export logic is now handled via menu; no button UI updates needed
+    // But we still track the state for sendMenuState()
   }
 
   /**

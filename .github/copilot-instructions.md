@@ -101,7 +101,171 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
 - **STATES**: Enumerated state values for consistency
 - **ERRORS/MESSAGES**: Standardized user-facing text
 
-## 🔧 Development Workflows
+## � Session Persistence Architecture (Zip-Based)
+
+### .notepack File Format
+All user sessions are saved as zip files with `.notepack` extension:
+
+```
+mySession.notepack (zip file)
+├── notes.html           # Quill.js editor HTML with delta + media embeds
+├── media.webm           # Audio/video recording (extension varies)
+└── session.json         # Metadata: { created, mediaFileName, appVersion }
+```
+
+**File Characteristics:**
+- Single `.notepack` file per session (no folders)
+- Uses standard zip compression (compatible with any zip reader)
+- Typical size: 50MB-2GB+ depending on recording length
+- Compatible with yazl (write) and yauzl (read) Node.js libraries
+
+### Streaming Architecture for Large Files
+The save process implements zero-buffering streaming to handle multi-gigabyte recordings:
+
+**Renderer → Main Process (via IPC):**
+```javascript
+// 1. Create temp file
+const { id } = await window.api.createTempMedia({
+  fileName: 'recording.webm',
+  sessionId: 'save-123-abc'
+});
+
+// 2. Stream blob in chunks (no buffering)
+const stream = recordedBlob.stream();
+const reader = stream.getReader();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  await window.api.appendTempMedia(id, value); // Send chunk
+}
+
+// 3. Close temp file and get path
+const { path } = await window.api.closeTempMedia(id);
+
+// 4. Save session with temp file path
+await window.api.saveSession({
+  noteHtml,
+  mediaFilePath: path,
+  sessionId
+});
+```
+
+**Main Process (file operations):**
+```javascript
+// Create temp file with unique ID
+ipcMain.handle('create-temp-media', async (evt, { fileName, sessionId }) => {
+  const id = `${Date.now()}-${randomId()}`;
+  const tempPath = path.join(os.tmpdir(), `${id}-${fileName}`);
+  const ws = fs.createWriteStream(tempPath);
+  tempMediaStreams.set(id, { ws, path: tempPath, bytesWritten: 0, sessionId });
+  return { ok: true, id, path: tempPath };
+});
+
+// Stream chunks to temp file
+ipcMain.handle('append-temp-media', async (evt, id, chunk) => {
+  const stream = tempMediaStreams.get(id);
+  if (!stream) return { ok: false, error: 'Invalid stream ID' };
+
+  stream.ws.write(Buffer.from(chunk));
+  stream.bytesWritten += chunk.byteLength;
+
+  // Send progress event
+  reportSaveProgress(mainWindow, id, {
+    phase: 'streaming-media',
+    percent: Math.min(100, (stream.bytesWritten / expectedSize) * 100),
+    bytesWritten: stream.bytesWritten,
+    statusText: `Streaming... ${stream.bytesWritten / 1024 / 1024 | 0}MB`
+  });
+
+  return { ok: true, bytesWritten: stream.bytesWritten };
+});
+
+// Close and return temp file path
+ipcMain.handle('close-temp-media', async (evt, id) => {
+  const stream = tempMediaStreams.get(id);
+  stream.ws.end();
+  tempMediaStreams.delete(id);
+  return { ok: true, path: stream.path };
+});
+
+// Zip the temp file (streamed via yazl.addFile)
+const zipPath = path.join(saveDir, 'session.notepack');
+const zipfile = new yazl.ZipFile();
+zipfile.addFile(tempMediaPath, 'media.webm'); // Streams file without buffering
+zipfile.addBuffer(Buffer.from(notesHtml), 'notes.html');
+zipfile.addBuffer(JSON.stringify(sessionData), 'session.json');
+zipfile.end();
+```
+
+**Benefits:**
+- Handles 2GB+ recordings without memory spikes
+- Temp file cleanup prevents disk space issues
+- Progress events enable UI feedback during streaming
+- Separation of concerns: blob streaming (renderer), file I/O (main), zip creation (yazl)
+
+### Progress Reporting System
+Five-phase progress reporting with real-time percent updates:
+
+```javascript
+reportSaveProgress(mainWindow, sessionId, {
+  phase: 'creating-zip',        // Start: Initialize zip structure
+  percent: 0,
+  statusText: 'Creating zip...'
+});
+
+reportSaveProgress(mainWindow, sessionId, {
+  phase: 'streaming-media',     // During: Streaming blob to temp file
+  percent: 45,
+  bytesWritten: 2147483648,     // 2GB streamed
+  statusText: 'Streaming... 2048MB'
+});
+
+reportSaveProgress(mainWindow, sessionId, {
+  phase: 'writing-zip',         // After: yazl writing final zip
+  percent: 95,
+  statusText: 'Finalizing...'
+});
+
+reportSaveProgress(mainWindow, sessionId, {
+  phase: 'completed',           // Done: Auto-hide progress modal
+  percent: 100,
+  statusText: 'Saved!'
+});
+```
+
+**Event Flow:**
+1. Renderer calls `saveSession()` with sessionId
+2. Main process sends `save-progress` events to renderer window
+3. Renderer listener (via `menu.onSaveProgress()` from preload) updates progress modal UI
+4. When phase='completed', modal auto-hides after brief display
+5. Main returns `{ ok, path }` to renderer after cleanup
+
+### Cleanup of Orphaned Temp Files
+Temp files match pattern `/^\d+-[a-z0-9]+-/` (timestamp-randomId-):
+
+```javascript
+// Runs on app startup
+function cleanupOrphanedTempFiles() {
+  const tmpdir = os.tmpdir();
+  const files = fs.readdirSync(tmpdir);
+  const pattern = /^\d+-[a-z0-9]+-/;
+
+  files.forEach(file => {
+    if (pattern.test(file)) {
+      const fullPath = path.join(tmpdir, file);
+      fs.rmSync(fullPath, { force: true });
+    }
+  });
+}
+```
+
+**When cleanup runs:**
+- On `app.whenReady()` initialization
+- Removes files from interrupted saves or app crashes
+- Safe to run frequently; ignores non-matching files
+- Prevents temp directory from filling up over time
+
+## �🔧 Development Workflows
 
 ### Dependencies & Vendor Files
 - **npm scripts**: `postinstall` automatically copies vendor assets from node_modules
@@ -188,9 +352,17 @@ async handleStartRecording() {
 - Canvas-based video mixing for visual audio levels
 
 ### Electron IPC (Main ↔ Renderer)
-- `preload.cjs` exposes: `saveSession`, `loadSession`, `saveHtml`, `pickImage`
-- File operations require main process for security
-- Session format: `.notepack` folders with HTML + media files
+- `preload.cjs` exposes session and file operation APIs with four categories:
+  - **Session Handlers**: `saveSession(payload)`, `loadSession()`
+  - **File Operations**: `saveHtml(html)`, `pickImage()`
+  - **Temp Media Streaming**: `createTempMedia(opts)`, `appendTempMedia(id, chunk)`, `closeTempMedia(id)`
+  - **Event Listeners**: `onSaveProgress(callback)`, `onFileLoadingStart(callback)`, `onFileLoadingComplete(callback)`
+- File operations require main process for security (Electron sandbox isolation)
+- Session format: `.notepack` zip files with yazl/yauzl libraries
+  - Archive structure: `notes.html`, `media.{ext}`, `session.json`
+  - `notes.json` contains embedded Quill.js delta for rich text editing
+  - `session.json` stores metadata (created date, media filename, app version)
+  - Enables seamless load/save of audio/video + timestamped notes
 
 ### Quill.js Event Handling
 - Text changes trigger `onQuillTextChange()` → updates save/export button states

@@ -214,10 +214,103 @@ export const mySystem = new MySystem(); // singleton
 - Canvas-based video mixing for enhanced control and audio level visualization
 - MediaRecorder.requestData() maintains recording continuity during device switches
 
-### Electron IPC Communication
-- `preload.cjs` exposes secure APIs: `saveSession`, `loadSession`, `saveHtml`, `pickImage`
-- File operations require main process for security compliance
-- Session format: `.notepack` folders containing HTML + media files + metadata
+## ⚡ Session Persistence Architecture
+
+### Zip-Based .notepack Format
+Sessions are now saved as zip files (with `.notepack` extension) instead of folders:
+
+```
+session.notepack (zip file)
+├── notes.html          # Rich text notes with timestamps
+├── media.webm          # Recorded audio/video (if present)
+└── session.json        # Metadata (version, createdAt, mediaFile reference)
+```
+
+**Benefits:**
+- Single file instead of directory structure
+- Portable and easy to share
+- Smaller footprint with zip compression
+- Consistent file extension across platforms
+
+### Streaming Architecture for Large Files
+To avoid memory spikes with large recordings:
+
+1. **Renderer streaming** → Main process:
+   - Blob stream is read in chunks via `recordedBlob.stream()`
+   - Each chunk sent via IPC to main process (`append-temp-media`)
+   - No in-memory buffering of entire recording
+
+2. **Main process temp file**:
+   - Temp file created in OS temp directory with pattern: `TIMESTAMP-RANDOM-filename`
+   - IPC handlers: `create-temp-media`, `append-temp-media`, `close-temp-media`
+   - Tracks bytes written for progress reporting
+
+3. **Yazl streaming into zip**:
+   - Uses `yazl.addFile(tempFilePath, zipEntryName)` to stream temp file into zip
+   - No re-buffering of media data
+   - Automatic cleanup of temp file after zip write completes
+
+4. **Automatic cleanup**:
+   - Orphaned temp files cleaned up on app startup via `cleanupOrphanedTempFiles()`
+   - Pattern matching: `/^\d+-[a-z0-9]+-/` identifies notepack temp files
+   - Non-fatal cleanup failures don't block app startup
+
+### Progress Reporting Architecture
+Real-time progress feedback during save and file open operations:
+
+**Save Progress (defined phases):**
+- `creating-zip` (5%): Initial setup
+- `streaming-media` (5-95%): Uploading media chunks to temp file
+- `writing-zip` (10-95%): Yazl writing output stream to disk
+- `completed` (100%): Save finished
+
+**IPC Progress Channel:**
+- Main → Renderer: `save-progress` events with `{ id, phase, percent, bytesWritten, statusText }`
+- Session ID tracking: unique ID per save operation to distinguish overlapping saves
+- Progress modal shows percent, status text, and animated progress bar
+
+**File Loading Indicator:**
+- Main → Renderer: `file-loading-start` and `file-loading-complete` events
+- Spinner animation (rotating circle) with pulsing indefinite progress bar
+- Non-blocking: user can dismiss with file picker cancellation
+
+### IPC Handler Details
+
+**Session Save/Load:**
+```javascript
+// Streaming-based save
+ipcMain.handle('save-session', async (evt, payload) => {
+  // payload: { noteHtml, mediaFilePath, mediaSuggestedExt, forceSaveAs, sessionId }
+  // Returns: { ok: true, path: filePath } or { ok: false, error: ... }
+  // Sends progress events via webContents.send('save-progress', ...)
+});
+
+// Zip-based load
+ipcMain.handle('load-session', async () => {
+  // Shows file picker for .notepack files
+  // Sends file-loading-start / file-loading-complete events
+  // Returns: { ok: true, notesHtml, mediaArrayBuffer, mediaFileName }
+});
+```
+
+**Temp Media Streaming:**
+```javascript
+// Create temp file with unique ID
+ipcMain.handle('create-temp-media', async (evt, { fileName, sessionId }) => {
+  // Returns: { ok: true, id, path }
+});
+
+// Stream chunks to temp file with progress tracking
+ipcMain.handle('append-temp-media', async (evt, id, chunk, sessionId) => {
+  // Tracks bytesWritten, sends progress events
+  // Returns: { ok: true, bytesWritten }
+});
+
+// Close temp file and return final path
+ipcMain.handle('close-temp-media', async (evt, id) => {
+  // Returns: { ok: true, path }
+});
+```
 
 ### Quill.js Deep Integration
 - Custom blots for timestamps (`<button class="ts" data-ts="123.45">`) and images
