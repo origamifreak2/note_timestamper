@@ -25,11 +25,37 @@ export class ExportSystem {
   }
 
   /**
+   * Remove fabric JSON data and editable-drawing attributes from HTML
+   * This cleans up the export to remove internal editing metadata
+   * @param {string} html - HTML content to clean
+   * @returns {string} Cleaned HTML without fabric data
+   */
+  stripFabricData(html) {
+    // Create a temporary DOM to safely manipulate HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    // Find all images with fabric data and clean them
+    const editableImages = tempDiv.querySelectorAll('img[data-fabric-json]');
+    editableImages.forEach(img => {
+      img.removeAttribute('data-fabric-json');
+      img.classList.remove('editable-drawing');
+      img.removeAttribute('title');
+      // Reset cursor style
+      if (img.style.cursor === 'pointer') {
+        img.style.cursor = '';
+      }
+    });
+
+    return tempDiv.innerHTML;
+  }
+
+  /**
    * Export session as embedded HTML (single file with base64-encoded media)
    * @returns {Promise<Object>} Result from main process
    */
   async exportAsEmbeddedHtml() {
-    const notesHtml = this.quill.root.innerHTML;
+    const notesHtml = this.stripFabricData(this.quill.root.innerHTML);
     let mediaMime = 'video/webm';
     let mediaB64 = '';
 
@@ -49,7 +75,7 @@ export class ExportSystem {
    * @returns {Promise<Object>} Result from main process
    */
   async exportAsSeparateFiles() {
-    const notesHtml = this.quill.root.innerHTML;
+    const notesHtml = this.stripFabricData(this.quill.root.innerHTML);
     let mediaBuffer = null;
 
     const recordedBlob = this.recordingSystem.getRecordedBlob();

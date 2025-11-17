@@ -58,8 +58,8 @@ export class CustomImage extends BlockEmbed {
   static tagName = 'img';
 
   /**
-   * Creates a new image element with optional dimensions
-   * @param {string|Object} value - Image source or object with src and dimensions
+   * Creates a new image element with optional dimensions and fabric data
+   * @param {string|Object} value - Image source or object with src, dimensions, and fabricJSON
    * @returns {HTMLImageElement} The created image element
    */
   static create(value) {
@@ -82,7 +82,7 @@ export class CustomImage extends BlockEmbed {
         }
       }
     } else if (typeof value === 'object' && value.src) {
-      // Handle object format: { src: "url", width: 100, height: 200 }
+      // Handle object format: { src: "url", width: 100, height: 200, fabricJSON: "..." }
       node.setAttribute('src', value.src);
       if (value.width) {
         node.style.width = `${value.width}px`;
@@ -92,6 +92,13 @@ export class CustomImage extends BlockEmbed {
       } else {
         node.style.height = 'auto';
       }
+      // Store fabric JSON for editable drawings
+      if (value.fabricJSON) {
+        node.setAttribute('data-fabric-json', value.fabricJSON);
+        node.classList.add('editable-drawing');
+        node.style.cursor = 'pointer';
+        node.title = 'Double-click to edit drawing';
+      }
     }
 
     return node;
@@ -100,13 +107,25 @@ export class CustomImage extends BlockEmbed {
   /**
    * Extracts image data from an existing image element
    * @param {HTMLImageElement} node - The image element to read from
-   * @returns {string} Image source with optional dimensions
+   * @returns {string|Object} Image source with optional dimensions, or object with fabricJSON
    */
   static value(node) {
     const src = node.getAttribute('src');
     const width = node.style.width ? parseInt(node.style.width) : null;
     const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+    const fabricJSON = node.getAttribute('data-fabric-json');
 
+    // If has fabric data, return object format to preserve it
+    if (fabricJSON) {
+      return {
+        src: src,
+        width: width,
+        height: height,
+        fabricJSON: fabricJSON
+      };
+    }
+
+    // Legacy format for regular images
     if (width || height) {
       // Return format with dimensions
       if (height) {

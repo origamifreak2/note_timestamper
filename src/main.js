@@ -275,6 +275,9 @@ class NoteTimestamperApp {
     // Timestamp clicks
     this.quill.root.addEventListener('click', this.onTimestampClick);
 
+    // Double-click on images to edit drawings
+    this.quill.root.addEventListener('dblclick', (e) => this.onImageDoubleClick(e));
+
     // Keyboard shortcuts
     document.addEventListener('keydown', this.onKeyboardShortcut, true);
     this.quill.keyboard.addBinding({ key: 'T', shortKey: true, altKey: true }, () => this.insertTimestamp());
@@ -399,13 +402,26 @@ class NoteTimestamperApp {
 
       const width = node.style.width ? parseInt(node.style.width) : null;
       const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+      const fabricJSON = node.getAttribute('data-fabric-json');
 
-      let imageValue = src;
-      if (width || height) {
-        if (height) {
-          imageValue = `${src}|${width}x${height}`;
-        } else {
-          imageValue = `${src}|${width}`;
+      // If image has fabric data, use object format to preserve it
+      let imageValue;
+      if (fabricJSON) {
+        imageValue = {
+          src: src,
+          width: width,
+          height: height,
+          fabricJSON: fabricJSON
+        };
+      } else {
+        // Use string format for regular images
+        imageValue = src;
+        if (width || height) {
+          if (height) {
+            imageValue = `${src}|${width}x${height}`;
+          } else {
+            imageValue = `${src}|${width}`;
+          }
         }
       }
 
@@ -565,6 +581,56 @@ class NoteTimestamperApp {
     // Jump to the timestamp in the video/audio player
     this.elements.player.currentTime = ts;
     this.elements.player.play();
+  }
+
+  /**
+   * Handle double-click on images to edit drawings
+   */
+  async onImageDoubleClick(e) {
+    const img = e.target.closest('img.editable-drawing');
+    if (!img) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const fabricJSON = img.getAttribute('data-fabric-json');
+    if (!fabricJSON) return;
+
+    this.elements.status.textContent = 'Opening drawing for editing...';
+    try {
+      const result = await drawingSystem.openDrawingModal(fabricJSON);
+      if (result && result.dataUrl) {
+        // Find the image blot and update it
+        const blot = Quill.find(img);
+        if (blot) {
+          const index = this.quill.getIndex(blot);
+
+          // Calculate dimensions from current image
+          const width = parseInt(img.style.width) || img.width;
+          const height = img.style.height === 'auto' ? null : (parseInt(img.style.height) || img.height);
+
+          // Delete old image and insert updated one
+          this.quill.deleteText(index, 1, 'user');
+
+          const imageValue = {
+            src: result.dataUrl,
+            width: width,
+            height: height,
+            fabricJSON: result.fabricJSON
+          };
+
+          this.quill.insertEmbed(index, 'image', imageValue, 'user');
+          this.quill.setSelection(index + 1, 0, 'silent');
+
+          this.elements.status.textContent = 'Drawing updated.';
+        }
+      } else {
+        this.elements.status.textContent = 'Drawing edit cancelled.';
+      }
+    } catch (error) {
+      console.error('Drawing edit error:', error);
+      this.elements.status.textContent = 'Drawing edit failed.';
+    }
   }
 
   /**
@@ -1018,9 +1084,9 @@ class NoteTimestamperApp {
   async handleDrawing() {
     this.elements.status.textContent = 'Opening drawing canvas...';
     try {
-      const dataUrl = await drawingSystem.openDrawingModal();
-      if (dataUrl) {
-        await imageManager.insertDataUrlImage(dataUrl);
+      const result = await drawingSystem.openDrawingModal();
+      if (result && result.dataUrl) {
+        await imageManager.insertDrawingImage(result.dataUrl, result.fabricJSON);
         this.elements.status.textContent = 'Drawing inserted.';
       } else {
         this.elements.status.textContent = 'Drawing cancelled.';

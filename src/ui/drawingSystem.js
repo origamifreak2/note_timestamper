@@ -24,9 +24,10 @@ export class DrawingSystem {
 
   /**
    * Opens drawing modal with Fabric.js canvas for creating drawings
-   * Returns a Promise that resolves with the drawing as a data URL
+   * Returns a Promise that resolves with { dataUrl, fabricJSON } or null if cancelled
+   * @param {string|null} fabricJSON - Optional Fabric.js JSON to load for editing
    */
-  async openDrawingModal() {
+  async openDrawingModal(fabricJSON = null) {
     if (this.isModalOpen) return null;
 
     // Check if Fabric.js is loaded
@@ -83,12 +84,41 @@ export class DrawingSystem {
       // Set up UI handlers
       this.setupDrawingUI(drawingModal, canvas);
 
-      // Force initial render to ensure everything is visible
-      canvas.clear();
-      canvas.backgroundColor = 'white';
-      canvas.renderAll();
+      // Load existing drawing if fabricJSON is provided
+      if (fabricJSON) {
+        try {
+          const jsonData = typeof fabricJSON === 'string' ? JSON.parse(fabricJSON) : fabricJSON;
+          await new Promise((resolve, reject) => {
+            canvas.loadFromJSON(jsonData, () => {
+              canvas.backgroundColor = 'white';
+              canvas.requestRenderAll();
+              canvas.calcOffset();
+              resolve();
+            }, (o, object) => {
+              // Error handler for individual objects
+              console.warn('Error loading object:', o, object);
+            });
+          });
+          // Save initial state after loading
+          setTimeout(() => {
+            this.saveCanvasState(canvas);
+            this.updateUndoRedoButtons(this.undoBtn, this.redoBtn);
+          }, 100);
+        } catch (error) {
+          console.error('Failed to load fabric JSON:', error);
+          // Continue with blank canvas on error
+          canvas.clear();
+          canvas.backgroundColor = 'white';
+          canvas.renderAll();
+        }
+      } else {
+        // Force initial render to ensure everything is visible
+        canvas.clear();
+        canvas.backgroundColor = 'white';
+        canvas.renderAll();
+      }
 
-      // Return Promise that resolves with canvas data or null if cancelled
+      // Return Promise that resolves with { dataUrl, fabricJSON } or null if cancelled
       return new Promise((resolve) => {
         const saveBtn = drawingModal.querySelector('#drawingSaveBtn');
         const cancelBtn = drawingModal.querySelector('#drawingCancelBtn');
@@ -100,8 +130,9 @@ export class DrawingSystem {
               quality: 1.0,
               multiplier: 2
             });
+            const fabricJSON = JSON.stringify(canvas.toJSON());
             this.cleanup(drawingModal, canvas);
-            resolve(dataUrl);
+            resolve({ dataUrl, fabricJSON });
           } catch (error) {
             console.error('Failed to export drawing:', error);
             alert('Failed to export drawing. Please try again.');

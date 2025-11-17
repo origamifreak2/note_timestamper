@@ -25,6 +25,44 @@ export class ImageManager {
   }
 
   /**
+   * Inserts a drawing with embedded Fabric.js JSON into the editor
+   * @param {string} dataUrl - Base64 data URL of the drawing image
+   * @param {string} fabricJSON - Fabric.js canvas JSON data for re-editing
+   */
+  async insertDrawingImage(dataUrl, fabricJSON) {
+    if (!this.quill) return;
+
+    try {
+      // Calculate appropriate default dimensions
+      const dimensions = await calculateDefaultImageDimensions(dataUrl);
+
+      // Get current selection or default to end of document
+      const range = this.quill.getSelection(true) || { index: this.quill.getLength(), length: 0 };
+
+      // Create image value with dimensions and fabric data
+      const imageValue = {
+        src: dataUrl,
+        width: dimensions.width,
+        height: dimensions.height,
+        fabricJSON: fabricJSON
+      };
+
+      // Insert image at cursor position with fabric data
+      this.quill.insertEmbed(range.index, 'image', imageValue, 'user');
+
+      // Move cursor after the inserted image
+      this.quill.setSelection(range.index + 1, 0, 'silent');
+    } catch (error) {
+      console.warn('Failed to insert drawing image:', error);
+
+      // Fallback: insert without dimensions
+      const range = this.quill.getSelection(true) || { index: this.quill.getLength(), length: 0 };
+      this.quill.insertEmbed(range.index, 'image', { src: dataUrl, fabricJSON: fabricJSON }, 'user');
+      this.quill.setSelection(range.index + 1, 0, 'silent');
+    }
+  }
+
+  /**
    * Inserts an image from a data URL into the editor at current cursor position
    * Includes default dimensions to prevent huge images in exports
    * @param {string} dataUrl - Base64 data URL of the image
@@ -150,8 +188,23 @@ export class ImageManager {
       const src = img.src;
       if (!src) return;
 
-      // Create new image value with dimensions
-      const imageValue = height ? `${src}|${width}x${height}` : `${src}|${width}`;
+      // Check if this is an editable drawing with fabric data
+      const fabricJSON = img.getAttribute('data-fabric-json');
+
+      // Create new image value with dimensions and fabric data (if present)
+      let imageValue;
+      if (fabricJSON) {
+        // Use object format to preserve fabric data
+        imageValue = {
+          src: src,
+          width: width,
+          height: height,
+          fabricJSON: fabricJSON
+        };
+      } else {
+        // Use string format for regular images
+        imageValue = height ? `${src}|${width}x${height}` : `${src}|${width}`;
+      }
 
       // Update the image embed in Quill without triggering user history
       const index = this.quill.getIndex(blot);
