@@ -113,7 +113,70 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 
 ### UI Components (`src/ui/`)
 - **cameraSystem.js**: Camera modal for capturing photos during recording
-- **drawingSystem.js**: Drawing canvas modal using Fabric.js for sketching
+- **drawingSystem.js**: Drawing canvas modal using Fabric.js for sketching and editing
+  - Supports creating new drawings with various tools (pencil, shapes, text, image import)
+  - Enables re-editing of previously inserted drawings via double-click
+  - Returns both PNG data URL and Fabric.js JSON for editability
+  - Includes undo/redo history and full tool palette
+
+## 🎨 Drawing Edit System
+
+The application features a sophisticated drawing system that allows users to create and edit drawings:
+
+### Drawing Creation and Editing Flow
+```javascript
+// Create new drawing
+const result = await drawingSystem.openDrawingModal();
+// Returns: { dataUrl: "data:image/png;base64,...", fabricJSON: "{...}" }
+
+// Edit existing drawing
+const fabricJSON = img.getAttribute('data-fabric-json');
+const result = await drawingSystem.openDrawingModal(fabricJSON);
+// Reopens with all previous objects loaded
+```
+
+### Data Persistence Strategy
+- **Fabric.js JSON** stored in `data-fabric-json` attribute on image elements
+- Drawing metadata travels with the image in HTML
+- Preserved through save/load operations in `.notepack` files
+- Stripped from exported HTML to keep external files clean
+
+### Key Components
+
+**Image Manager Integration:**
+```javascript
+// Insert new drawing with fabric data
+await imageManager.insertDrawingImage(dataUrl, fabricJSON);
+
+// Update existing image preserves fabric data during resize
+imageManager.updateImageInQuill(img); // Checks for data-fabric-json
+```
+
+**Custom Image Blot:**
+- `CustomImage.create()` adds `data-fabric-json` attribute when present
+- Adds `editable-drawing` class and pointer cursor for visual feedback
+- `CustomImage.value()` preserves fabric data during serialization
+
+**Clipboard Handler:**
+- Detects `data-fabric-json` attribute when loading sessions
+- Uses object format to preserve fabric data through paste operations
+- Maintains backward compatibility with regular images
+
+**Double-Click Editing:**
+- Event handler in main app detects double-clicks on editable drawings
+- Extracts fabric JSON and reopens drawing modal
+- Replaces original image in-place with updated version
+
+**Export System:**
+- `stripFabricData()` removes editing metadata before export
+- Cleans up `data-fabric-json`, `editable-drawing` class, and cursor styles
+- Ensures exported HTML contains only final rendered images
+
+### Benefits
+- No separate file management needed
+- Drawing data survives copy/paste and undo/redo
+- Seamless integration with existing image system
+- Clean separation between internal editing and external sharing
 
 ## 🔄 State Management Architecture
 

@@ -2,6 +2,32 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.11.0] - 2025-11-16
+### Added
+- **Drawing edit functionality** with double-click to re-edit inserted drawings
+  - Fabric.js canvas JSON stored in `data-fabric-json` attribute on image elements
+  - Double-click on any drawing reopens the drawing modal with all objects loaded
+  - Full undo/redo history available when editing
+  - Drawing metadata travels with images through save/load operations
+- **Enhanced imageManager** with `insertDrawingImage()` method
+  - Embeds Fabric.js JSON data alongside image data URL
+  - Preserves fabric data during image resize operations
+  - Maintains backward compatibility with regular images
+- **Drawing data persistence** in `.notepack` sessions
+  - Fabric JSON preserved in HTML for re-editing within app
+  - Custom blot handles object format with fabricJSON property
+  - Clipboard matcher preserves fabric data when loading sessions
+- **Export system cleanup** for external sharing
+  - `stripFabricData()` removes editing metadata from exported HTML
+  - Cleans up `data-fabric-json`, `editable-drawing` class, cursor styles
+  - Ensures exported files contain only final rendered images
+
+### Enhanced
+- Drawing system now returns `{ dataUrl, fabricJSON }` instead of just data URL
+- `openDrawingModal()` accepts optional `fabricJSON` parameter for editing mode
+- Image resizing preserves fabric data using object format internally
+- Visual feedback: editable drawings show pointer cursor and "Double-click to edit" tooltip
+
 ## [0.10.0] - 2025-11-16
 ### Added
 - **Zip-based session persistence** using `.notepack` file format (yazl/yauzl libraries)

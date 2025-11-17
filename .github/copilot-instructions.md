@@ -324,8 +324,79 @@ async handleStartRecording() {
 
 ### Custom Quill.js Blots
 - **TimestampBlot**: Creates `<button class="ts" data-ts="123.45">` for clickable timestamps
-- **CustomImage**: Extends default image to support dimensions (`src|widthxheight`)
+- **CustomImage**: Extends default image to support dimensions (`src|widthxheight`) and fabric data
+  - Handles object format: `{ src, width, height, fabricJSON }` for editable drawings
+  - String format: `"src|widthxheight"` for regular images
+  - Adds `data-fabric-json` attribute and `editable-drawing` class for drawings
 - **Registration**: Must call `registerCustomBlots()` before creating Quill instance
+
+## 🎨 Drawing Edit System
+
+The app features sophisticated drawing creation and editing capabilities:
+
+### Core Workflow
+1. **Create Drawing**: User clicks Draw tool → Drawing modal opens → Creates drawing → Returns `{ dataUrl, fabricJSON }`
+2. **Insert Drawing**: `imageManager.insertDrawingImage(dataUrl, fabricJSON)` embeds both image and metadata
+3. **Edit Drawing**: User double-clicks image → Modal reopens with `fabricJSON` loaded → Updates image in place
+4. **Export**: `stripFabricData()` removes editing metadata before external sharing
+
+### Data Flow
+```javascript
+// Creating a new drawing
+const result = await drawingSystem.openDrawingModal();
+// result = { dataUrl: "data:image/png;base64,...", fabricJSON: "{...}" }
+await imageManager.insertDrawingImage(result.dataUrl, result.fabricJSON);
+
+// Editing an existing drawing
+const fabricJSON = img.getAttribute('data-fabric-json');
+const result = await drawingSystem.openDrawingModal(fabricJSON);
+// Modal loads previous canvas state from JSON
+```
+
+### Key Implementation Details
+
+**Drawing System (`src/ui/drawingSystem.js`):**
+- `openDrawingModal(fabricJSON = null)` accepts optional fabric data for editing
+- Returns `{ dataUrl, fabricJSON }` with both rendered PNG and canvas JSON
+- Uses `canvas.loadFromJSON()` to restore previous drawing state
+- All Fabric.js objects (shapes, text, imported images) are editable
+
+**Image Manager (`src/editor/imageManager.js`):**
+- `insertDrawingImage(dataUrl, fabricJSON)` handles drawing-specific insertion
+- `updateImageInQuill(img)` preserves fabric data during resize operations
+- Checks for `data-fabric-json` attribute and uses object format when present
+
+**Custom Image Blot (`src/editor/customBlots.js`):**
+- `create()` method adds `data-fabric-json` attribute when `value.fabricJSON` exists
+- Adds `editable-drawing` class and pointer cursor for visual feedback
+- `value()` method returns object format for drawings, string format for regular images
+
+**Clipboard Handler (`src/main.js`):**
+- `setupClipboardHandlers()` includes matcher for `img` elements
+- Detects `data-fabric-json` attribute when loading sessions or pasting
+- Preserves fabric data using object format: `{ src, width, height, fabricJSON }`
+
+**Double-Click Handler (`src/main.js`):**
+- `onImageDoubleClick()` listens for clicks on `img.editable-drawing` elements
+- Extracts fabric JSON and reopens drawing modal in edit mode
+- Replaces image in place by deleting old blot and inserting updated one
+
+**Export System (`src/modules/exportSystem.js`):**
+- `stripFabricData(html)` removes all editing metadata before export
+- Cleans up `data-fabric-json`, `editable-drawing` class, title attributes
+- Resets cursor styles to ensure clean exported HTML
+
+### Persistence Strategy
+- Drawing metadata stored directly in `data-fabric-json` attribute (not separate files)
+- Data travels with image through all operations (save, load, copy, paste, undo, redo)
+- Preserved in `.notepack` sessions for re-editing within app
+- Automatically stripped from exports to keep external files clean
+
+### Benefits
+- No separate JSON file management needed
+- Seamless integration with existing image system
+- Drawing data survives all editor operations
+- Clean separation between internal editing and external sharing
 
 ## 🎯 Common Tasks
 
@@ -338,6 +409,13 @@ async handleStartRecording() {
 1. Create custom blots in `src/editor/customBlots.js`
 2. Add toolbar handlers in main app's `setupCustomToolbarButtons()`
 3. Update clipboard handling in `setupClipboardHandlers()` for paste support
+4. Consider whether new blots need special export handling (like fabric data stripping)
+
+### Drawing System Extensions
+1. Add new Fabric.js tools in `drawingSystem.setupDrawingUI()`
+2. Extend toolbar HTML in `createDrawingModal()`
+3. Add event handlers for new tools in `setupDrawingUI()`
+4. New tools automatically work with edit system (no additional changes needed)
 
 ### Device/Hardware Integration
 1. Extend `deviceManager.js` for new device types or constraints
