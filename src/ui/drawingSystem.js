@@ -73,14 +73,12 @@ export class DrawingSystem {
       // CRITICAL FIX: Make upper canvas transparent but keep mouse events
       // This prevents drawings from disappearing after mouse-up
       if (canvas.upperCanvasEl) {
-        console.log('Making upper canvas transparent to fix drawing visibility...');
         canvas.upperCanvasEl.style.backgroundColor = 'transparent';
         canvas.upperCanvasEl.style.background = 'transparent';
       }
 
-      // CRITICAL: Recalculate canvas offset to fix mouse position
-      canvas.calcOffset();
-      console.log('Recalculated canvas offset for proper mouse positioning');
+  // CRITICAL: Recalculate canvas offset to fix mouse position
+  canvas.calcOffset();
 
       // Set up UI handlers
       this.setupDrawingUI(drawingModal, canvas);
@@ -151,7 +149,6 @@ export class DrawingSystem {
     setTimeout(() => {
       this.saveCanvasState(canvas);
       this.updateUndoRedoButtons(undoBtn, redoBtn);
-      console.log('Initial canvas state saved, history length:', this.canvasHistory.length);
     }, 100);
 
     // Tool button handlers
@@ -325,18 +322,15 @@ export class DrawingSystem {
             // Ctrl+Shift+Z or Cmd+Shift+Z = Redo
             e.preventDefault();
             this.redo(canvas, undoBtn, redoBtn);
-            console.log('Keyboard shortcut: Redo');
           } else {
             // Ctrl+Z or Cmd+Z = Undo
             e.preventDefault();
             this.undo(canvas, undoBtn, redoBtn);
-            console.log('Keyboard shortcut: Undo');
           }
         } else if (e.key.toLowerCase() === 'y' && !isMac) {
           // Ctrl+Y = Redo (Windows/Linux style)
           e.preventDefault();
           this.redo(canvas, undoBtn, redoBtn);
-          console.log('Keyboard shortcut: Redo (Ctrl+Y)');
         }
       }
     };
@@ -345,10 +339,6 @@ export class DrawingSystem {
     document.addEventListener('keydown', this.keyboardHandler);
 
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    console.log('Keyboard shortcuts set up:', {
-      undo: isMac ? 'Cmd+Z' : 'Ctrl+Z',
-      redo: isMac ? 'Cmd+Shift+Z' : 'Ctrl+Y or Ctrl+Shift+Z'
-    });
   }
 
   /**
@@ -787,7 +777,7 @@ export class DrawingSystem {
       this.historyStep = this.maxHistorySteps - 1;
     }
 
-    console.log('Canvas state saved - step:', this.historyStep, 'history length:', this.canvasHistory.length, 'objects:', canvas.getObjects().length);
+  // Canvas state saved (debug log removed)
 
     // Update button states after saving state
     if (this.undoBtn && this.redoBtn) {
@@ -811,30 +801,30 @@ export class DrawingSystem {
     redoBtn.style.opacity = canRedo ? '1' : '0.5';
     redoBtn.style.cursor = canRedo ? 'pointer' : 'not-allowed';
 
-    console.log('Button states updated - canUndo:', canUndo, 'canRedo:', canRedo, 'historyStep:', this.historyStep, 'historyLength:', this.canvasHistory.length);
+  // Button state update (debug log removed)
   }
 
   /**
    * Undo last action
    */
   undo(canvas, undoBtn, redoBtn) {
-    console.log('Undo called - historyStep:', this.historyStep, 'history length:', this.canvasHistory.length);
+  // Undo called
     if (this.historyStep > 0) {
       this.historyStep--;
       const previousState = this.canvasHistory[this.historyStep];
-      console.log('Undoing to step:', this.historyStep, 'state length:', previousState.length);
+  // Undoing to step
       canvas.loadFromJSON(previousState, () => {
         canvas.requestRenderAll();
         canvas.calcOffset();
         setTimeout(() => {
           canvas.renderAll();
-          console.log('Undo completed, objects on canvas:', canvas.getObjects().length);
+          // Undo completed
         }, 10);
       });
       // Update button states after the undo operation
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     } else {
-      console.log('Cannot undo - at beginning of history');
+  // Cannot undo - at beginning of history
       // Still update button states to disable undo button
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     }
@@ -844,23 +834,23 @@ export class DrawingSystem {
    * Redo last undone action
    */
   redo(canvas, undoBtn, redoBtn) {
-    console.log('Redo called - historyStep:', this.historyStep, 'history length:', this.canvasHistory.length);
+  // Redo called
     if (this.historyStep < this.canvasHistory.length - 1) {
       this.historyStep++;
       const nextState = this.canvasHistory[this.historyStep];
-      console.log('Redoing to step:', this.historyStep, 'state length:', nextState.length);
+  // Redoing to step
       canvas.loadFromJSON(nextState, () => {
         canvas.requestRenderAll();
         canvas.calcOffset();
         setTimeout(() => {
           canvas.renderAll();
-          console.log('Redo completed, objects on canvas:', canvas.getObjects().length);
+          // Redo completed
         }, 10);
       });
       // Update button states after the redo operation
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     } else {
-      console.log('Cannot redo - at end of history');
+  // Cannot redo - at end of history
       // Still update button states to disable redo button
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     }
@@ -885,22 +875,22 @@ export class DrawingSystem {
    */
   async importImage(canvas) {
     try {
-      console.log('Starting image import...');
+  // starting image import
 
       // Use the existing image picker from the main process
       const result = await window.api.pickImage();
-      console.log('Image picker result:', result);
+  // image picker returned
 
       if (!result || !result.ok || !result.dataUrl) {
-        console.log('Image import cancelled or failed');
+  // image import cancelled or failed
         return;
       }
 
-      console.log('Creating fabric image from data URL, length:', result.dataUrl.length);
+  // creating fabric image from data URL
 
       // Check if this is an SVG file
       if (result.dataUrl.startsWith('data:image/svg+xml')) {
-        console.log('Detected SVG file, using SVG-specific handling');
+  // detected SVG, using SVG-specific handling
         this.importSVG(canvas, result.dataUrl);
         return;
       }
@@ -909,11 +899,10 @@ export class DrawingSystem {
       const htmlImg = new Image();
 
       htmlImg.onload = () => {
-        console.log('HTML image loaded successfully');
+  // HTML image loaded
 
         const fabricImg = new fabric.Image(htmlImg);
-        console.log('Fabric image created from HTML image');
-        console.log('Image dimensions:', { width: fabricImg.width, height: fabricImg.height });
+  // fabric image created
 
         if (!fabricImg || fabricImg.width === 0 || fabricImg.height === 0) {
           console.error('Invalid image dimensions:', { width: fabricImg.width, height: fabricImg.height });
@@ -924,7 +913,7 @@ export class DrawingSystem {
         // Calculate appropriate scaling to fit canvas while maintaining aspect ratio
         const canvasWidth = canvas.getWidth();
         const canvasHeight = canvas.getHeight();
-        console.log('Canvas dimensions:', { width: canvasWidth, height: canvasHeight });
+  // canvas dimensions computed
 
         const maxWidth = canvasWidth * 0.6; // Use 60% of canvas width for better visibility
         const maxHeight = canvasHeight * 0.6; // Use 60% of canvas height
@@ -933,7 +922,7 @@ export class DrawingSystem {
         const scaleX = maxWidth / fabricImg.width;
         const scaleY = maxHeight / fabricImg.height;
         const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-        console.log('Calculated scale:', scale);
+  // scale calculated
 
         // Set image properties
         const leftPos = (canvasWidth - (fabricImg.width * scale)) / 2;
@@ -948,29 +937,22 @@ export class DrawingSystem {
           evented: true
         });
 
-        console.log('Image positioned at:', { left: leftPos, top: topPos, scale: scale });
+  // image positioned
 
         // Add to canvas
-        canvas.add(fabricImg);
-        console.log('Image added to canvas, total objects:', canvas.getObjects().length);
+  canvas.add(fabricImg);
 
         // Set as active object
         canvas.setActiveObject(fabricImg);
 
         // Force render
         canvas.requestRenderAll();
-        console.log('Canvas render requested');
+  // canvas render requested
 
         // Save state for undo/redo
         this.saveCanvasState(canvas);
 
-        console.log('Image imported successfully', {
-          originalSize: { width: fabricImg.width, height: fabricImg.height },
-          scale: scale,
-          finalSize: { width: fabricImg.width * scale, height: fabricImg.height * scale },
-          position: { left: leftPos, top: topPos },
-          canvasObjects: canvas.getObjects().length
-        });
+        // image import completed
       };
 
       htmlImg.onerror = (error) => {
@@ -992,18 +974,16 @@ export class DrawingSystem {
    */
   importSVG(canvas, dataUrl) {
     try {
-      console.log('Processing SVG import...');
+  // processing SVG import
 
       // Extract SVG content from data URL
       const base64Content = dataUrl.split(',')[1];
       const svgContent = decodeURIComponent(escape(atob(base64Content)));
-      console.log('SVG content extracted, length:', svgContent.length);
+  // SVG content extracted
 
       // Use Fabric.js loadSVGFromString method
       fabric.loadSVGFromString(svgContent, (objects, options) => {
-        console.log('SVG loaded successfully');
-        console.log('SVG objects:', objects);
-        console.log('SVG options:', options);
+  // SVG loaded
 
         if (!objects || objects.length === 0) {
           console.error('No objects found in SVG');
@@ -1013,12 +993,12 @@ export class DrawingSystem {
 
         // Create a group from all SVG objects
         const svgGroup = fabric.util.groupSVGElements(objects, options);
-        console.log('SVG group created:', svgGroup);
+  // SVG group created
 
         // Calculate appropriate scaling to fit canvas
         const canvasWidth = canvas.getWidth();
         const canvasHeight = canvas.getHeight();
-        console.log('Canvas dimensions:', { width: canvasWidth, height: canvasHeight });
+  // canvas dimensions for SVG
 
         const maxWidth = canvasWidth * 0.6;
         const maxHeight = canvasHeight * 0.6;
@@ -1027,7 +1007,7 @@ export class DrawingSystem {
         const scaleX = maxWidth / svgGroup.width;
         const scaleY = maxHeight / svgGroup.height;
         const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-        console.log('Calculated SVG scale:', scale);
+  // calculated SVG scale
 
         // Position and scale the SVG group
         const leftPos = (canvasWidth - (svgGroup.width * scale)) / 2;
@@ -1042,30 +1022,22 @@ export class DrawingSystem {
           evented: true
         });
 
-        console.log('SVG positioned at:', { left: leftPos, top: topPos, scale: scale });
+  // SVG positioned
 
         // Add to canvas
-        canvas.add(svgGroup);
-        console.log('SVG added to canvas, total objects:', canvas.getObjects().length);
+  canvas.add(svgGroup);
 
         // Set as active object
         canvas.setActiveObject(svgGroup);
 
         // Force render
         canvas.requestRenderAll();
-        console.log('Canvas render requested for SVG');
+  // canvas render requested for SVG
 
         // Save state for undo/redo
         this.saveCanvasState(canvas);
 
-        console.log('SVG imported successfully', {
-          originalSize: { width: svgGroup.width, height: svgGroup.height },
-          scale: scale,
-          finalSize: { width: svgGroup.width * scale, height: svgGroup.height * scale },
-          position: { left: leftPos, top: topPos },
-          objectCount: objects.length,
-          canvasObjects: canvas.getObjects().length
-        });
+        // SVG import completed
       });
 
     } catch (error) {
@@ -1090,7 +1062,6 @@ export class DrawingSystem {
     if (this.keyboardHandler) {
       document.removeEventListener('keydown', this.keyboardHandler);
       this.keyboardHandler = null;
-      console.log('Keyboard shortcuts cleaned up');
     }
 
     // Reset state

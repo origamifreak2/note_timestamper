@@ -239,8 +239,7 @@ export class DeviceManager {
       this.resSelect.disabled = this.audioOnlyCheckbox.checked || noCameras || isRecording;
       this.fpsSelect.disabled = this.audioOnlyCheckbox.checked || noCameras || isRecording;
 
-      console.log('DeviceManager updateDeviceUIState - video controls disabled:', this.resSelect.disabled,
-                  '(audioOnly:', this.audioOnlyCheckbox.checked, 'noCameras:', noCameras, 'isRecording:', isRecording, ')');
+  // Device UI state updated (debug log removed)
     }
 
     // Audio bitrate should be disabled during recording to prevent mid-recording changes

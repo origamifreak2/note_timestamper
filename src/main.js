@@ -49,8 +49,6 @@ class NoteTimestamperApp {
   async init() {
     if (this.isInitialized) return;
 
-    console.log('Initializing Note Timestamper...');
-
     try {
       // Get DOM element references
       this.getDOMReferences();
@@ -79,8 +77,8 @@ class NoteTimestamperApp {
     }
 
     // Update initial UI state
-    this.updateUIState();      this.isInitialized = true;
-      console.log('Note Timestamper initialized successfully');
+    this.updateUIState();
+    this.isInitialized = true;
 
     } catch (error) {
       console.error('Failed to initialize Note Timestamper:', error);
@@ -498,7 +496,6 @@ class NoteTimestamperApp {
    * Handle recording state changes
    */
   onStateChange() {
-    console.log('Recording state changed, updating UI...');
     this.updateUIState();
   }
 
@@ -627,9 +624,8 @@ class NoteTimestamperApp {
       timerSystem.stopPlaybackTimer();
     }
 
-    // Immediately disable resolution dropdown and update recording controls
-    console.log('Pre-emptively disabling recording controls before starting recording');
-    this.updateRecordingControlsStateForRecording(true);
+  // Immediately disable resolution dropdown and update recording controls
+  this.updateRecordingControlsStateForRecording(true);
 
     try {
       await recordingSystem.startRecording();
@@ -644,26 +640,20 @@ class NoteTimestamperApp {
   /**
    * Handle stop recording button click
    */
-  async handleStopRecording() {
-    console.log('handleStopRecording called');
-    await recordingSystem.stopRecording();
+    handleStopRecording() {
+    const isRecording = recordingSystem.isRecording();
+    if (!isRecording) return;
 
-    // Ensure resolution and framerate dropdowns are re-enabled after stopping
-    if (this.elements.resSelect) {
-      console.log('Re-enabling resolution dropdown after recording stopped');
-      const shouldDisable = recordingSystem.isRecording() || deviceManager.isAudioOnly();
-      this.elements.resSelect.disabled = shouldDisable;
-      this.elements.resSelect.title = shouldDisable ?
-        (deviceManager.isAudioOnly() ? 'Resolution not applicable for audio-only recording' : 'Stop recording first to change resolution') :
-        'Select recording resolution';
+    recordingSystem.stopRecording();
+
+    // Re-enable resolution dropdown
+    if (this.elements.resSelect && this.elements.resSelect.disabled) {
+      this.elements.resSelect.disabled = false;
     }
-    if (this.elements.fpsSelect) {
-      console.log('Re-enabling framerate dropdown after recording stopped');
-      const shouldDisable = recordingSystem.isRecording() || deviceManager.isAudioOnly();
-      this.elements.fpsSelect.disabled = shouldDisable;
-      this.elements.fpsSelect.title = shouldDisable ?
-        (deviceManager.isAudioOnly() ? 'Framerate not applicable for audio-only recording' : 'Stop recording first to change framerate') :
-        'Select recording framerate';
+
+    // Re-enable framerate dropdown
+    if (this.elements.fpsSelect && this.elements.fpsSelect.disabled) {
+      this.elements.fpsSelect.disabled = false;
     }
   }
 
@@ -1117,7 +1107,6 @@ class NoteTimestamperApp {
 
     if (resSelect) {
       const shouldDisable = isRecording || isAudioOnly;
-      console.log('Updating resolution dropdown - disabled:', shouldDisable, '(recording:', isRecording, 'audioOnly:', isAudioOnly, ')');
       resSelect.disabled = shouldDisable;
       resSelect.title = isRecording ?
         'Stop recording first to change resolution' :
@@ -1131,7 +1120,6 @@ class NoteTimestamperApp {
 
     if (fpsSelect) {
       const shouldDisable = isRecording || isAudioOnly;
-      console.log('Updating framerate dropdown - disabled:', shouldDisable, '(recording:', isRecording, 'audioOnly:', isAudioOnly, ')');
       fpsSelect.disabled = shouldDisable;
       fpsSelect.title = isRecording ?
         'Stop recording first to change framerate' :
@@ -1174,7 +1162,6 @@ class NoteTimestamperApp {
 
     if (resSelect) {
       const shouldDisable = isRecording || isAudioOnly;
-      console.log('Force setting resolution dropdown disabled:', shouldDisable, '(recording:', isRecording, 'audioOnly:', isAudioOnly, ')');
       resSelect.disabled = shouldDisable;
       resSelect.title = isRecording ?
         'Stop recording first to change resolution' :
@@ -1183,7 +1170,6 @@ class NoteTimestamperApp {
 
     if (fpsSelect) {
       const shouldDisable = isRecording || isAudioOnly;
-      console.log('Force setting framerate dropdown disabled:', shouldDisable, '(recording:', isRecording, 'audioOnly:', isAudioOnly, ')');
       fpsSelect.disabled = shouldDisable;
       fpsSelect.title = isRecording ?
         'Stop recording first to change framerate' :

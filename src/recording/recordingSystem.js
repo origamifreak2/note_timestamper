@@ -111,31 +111,23 @@ export class RecordingSystem {
 
       this.mediaRecorder.onstop = () => this.handleStop();
       this.mediaRecorder.onpause = () => {
-        this.statusEl.textContent = 'Paused';
-        console.log('MediaRecorder paused, calling onStateChange');
-        if (this.onStateChange) this.onStateChange();
+        this.onStateChange?.();
       };
       this.mediaRecorder.onresume = () => {
-        this.statusEl.textContent = 'Recording…';
-        console.log('MediaRecorder resumed, calling onStateChange');
-        if (this.onStateChange) this.onStateChange();
+        this.onStateChange?.();
       };
       this.mediaRecorder.onstart = () => {
-        console.log('MediaRecorder started, calling onStateChange');
-        if (this.onStateChange) this.onStateChange();
+        this.onStateChange?.();
       };
       this.mediaRecorder.onerror = (e) => {
         console.error('MediaRecorder error:', (e && e.error) || e);
-        this.statusEl.textContent = 'Recorder error — see console';
       };
 
-      // Update UI state BEFORE starting MediaRecorder to prevent race conditions
-      console.log('Setting UI state to recording BEFORE MediaRecorder.start()');
-      this.updateUIState('recording');
+  // Update UI state BEFORE starting MediaRecorder to prevent race conditions
+  this.updateUIState('recording');
 
       // Start recording and update UI
       this.mediaRecorder.start(); // No timeslice - get complete blob on stop
-      console.log('MediaRecorder started, state:', this.mediaRecorder.state);
 
       // Initialize recording timer
       timerSystem.startRecording();
@@ -451,8 +443,7 @@ export class RecordingSystem {
    * @returns {boolean} True if recording is active
    */
   isRecording() {
-    const result = this.mediaRecorder && this.mediaRecorder.state !== 'inactive';
-    console.log('isRecording called, mediaRecorder:', !!this.mediaRecorder, 'state:', this.mediaRecorder?.state, 'result:', result);
+    const result = this.mediaRecorder && this.mediaRecorder.state === 'recording';
     return result;
   }
 
