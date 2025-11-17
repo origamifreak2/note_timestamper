@@ -765,6 +765,7 @@ ipcMain.handle('pick-image', async () => {
     png: 'image/png',
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
+    svg: 'image/svg+xml',
     gif: 'image/gif',
     webp: 'image/webp'
   };
