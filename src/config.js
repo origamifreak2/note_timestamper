@@ -44,6 +44,11 @@ export const CONFIG = {
     RECORDING_TIMEOUT: 3000 // ms for robust stop
   },
 
+  // Device settings
+  DEVICE: {
+    INIT_TIMEOUT: 5000 // ms - timeout for device initialization (e.g., video.play())
+  },
+
   // Image settings
   IMAGE: {
     MAX_FILE_SIZE: 15 * 1024 * 1024, // 15MB
@@ -106,6 +111,7 @@ export const ERRORS = {
     NOT_ALLOWED: 'Please allow camera access and try again.',
     NOT_FOUND: 'No camera device found.',
     NOT_READABLE: 'Camera is already in use by another application.',
+    INIT_TIMEOUT: 'Camera initialization timed out. The device may be broken or unavailable.',
     GENERIC: 'Please check permissions and try again.'
   },
 

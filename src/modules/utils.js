@@ -42,6 +42,23 @@ export function sleep(ms) {
 }
 
 /**
+ * Wraps a promise with a timeout, rejecting if the promise doesn't resolve in time
+ * Used for handling potentially hanging operations like broken webcam initialization
+ * @param {Promise} promise - The promise to wrap with a timeout
+ * @param {number} ms - Timeout in milliseconds
+ * @param {string} errorMsg - Error message to use if timeout occurs
+ * @returns {Promise} Promise that resolves with the original result or rejects on timeout
+ */
+export function withTimeout(promise, ms, errorMsg = 'Operation timed out') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(errorMsg)), ms)
+    )
+  ]);
+}
+
+/**
  * Detects if running on macOS (affects which modifier key to use)
  * @returns {boolean} True if on macOS
  */

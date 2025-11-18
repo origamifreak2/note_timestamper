@@ -4,6 +4,8 @@
  */
 
 import { audioLevelMonitor } from '../modules/audioLevel.js';
+import { CONFIG } from '../config.js';
+import { withTimeout } from '../modules/utils.js';
 
 /**
  * Mixer system for combining audio and video streams
@@ -95,7 +97,13 @@ export class MixerSystem {
         camVideo.playsInline = true;
         camVideo.muted = true;           // Prevent audio feedback
         camVideo.srcObject = camStream;
-        await camVideo.play();
+        
+        // Add timeout to prevent hanging on broken webcams
+        await withTimeout(
+          camVideo.play(),
+          CONFIG.DEVICE.INIT_TIMEOUT,
+          'Camera initialization timed out. The device may be broken or unavailable.'
+        );
 
         // Create canvas to capture video frames at controlled frame rate
         canvas = document.createElement('canvas');
@@ -210,7 +218,13 @@ export class MixerSystem {
       // Update video element with new stream (canvas drawing loop continues automatically)
       this.mixer.camStream = newStream;
       this.mixer.camVideo.srcObject = newStream;
-      await this.mixer.camVideo.play();
+      
+      // Add timeout to prevent hanging on broken webcams
+      await withTimeout(
+        this.mixer.camVideo.play(),
+        CONFIG.DEVICE.INIT_TIMEOUT,
+        'Camera initialization timed out. The device may be broken or unavailable.'
+      );
     } catch (e) {
       console.error('switchCamLive failed', e);
       throw new Error('Unable to switch camera live on this system.');

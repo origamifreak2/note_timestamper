@@ -133,8 +133,10 @@ export class RecordingSystem {
       timerSystem.startRecording();
 
       // Set up audio level monitoring for audio-only recording
+      // Show audio level meter if: explicitly audio-only OR video failed (no video tracks in stream)
       const deviceManager = mixerSystem.deviceManager;
-      if (deviceManager && deviceManager.isAudioOnly()) {
+      const hasVideo = this.mediaStream.getVideoTracks().length > 0;
+      if (!hasVideo) {
         audioLevelMonitor.toggle(true);
         audioLevelMonitor.start();
       } else {
