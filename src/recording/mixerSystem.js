@@ -97,7 +97,7 @@ export class MixerSystem {
         camVideo.playsInline = true;
         camVideo.muted = true;           // Prevent audio feedback
         camVideo.srcObject = camStream;
-        
+
         // Add timeout to prevent hanging on broken webcams
         await withTimeout(
           camVideo.play(),
@@ -218,7 +218,7 @@ export class MixerSystem {
       // Update video element with new stream (canvas drawing loop continues automatically)
       this.mixer.camStream = newStream;
       this.mixer.camVideo.srcObject = newStream;
-      
+
       // Add timeout to prevent hanging on broken webcams
       await withTimeout(
         this.mixer.camVideo.play(),
