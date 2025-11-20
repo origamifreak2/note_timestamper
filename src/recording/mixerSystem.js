@@ -115,9 +115,18 @@ export class MixerSystem {
 
         // Animation loop to continuously draw video frames to canvas
         const draw = () => {
+          // Lifecycle check: stop drawing if video element is destroyed or not playing
+          if (!camVideo || camVideo.paused || camVideo.ended || camVideo.readyState < 2) {
+            return;
+          }
+
           try {
             ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
-          } catch { }
+          } catch {
+            // Drawing failed, stop the loop
+            return;
+          }
+
           rafId = setTimeout(draw, Math.round(1000 / fps));  // Maintain consistent frame rate
         };
         draw();  // Start the drawing loop
@@ -238,11 +247,24 @@ export class MixerSystem {
   destroy() {
     if (!this.mixer) return;
 
-    try { if (this.mixer.rafId) clearTimeout(this.mixer.rafId); } catch { }  // Stop canvas drawing loop
-    try { if (this.mixer.audioCtx) { this.mixer.audioCtx.close(); } } catch { }                    // Close Web Audio context
-    try { if (this.mixer.camVideo) { this.mixer.camVideo.pause(); } } catch { }                    // Stop video playback
-    try { if (this.mixer.camStream) { this.mixer.camStream.getTracks().forEach(t => t.stop()); } } catch { }  // Stop camera tracks
-    try { if (this.mixer.micStream) { this.mixer.micStream.getTracks().forEach(t => t.stop()); } } catch { }  // Stop microphone tracks
+    // Stop canvas drawing loop first to prevent further draws
+    try { if (this.mixer.rafId) clearTimeout(this.mixer.rafId); } catch { }
+    this.mixer.rafId = null;
+
+    // Pause and clear video element
+    try {
+      if (this.mixer.camVideo) {
+        this.mixer.camVideo.pause();
+        this.mixer.camVideo.srcObject = null; // Clear source to trigger lifecycle checks
+      }
+    } catch { }
+
+    // Stop all media tracks
+    try { if (this.mixer.camStream) { this.mixer.camStream.getTracks().forEach(t => t.stop()); } } catch { }
+    try { if (this.mixer.micStream) { this.mixer.micStream.getTracks().forEach(t => t.stop()); } } catch { }
+
+    // Close Web Audio context
+    try { if (this.mixer.audioCtx) { this.mixer.audioCtx.close(); } } catch { }
 
     // Clean up audio level monitoring
     audioLevelMonitor.setAnalyser(null);

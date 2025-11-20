@@ -51,7 +51,10 @@ cameraStream → videoElement → canvas.drawImage() → canvas.captureStream(fp
 
 - **HTMLVideoElement**: Plays camera stream for canvas rendering
 - **Canvas 2D Context**: Draws video frames at controlled framerate
-- **RequestAnimationFrame Loop**: Maintains consistent video rendering
+- **RequestAnimationFrame Loop**: Maintains consistent video rendering with lifecycle checks
+  - Verifies video element existence before each draw
+  - Checks playback state (not paused/ended) and ready state
+  - Stops gracefully when video becomes invalid or is destroyed
 - **Canvas.captureStream()**: Outputs canvas as MediaStream at specified FPS
 
 ### Live Device Switching
@@ -109,6 +112,8 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 
 ### Recording System (`src/recording/`)
 - **mixerSystem.js**: Sophisticated Web Audio + Canvas mixing with live device switching
+  - Canvas draw loop with lifecycle checks for graceful cleanup
+  - Proper animation cleanup prevents runaway timers and resource leaks
 - **recordingSystem.js**: Advanced MediaRecorder lifecycle, codec selection, state management, blob URL memory management
 
 ### UI Components (`src/ui/`)
@@ -269,6 +274,7 @@ export const mySystem = new MySystem(); // singleton
 - Live device switching without recording interruption
 - Enhanced stop/finalization with timeout protection
 - Blob URL memory management to prevent memory leaks
+- Canvas animation lifecycle management prevents runaway timers and resource leaks
 
 ## ⚠️ Critical Integration Points
 

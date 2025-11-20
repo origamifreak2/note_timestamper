@@ -16,6 +16,12 @@ All notable changes to **Note Timestamper** will be documented here.
   - Properly revoke blob URLs with `URL.revokeObjectURL()` before creating new ones
   - Clean up URLs in `finalizePreview()`, `loadRecording()`, and `reset()` methods
   - Prevents memory accumulation across multiple recording sessions
+- **Fixed canvas animation cleanup** in `src/recording/mixerSystem.js`
+  - Added lifecycle checks to canvas draw loop (video element existence, playback state, ready state)
+  - Draw loop now stops gracefully when video element is destroyed or becomes invalid
+  - Enhanced `destroy()` method with proper cleanup order and null assignments
+  - Prevents runaway animations and "Failed to execute 'drawImage'" console errors
+  - Eliminates unnecessary CPU consumption after mixer cleanup
 
 ## [0.11.0] - 2025-11-16
 ### Added

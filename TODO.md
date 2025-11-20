@@ -9,7 +9,7 @@
 - [x] **Fix memory leaks** in `src/recording/recordingSystem.js`
   - Add blob URL cleanup with `URL.revokeObjectURL()`
   - Track and revoke URLs in `finalizePreview()` and `cleanup()` methods
-- [ ] **Fix canvas animation cleanup** in `src/recording/mixerSystem.js`
+- [x] **Fix canvas animation cleanup** in `src/recording/mixerSystem.js`
   - Add proper lifecycle checks to canvas draw loop
   - Clear timeout when video element is destroyed
 - [ ] **Improve error handling** in `src/recording/mixerSystem.js`
