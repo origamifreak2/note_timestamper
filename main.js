@@ -291,14 +291,22 @@ app.whenReady().then(() => {
   });
 
   // Handle permission requests from renderer (e.g. getUserMedia)
-  // We explicitly allow 'media' permissions so the camera/microphone prompt works in the renderer.
-  // SECURITY: In a production app you may want to check `details.requestingUrl` and only allow
-  // permissions for trusted origins. This example keeps it simple and allows media requests.
+  // SECURITY: Only allow media permissions from our trusted local file origin
   try {
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
       if (permission === 'media') {
-        // Allow camera/microphone access
-        callback(true);
+        // Validate that the request is coming from our app's file:// origin
+        const requestingUrl = details.requestingUrl || '';
+        const isLocalFile = requestingUrl.startsWith('file://');
+
+        if (isLocalFile) {
+          // Allow camera/microphone access from our app
+          callback(true);
+        } else {
+          // Deny media access from untrusted origins
+          console.warn(`Blocked media permission request from untrusted origin: ${requestingUrl}`);
+          callback(false);
+        }
       } else {
         // Default deny for other permissions
         callback(false);

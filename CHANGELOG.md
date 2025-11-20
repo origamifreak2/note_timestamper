@@ -2,6 +2,14 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [Unreleased]
+### Security
+- **Fixed critical security vulnerability** in media permission handler
+  - Added origin validation to `setPermissionRequestHandler` in `main.js`
+  - Now validates `details.requestingUrl` to ensure requests come from trusted `file://` origins
+  - Prevents malicious external content from accessing camera/microphone
+  - Logs warning when blocking untrusted permission requests
+
 ## [0.11.0] - 2025-11-16
 ### Added
 - **Drawing edit functionality** with double-click to re-edit inserted drawings

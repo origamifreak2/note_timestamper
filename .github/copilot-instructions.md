@@ -442,6 +442,23 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   - `session.json` stores metadata (created date, media filename, app version)
   - Enables seamless load/save of audio/video + timestamped notes
 
+### Electron Security (Permission Handling)
+- **Media Permissions**: `main.js` uses `setPermissionRequestHandler` with origin validation
+- **Security Pattern**: Only allows media access from trusted `file://` origins
+  ```javascript
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    if (permission === 'media') {
+      const requestingUrl = details.requestingUrl || '';
+      const isLocalFile = requestingUrl.startsWith('file://');
+      callback(isLocalFile); // Only allow local file origins
+    } else {
+      callback(false); // Deny all other permissions
+    }
+  });
+  ```
+- **Why This Matters**: Prevents malicious external content from accessing camera/microphone
+- **Pattern to Follow**: Always validate `details.requestingUrl` before granting permissions
+
 ### Quill.js Event Handling
 - Text changes trigger `onQuillTextChange()` → updates save/export button states
 - Custom keyboard shortcuts via `quill.keyboard.addBinding()`
@@ -479,5 +496,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** modify recording controls directly - use `updateRecordingControlsState()`
 - **Don't** forget to call module `.init()` methods with proper DOM references
 - **Don't** assume synchronous MediaRecorder operations - use await/promises
+- **Don't** grant Electron permissions without origin validation - always check `details.requestingUrl`
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
+- **Do** validate all IPC handler inputs to prevent security vulnerabilities

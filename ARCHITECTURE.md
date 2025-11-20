@@ -375,6 +375,24 @@ ipcMain.handle('close-temp-media', async (evt, id) => {
 });
 ```
 
+### Electron Security (Permission Handling)
+- **Media Permissions**: Uses `setPermissionRequestHandler` with strict origin validation
+- **Security Pattern**: Only allows media access from trusted `file://` origins
+  ```javascript
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    if (permission === 'media') {
+      const requestingUrl = details.requestingUrl || '';
+      const isLocalFile = requestingUrl.startsWith('file://');
+      callback(isLocalFile); // Only allow local file origins
+    } else {
+      callback(false); // Deny all other permissions
+    }
+  });
+  ```
+- **Why This Matters**: Prevents malicious external content from accessing camera/microphone
+- **Pattern to Follow**: Always validate `details.requestingUrl` before granting permissions
+- **Logging**: Warns when blocking untrusted permission requests for debugging
+
 ### Quill.js Deep Integration
 - Custom blots for timestamps (`<button class="ts" data-ts="123.45">`) and images
 - Text changes trigger `onQuillTextChange()` → selective UI state updates
