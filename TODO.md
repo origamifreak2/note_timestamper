@@ -6,7 +6,7 @@
 - [x] **Fix critical security vulnerability** in `main.js` (lines 238-248)
   - Add origin validation to media permission handler
   - Prevent untrusted origins from accessing camera/microphone
-- [ ] **Fix memory leaks** in `src/recording/recordingSystem.js`
+- [x] **Fix memory leaks** in `src/recording/recordingSystem.js`
   - Add blob URL cleanup with `URL.revokeObjectURL()`
   - Track and revoke URLs in `finalizePreview()` and `cleanup()` methods
 - [ ] **Fix canvas animation cleanup** in `src/recording/mixerSystem.js`

@@ -109,7 +109,7 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 
 ### Recording System (`src/recording/`)
 - **mixerSystem.js**: Sophisticated Web Audio + Canvas mixing with live device switching
-- **recordingSystem.js**: Advanced MediaRecorder lifecycle, codec selection, state management
+- **recordingSystem.js**: Advanced MediaRecorder lifecycle, codec selection, state management, blob URL memory management
 
 ### UI Components (`src/ui/`)
 - **cameraSystem.js**: Camera modal for capturing photos during recording
@@ -268,6 +268,7 @@ export const mySystem = new MySystem(); // singleton
 - Proper MediaRecorder lifecycle management
 - Live device switching without recording interruption
 - Enhanced stop/finalization with timeout protection
+- Blob URL memory management to prevent memory leaks
 
 ## ⚠️ Critical Integration Points
 

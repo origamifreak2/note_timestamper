@@ -20,6 +20,7 @@ export class RecordingSystem {
     this.recordedBlob = null;
     this.mediaExt = 'webm';
     this.lastDataChunk = null;
+    this.currentBlobUrl = null; // Track blob URL for cleanup
 
     // UI elements
     this.player = null;
@@ -265,10 +266,17 @@ export class RecordingSystem {
       this.chunks.push(this.lastDataChunk);
     }
 
+    // Revoke previous blob URL to prevent memory leaks
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+
     if (this.chunks.length) {
       // Combine all chunks into a single blob
       this.recordedBlob = new Blob(this.chunks, { type: (this.chunks[0] && this.chunks[0].type) || 'video/webm' });
       const url = URL.createObjectURL(this.recordedBlob);
+      this.currentBlobUrl = url; // Track URL for later cleanup
 
       // Switch player from live preview to recorded playback
       this.player.srcObject = null;  // Clear live stream
@@ -363,6 +371,12 @@ export class RecordingSystem {
     // Clean up mixer
     mixerSystem.destroy();
 
+    // Revoke blob URL to prevent memory leaks
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+
     // Reset data
     this.recordedBlob = null;
     this.chunks = [];
@@ -454,9 +468,16 @@ export class RecordingSystem {
    * @param {ArrayBuffer} mediaArrayBuffer - Media data as ArrayBuffer
    */
   loadRecording(mediaArrayBuffer) {
+    // Revoke previous blob URL to prevent memory leaks
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+    }
+
     if (mediaArrayBuffer) {
       const blob = new Blob([mediaArrayBuffer], { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
+      this.currentBlobUrl = url; // Track URL for later cleanup
       this.recordedBlob = blob;
       this.player.srcObject = null;
       this.player.muted = false;

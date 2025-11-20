@@ -469,6 +469,29 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - Recording state changes propagate via `onStateChange` callbacks
 - Device selection persistence uses localStorage keys in `CONFIG.STORAGE_KEYS`
 
+### Memory Management
+- **Blob URL Cleanup**: Always revoke blob URLs created with `URL.createObjectURL()` to prevent memory leaks
+- **Pattern in recordingSystem.js**:
+  ```javascript
+  // Track blob URLs for cleanup
+  this.currentBlobUrl = null;
+
+  // Before creating new blob URL, revoke old one
+  if (this.currentBlobUrl) {
+    URL.revokeObjectURL(this.currentBlobUrl);
+    this.currentBlobUrl = null;
+  }
+
+  // Create and track new URL
+  const url = URL.createObjectURL(blob);
+  this.currentBlobUrl = url;
+  ```
+- **Critical Cleanup Points**:
+  - `finalizePreview()`: Revoke before creating preview URL
+  - `loadRecording()`: Revoke before loading new session
+  - `reset()`: Revoke when clearing recording state
+- **Why This Matters**: Blob URLs persist in memory until explicitly revoked, causing memory leaks across multiple recording sessions
+
 ## �️ Planned Feature Areas
 
 ### Drawing System Enhancements (`src/ui/drawingSystem.js`)
@@ -491,12 +514,14 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Export customization**: Modify `exportAsEmbeddedHtml()` and `exportAsSeparateFiles()` methods
 - **Video effects**: Add filter pipeline in recording or post-processing chain
 
-## �🚫 Common Pitfalls
+## 🚫 Common Pitfalls
 
 - **Don't** modify recording controls directly - use `updateRecordingControlsState()`
 - **Don't** forget to call module `.init()` methods with proper DOM references
 - **Don't** assume synchronous MediaRecorder operations - use await/promises
 - **Don't** grant Electron permissions without origin validation - always check `details.requestingUrl`
+- **Don't** create blob URLs without tracking them for cleanup - always revoke with `URL.revokeObjectURL()`
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
 - **Do** validate all IPC handler inputs to prevent security vulnerabilities
+- **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs

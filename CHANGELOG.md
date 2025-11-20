@@ -10,6 +10,13 @@ All notable changes to **Note Timestamper** will be documented here.
   - Prevents malicious external content from accessing camera/microphone
   - Logs warning when blocking untrusted permission requests
 
+### Fixed
+- **Fixed memory leaks** in `src/recording/recordingSystem.js`
+  - Added blob URL tracking with `currentBlobUrl` property
+  - Properly revoke blob URLs with `URL.revokeObjectURL()` before creating new ones
+  - Clean up URLs in `finalizePreview()`, `loadRecording()`, and `reset()` methods
+  - Prevents memory accumulation across multiple recording sessions
+
 ## [0.11.0] - 2025-11-16
 ### Added
 - **Drawing edit functionality** with double-click to re-edit inserted drawings

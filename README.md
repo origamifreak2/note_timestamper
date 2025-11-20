@@ -18,6 +18,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Audio-Only Mode**: Record just audio with visual level monitoring
 - **Pause/Resume**: Robust pause/resume with proper time tracking
 - **Multiple Resolutions**: Support for 360p to 1080p recording
+- **Memory Management**: Efficient blob URL cleanup prevents memory leaks across sessions
 
 ### 💾 Session Management
 - **Save/Load Sessions**: Save complete sessions as `.notepack` folders
