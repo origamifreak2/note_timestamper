@@ -99,7 +99,11 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
 - **UI**: Z-index values, modal dimensions, layout constants
 - **STORAGE_KEYS**: LocalStorage key names for persistence
 - **STATES**: Enumerated state values for consistency
-- **ERRORS/MESSAGES**: Standardized user-facing text
+- **ERRORS**: Comprehensive error messages with actionable user guidance
+  - Camera errors (permission denied, not found, in use, timeout, switch failures)
+  - Microphone errors (permission denied, not found, in use, connection failures)
+  - Each error type provides specific resolution steps for users
+- **MESSAGES**: Standardized success messages for user feedback
 
 ## � Session Persistence Architecture (Zip-Based)
 
@@ -429,6 +433,28 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - Required for live device switching during recording
 - Canvas-based video mixing for visual audio levels
 
+### Error Handling Architecture
+- **Device Access Errors**: `mixerSystem.js` detects specific MediaStream API errors
+  - `NotAllowedError`: Permission denied → directs user to system settings
+  - `NotFoundError`: Device not found → prompts to connect device and reload
+  - `NotReadableError`: Device in use → suggests closing other applications
+  - Timeout errors: Indicates potential hardware malfunction
+- **Error Flow**: Device layer throws descriptive errors → recording system catches → UI displays in status bar
+- **User Guidance**: All errors include actionable resolution steps
+- **Error Propagation**:
+  ```javascript
+  // mixerSystem.js throws specific errors
+  throw new Error('Microphone access denied. Please allow microphone permissions...');
+
+  // main.js catches and displays
+  catch (error) {
+    this.elements.status.textContent = error.message;
+  }
+  ```
+- **Live Switching Errors**: Device switching failures during recording show alerts with guidance
+- **Cleanup on Failure**: Partial device setup is cleaned up when errors occur
+- **Pattern to Follow**: Always throw descriptive errors with resolution guidance, never silent failures
+
 ### Electron IPC (Main ↔ Renderer)
 - `preload.cjs` exposes session and file operation APIs with four categories:
   - **Session Handlers**: `saveSession(payload)`, `loadSession()`
@@ -521,7 +547,11 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** assume synchronous MediaRecorder operations - use await/promises
 - **Don't** grant Electron permissions without origin validation - always check `details.requestingUrl`
 - **Don't** create blob URLs without tracking them for cleanup - always revoke with `URL.revokeObjectURL()`
+- **Don't** use silent error handling (console.warn) - throw descriptive errors with user guidance
+- **Don't** leave errors unhandled - catch and display in UI with actionable messages
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
 - **Do** validate all IPC handler inputs to prevent security vulnerabilities
 - **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs
+- **Do** detect specific error types (NotAllowedError, NotFoundError, NotReadableError) and provide targeted guidance
+- **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)

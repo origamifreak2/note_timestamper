@@ -46,7 +46,17 @@ export class MixerSystem {
         audio: audioId ? { deviceId: { exact: audioId } } : true
       });
     } catch (e) {
-      console.warn('Mic getUserMedia failed, proceeding without audio', e);
+      console.error('Microphone access failed:', e);
+      // Provide user-facing error message based on error type
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        throw new Error('Microphone access denied. Please allow microphone permissions in your system settings and reload the app.');
+      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+        throw new Error('No microphone device found. Please connect a microphone and reload the app.');
+      } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+        throw new Error('Microphone is already in use by another application. Please close other apps using the microphone and try again.');
+      } else {
+        throw new Error('Failed to access microphone. Please check that your microphone is connected and not in use by another application.');
+      }
     }
 
     // Create Web Audio context for mixing
@@ -71,7 +81,10 @@ export class MixerSystem {
         // Store analyser for level monitoring
         audioLevelMonitor.setAnalyser(analyser);
       } catch (e) {
-        console.warn('Mic source connect failed', e);
+        console.error('Failed to connect microphone to audio system:', e);
+        // Clean up partial audio context setup
+        try { if (micStream) { micStream.getTracks().forEach(t => t.stop()); } } catch {}
+        throw new Error('Failed to connect microphone to audio system. Please reload the app and try again.');
       }
     }
 
@@ -131,7 +144,23 @@ export class MixerSystem {
         };
         draw();  // Start the drawing loop
       } catch (e) {
-        console.warn('Camera getUserMedia failed, proceeding audio-only', e);
+        console.error('Camera access failed:', e);
+        // Clean up any partial camera setup
+        try { if (camStream) { camStream.getTracks().forEach(t => t.stop()); } } catch {}
+
+        // Provide user-facing error message based on error type
+        if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+          throw new Error('Camera access denied. Please allow camera permissions in your system settings and reload the app.');
+        } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+          throw new Error('No camera device found. Please connect a camera and reload the app.');
+        } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+          throw new Error('Camera is already in use by another application. Please close other apps using the camera and try again.');
+        } else if (e.message && e.message.includes('timed out')) {
+          // This is from our withTimeout wrapper
+          throw e; // Re-throw the timeout error with its original message
+        } else {
+          throw new Error('Failed to access camera. Please check that your camera is connected and not in use by another application.');
+        }
       }
     }
 
@@ -201,8 +230,17 @@ export class MixerSystem {
         this.mixer.micSrc.connect(this.mixer.dest);
       }
     } catch (e) {
-      console.error('switchMicLive failed', e);
-      throw new Error('Unable to switch microphone live on this system.');
+      console.error('Failed to switch microphone during recording:', e);
+      // Provide user-facing error message
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        throw new Error('Microphone access denied. Please allow microphone permissions in your system settings.');
+      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+        throw new Error('Selected microphone device not found. It may have been disconnected.');
+      } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+        throw new Error('Microphone is already in use by another application.');
+      } else {
+        throw new Error('Unable to switch microphone during recording. Please stop recording, change the microphone, and start a new recording.');
+      }
     }
   }
 
@@ -235,8 +273,20 @@ export class MixerSystem {
         'Camera initialization timed out. The device may be broken or unavailable.'
       );
     } catch (e) {
-      console.error('switchCamLive failed', e);
-      throw new Error('Unable to switch camera live on this system.');
+      console.error('Failed to switch camera during recording:', e);
+      // Provide user-facing error message
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        throw new Error('Camera access denied. Please allow camera permissions in your system settings.');
+      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+        throw new Error('Selected camera device not found. It may have been disconnected.');
+      } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+        throw new Error('Camera is already in use by another application.');
+      } else if (e.message && e.message.includes('timed out')) {
+        // This is from our withTimeout wrapper
+        throw e; // Re-throw the timeout error with its original message
+      } else {
+        throw new Error('Unable to switch camera during recording. Please stop recording, change the camera, and start a new recording.');
+      }
     }
   }
 

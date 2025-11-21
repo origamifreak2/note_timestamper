@@ -10,6 +10,19 @@ All notable changes to **Note Timestamper** will be documented here.
   - Prevents malicious external content from accessing camera/microphone
   - Logs warning when blocking untrusted permission requests
 
+### Enhanced
+- **Improved error handling** in `src/recording/mixerSystem.js`
+  - Replaced silent console warnings with actionable error messages
+  - Added user-facing notifications for microphone/camera failures
+  - Error messages now include specific guidance based on failure type:
+    - Permission denied: Directs user to system settings
+    - Device not found: Prompts to connect device and reload
+    - Device in use: Suggests closing other applications
+    - Timeout errors: Indicates potential hardware issues
+  - Enhanced error messages in `src/config.js` with comprehensive ERRORS object
+  - Errors properly caught and displayed in status bar via `src/main.js`
+  - Live device switching failures now provide actionable feedback
+
 ### Fixed
 - **Fixed memory leaks** in `src/recording/recordingSystem.js`
   - Added blob URL tracking with `currentBlobUrl` property

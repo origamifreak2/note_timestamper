@@ -697,9 +697,11 @@ class NoteTimestamperApp {
       await recordingSystem.startRecording();
     } catch (error) {
       // If recording failed, re-enable the controls
-      console.error('Recording failed to start, re-enabling controls:', error);
+      console.error('Recording failed to start:', error);
       this.updateRecordingControlsStateForRecording(false);
-      throw error;
+
+      // Display user-facing error message
+      this.elements.status.textContent = error.message || 'Recording failed to start. Please check device permissions and try again.';
     }
   }
 
@@ -751,7 +753,12 @@ class NoteTimestamperApp {
     deviceManager.persistSelection();
     const id = deviceManager.getSelectedMicId();
     if (id && recordingSystem.isRecording()) {
-      await recordingSystem.switchMicrophoneLive(id);
+      try {
+        await recordingSystem.switchMicrophoneLive(id);
+      } catch (error) {
+        console.error('Failed to switch microphone:', error);
+        this.elements.status.textContent = error.message || 'Failed to switch microphone.';
+      }
     }
   }
 
@@ -762,7 +769,12 @@ class NoteTimestamperApp {
     deviceManager.persistSelection();
     const id = deviceManager.getSelectedCamId();
     if (id && recordingSystem.isRecording()) {
-      await recordingSystem.switchCameraLive(id);
+      try {
+        await recordingSystem.switchCameraLive(id);
+      } catch (error) {
+        console.error('Failed to switch camera:', error);
+        this.elements.status.textContent = error.message || 'Failed to switch camera.';
+      }
     }
   }
 

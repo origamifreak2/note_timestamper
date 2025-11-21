@@ -88,7 +88,11 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 - **UI**: Z-index values, modal dimensions, layout constants
 - **STORAGE_KEYS**: LocalStorage persistence keys
 - **STATES**: Enumerated state values for consistency
-- **ERRORS/MESSAGES**: Standardized user-facing text
+- **ERRORS**: Comprehensive error messages with actionable guidance
+  - Camera errors: Permission denied, not found, in use, timeout, switch failures
+  - Microphone errors: Permission denied, not found, in use, connection failures
+  - Each error provides specific resolution steps for users
+- **MESSAGES**: Success messages for user feedback
 
 ## 📦 Module Responsibilities
 
@@ -114,6 +118,9 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 - **mixerSystem.js**: Sophisticated Web Audio + Canvas mixing with live device switching
   - Canvas draw loop with lifecycle checks for graceful cleanup
   - Proper animation cleanup prevents runaway timers and resource leaks
+  - Comprehensive error handling with user-facing messages
+  - Device-specific error detection (NotAllowedError, NotFoundError, NotReadableError)
+  - Actionable guidance for permission, connection, and hardware failures
 - **recordingSystem.js**: Advanced MediaRecorder lifecycle, codec selection, state management, blob URL memory management
 
 ### UI Components (`src/ui/`)
@@ -241,6 +248,58 @@ export const mySystem = new MySystem(); // singleton
 - Modules receive DOM elements and callbacks during initialization
 - Clear separation between module logic and UI concerns
 - Testable interfaces with mock DOM elements
+
+## 🚨 Error Handling Architecture
+
+### Comprehensive Error Detection and User Feedback
+The application implements a sophisticated error handling system that provides actionable guidance to users:
+
+```javascript
+// Error detection in mixerSystem.js
+try {
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+} catch (e) {
+  // Detect specific error types
+  if (e.name === 'NotAllowedError') {
+    throw new Error('Microphone access denied. Please allow microphone permissions...');
+  } else if (e.name === 'NotFoundError') {
+    throw new Error('No microphone device found. Please connect a microphone...');
+  } else if (e.name === 'NotReadableError') {
+    throw new Error('Microphone is already in use by another application...');
+  }
+}
+```
+
+### Error Flow Architecture
+1. **Device Access Layer** (`mixerSystem.js`):
+   - Detects specific MediaStream API errors (permissions, hardware, availability)
+   - Throws descriptive errors with actionable guidance
+   - Includes cleanup logic for partial device setup failures
+
+2. **Recording Coordinator** (`recordingSystem.js`):
+   - Catches mixer errors during recording start
+   - Passes error messages to UI layer
+   - Shows alerts for live device switching failures
+
+3. **UI Layer** (`main.js`):
+   - Catches errors from recording system
+   - Displays error messages in status bar
+   - Re-enables controls after failures
+   - Maintains consistent UI state
+
+### Error Message Categories
+- **Permission Errors**: Direct users to system settings with clear instructions
+- **Hardware Errors**: Guide users to check device connections
+- **Resource Errors**: Suggest closing other applications using the device
+- **Timeout Errors**: Indicate potential hardware malfunction
+- **Live Switching Errors**: Provide fallback guidance (stop recording and try again)
+
+### Benefits
+- ✅ No silent failures - all errors surface to users
+- ✅ Actionable guidance reduces support burden
+- ✅ Specific error detection enables targeted solutions
+- ✅ Consistent error formatting across all modules
+- ✅ Proper cleanup prevents cascading failures
 
 ## 🔧 Advanced Features
 

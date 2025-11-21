@@ -108,16 +108,22 @@ export const STATES = {
  */
 export const ERRORS = {
   CAMERA: {
-    NOT_ALLOWED: 'Please allow camera access and try again.',
-    NOT_FOUND: 'No camera device found.',
-    NOT_READABLE: 'Camera is already in use by another application.',
+    NOT_ALLOWED: 'Camera access denied. Please allow camera permissions in your system settings and reload the app.',
+    NOT_FOUND: 'No camera device found. Please connect a camera and reload the app.',
+    NOT_READABLE: 'Camera is already in use by another application. Please close other apps using the camera and try again.',
     INIT_TIMEOUT: 'Camera initialization timed out. The device may be broken or unavailable.',
-    GENERIC: 'Please check permissions and try again.'
+    ACCESS_FAILED: 'Failed to access camera. Please check that your camera is connected and not in use by another application.',
+    SWITCH_FAILED: 'Unable to switch camera during recording. Please stop recording, change the camera, and start a new recording.',
+    GENERIC: 'Camera error. Please check permissions and device connection, then try again.'
   },
 
   MICROPHONE: {
-    SWITCH_FAILED: 'Unable to switch microphone live on this system.',
-    ACCESS_FAILED: 'Microphone access failed.'
+    NOT_ALLOWED: 'Microphone access denied. Please allow microphone permissions in your system settings and reload the app.',
+    NOT_FOUND: 'No microphone device found. Please connect a microphone and reload the app.',
+    NOT_READABLE: 'Microphone is already in use by another application. Please close other apps using the microphone and try again.',
+    ACCESS_FAILED: 'Failed to access microphone. Please check that your microphone is connected and not in use by another application.',
+    SWITCH_FAILED: 'Unable to switch microphone during recording. Please stop recording, change the microphone, and start a new recording.',
+    CONNECT_FAILED: 'Failed to connect microphone to audio system. Please reload the app and try again.'
   },
 
   EXPORT: {
