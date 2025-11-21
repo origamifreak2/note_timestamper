@@ -15,7 +15,7 @@
 - [x] **Improve error handling** in `src/recording/mixerSystem.js`
   - Add user-facing notifications for microphone/camera failures
   - Replace silent console warnings with actionable error messages
-- [ ] **Remove obsolete code**
+- [x] **Remove obsolete code**
   - Delete `renderer.js` (3423-line legacy file)
   - Delete `renderer.js.backup`
   - Verify `index.html` loads `src/main.js` instead
