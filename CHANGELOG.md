@@ -3,6 +3,20 @@
 All notable changes to **Note Timestamper** will be documented here.
 
 ## [0.11.1]
+### Refactored
+- **Export System** (`src/modules/exportSystem.js`)
+  - Extracted shared HTML templates into reusable helper methods
+  - Created modular template builder with 6 specialized methods:
+    - `getSharedStyles()`: CSS styles for both export modes
+    - `getSharedUtilities()`: JavaScript utilities (time formatting, DOM refs)
+    - `getSharedEventHandlers()`: Event handlers for timestamps, images, modal
+    - `getEmbeddedMediaScript()`: Base64 media loading for embedded exports
+    - `getSeparateMediaScript()`: External file media loading for separate exports
+    - `buildHTMLTemplate()`: Core template assembler
+  - Reduced code duplication by ~200 lines
+  - Improved maintainability with DRY principle
+  - Both export modes now share single source of truth for HTML/CSS/JS
+
 ### Added
 - **Error Boundary System** (`src/modules/errorBoundary.js`)
   - Comprehensive error handling wrapper for critical operations

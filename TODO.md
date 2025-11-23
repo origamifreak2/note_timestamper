@@ -25,7 +25,7 @@
   - Create `ErrorBoundary` class wrapper for all public module methods
   - Prevent module failures from crashing entire app
   - Add fallback handlers for graceful degradation
-- [ ] **Refactor export system** in `src/modules/exportSystem.js`
+- [x] **Refactor export system** in `src/modules/exportSystem.js`
   - Extract shared HTML templates between `exportAsEmbeddedHtml` and `exportAsSeparateFiles`
   - Create reusable template builder to reduce 200+ lines of duplication
 - [ ] **Fix timeout error handling** in `src/modules/utils.js`

@@ -107,7 +107,11 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 - **timer.js**: Sophisticated timing for recording (excludes paused periods) and playback
 - **audioLevel.js**: Real-time audio level monitoring integrated with Web Audio analyser
 - **deviceManager.js**: Device enumeration, selection persistence, constraint building with CONFIG integration
-- **exportSystem.js**: Advanced HTML export with embedded or separate media files
+- **exportSystem.js**: Modular HTML export system with template builder architecture
+  - Shared template components for DRY principle
+  - Supports embedded (base64) and separate file exports
+  - Reusable CSS, JavaScript, and event handler builders
+  - Single source of truth for HTML structure
 - **errorBoundary.js**: Comprehensive error handling system with timeout protection, retry logic, and structured logging
 
 ### Editor System (`src/editor/`)
@@ -190,6 +194,81 @@ imageManager.updateImageInQuill(img); // Checks for data-fabric-json
 - Drawing data survives copy/paste and undo/redo
 - Seamless integration with existing image system
 - Clean separation between internal editing and external sharing
+
+## 📤 Export System Architecture
+
+The export system uses a modular template builder pattern to eliminate code duplication and ensure consistency across export formats.
+
+### Template Builder Pattern
+
+```javascript
+// Modular template construction
+const styles = exportSystem.getSharedStyles();        // Common CSS
+const utilities = exportSystem.getSharedUtilities();  // JS utilities
+const handlers = exportSystem.getSharedEventHandlers(); // Event handlers
+const mediaScript = exportSystem.getEmbeddedMediaScript(b64, mime); // Media loading
+const html = exportSystem.buildHTMLTemplate(notes, mediaScript); // Assembly
+```
+
+### Template Components
+
+**1. Shared Styles (`getSharedStyles()`)**
+- Grid layout with responsive breakpoints
+- Video/audio player styling
+- Timestamp button styles
+- Image modal overlay and interactions
+- Consistent across both export modes
+
+**2. Shared Utilities (`getSharedUtilities()`)**
+- `fmtTime()`: Time formatting (MM:SS.ms)
+- DOM element references (player, time display)
+- Common initialization code
+
+**3. Shared Event Handlers (`getSharedEventHandlers()`)**
+- Timestamp button click handling (seeks video to timestamp)
+- Image click-to-expand modal functionality
+- Modal close handlers (click outside, ESC key, close button)
+- Video timeupdate for current time display
+
+**4. Media Loading Scripts**
+- `getEmbeddedMediaScript()`: Base64 decoding and blob URL creation
+- `getSeparateMediaScript()`: External file reference with fallback message
+- Mode-specific logic isolated in dedicated methods
+
+**5. Core Template Builder (`buildHTMLTemplate()`)**
+- Assembles complete HTML document from components
+- Handles script tag escaping in notes content
+- Injects media script at appropriate location
+- Single assembly point for all export modes
+
+### Export Modes
+
+**Embedded Export** (single file):
+```javascript
+const mediaScript = this.getEmbeddedMediaScript(base64Data, mimeType);
+return this.buildHTMLTemplate(notesHtml, mediaScript);
+```
+- Base64-encodes media into HTML
+- Self-contained single file
+- Ideal for email sharing or small recordings
+
+**Separate Files Export** (HTML + media folder):
+```javascript
+const mediaScript = this.getSeparateMediaScript();
+return this.buildHTMLTemplate(notesHtml, mediaScript);
+```
+- References external media file
+- Better for large recordings
+- Includes images subfolder support
+
+### Benefits of Template Builder Pattern
+
+✅ **DRY Principle**: Shared code in single location (~200 lines saved)
+✅ **Maintainability**: CSS/JS updates happen once, apply to both modes
+✅ **Consistency**: Both exports guaranteed to have identical structure
+✅ **Extensibility**: Easy to add new export formats by composing existing components
+✅ **Testability**: Individual template components can be unit tested
+✅ **Clarity**: Clear separation between template structure and mode-specific logic
 
 ## 🔄 State Management Architecture
 
