@@ -147,7 +147,9 @@ export class DrawingSystem {
 
     } catch (error) {
       console.error('Drawing modal error:', error);
-      this.cleanup(drawingModal, canvas);
+      if (drawingModal && drawingModal.parentNode) {
+        this.cleanup(drawingModal, canvas);
+      }
       throw error;
     }
   }

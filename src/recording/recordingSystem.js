@@ -7,6 +7,7 @@ import { sleep } from '../modules/utils.js';
 import { timerSystem } from '../modules/timer.js';
 import { audioLevelMonitor } from '../modules/audioLevel.js';
 import { mixerSystem } from './mixerSystem.js';
+import { errorBoundary } from '../modules/errorBoundary.js';
 
 /**
  * Recording system for audio/video capture
@@ -54,7 +55,21 @@ export class RecordingSystem {
 
       // Clean up any existing mixer and start fresh
       mixerSystem.destroy();
-      await mixerSystem.createMixerStream();
+
+      // Wrap device access with error boundary for retry capability
+      // Use mixerSystem.deviceManager to avoid circular dependency
+      await errorBoundary.wrapDeviceAccess(
+        () => mixerSystem.createMixerStream(),
+        {
+          operationName: 'device access for recording',
+          deviceManager: mixerSystem.deviceManager,
+          context: {
+            micId: mixerSystem.deviceManager?.getSelectedMicId(),
+            camId: mixerSystem.deviceManager?.getSelectedCamId(),
+            isAudioOnly: mixerSystem.deviceManager?.isAudioOnly()
+          }
+        }
+      );
 
       // Set up preview in the player element
       const mixer = mixerSystem.getMixer();

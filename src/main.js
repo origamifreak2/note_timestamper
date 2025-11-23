@@ -9,6 +9,7 @@ import { timerSystem } from './modules/timer.js';
 import { audioLevelMonitor } from './modules/audioLevel.js';
 import { deviceManager } from './modules/deviceManager.js';
 import { exportSystem } from './modules/exportSystem.js';
+import { errorBoundary } from './modules/errorBoundary.js';
 import { registerCustomBlots } from './editor/customBlots.js';
 import { imageManager } from './editor/imageManager.js';
 import { imageResizer } from './editor/imageResizer.js';
@@ -56,6 +57,9 @@ class NoteTimestamperApp {
       // Initialize Quill editor
       this.initializeQuillEditor();
 
+      // Initialize error boundary
+      errorBoundary.init(this.elements.status);
+
     // Initialize all modules
     this.initializeModules();
 
@@ -79,6 +83,9 @@ class NoteTimestamperApp {
     // Update initial UI state
     this.updateUIState();
     this.isInitialized = true;
+
+      // Set up global unhandled rejection handler
+      this.setupUnhandledRejectionHandler();
 
     } catch (error) {
       console.error('Failed to initialize Note Timestamper:', error);
@@ -813,7 +820,10 @@ class NoteTimestamperApp {
 
     if (recordedBlob) {
       // Ask main process to create a temp file for the media
-      const tmp = await window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId });
+      const tmp = await errorBoundary.wrapIPC(
+        () => window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId }),
+        { operationName: 'create temp media file', context: { sessionId } }
+      );
       if (!tmp || !tmp.ok) {
         this.elements.status.textContent = 'Failed to create temp media file.';
         if (this.elements.saveProgressModal) {
@@ -831,9 +841,15 @@ class NoteTimestamperApp {
           const { done, value } = await reader.read();
           if (done) break;
           // value is a Uint8Array — send to main
-          await window.api.appendTempMedia(id, value, sessionId);
+          await errorBoundary.wrapIPC(
+            () => window.api.appendTempMedia(id, value, sessionId),
+            { operationName: 'append media chunk', context: { sessionId, chunkSize: value.length } }
+          );
         }
-        const closed = await window.api.closeTempMedia(id);
+        const closed = await errorBoundary.wrapIPC(
+          () => window.api.closeTempMedia(id),
+          { operationName: 'finalize temp media file', context: { sessionId } }
+        );
         if (!closed || !closed.ok) {
           this.elements.status.textContent = 'Failed to finalize temp media file.';
           if (this.elements.saveProgressModal) {
@@ -844,7 +860,7 @@ class NoteTimestamperApp {
         mediaFilePath = closed.path;
       } catch (err) {
         console.error('Error streaming media to temp file', err);
-        this.elements.status.textContent = 'Failed to stream media to temp file.';
+        // Error already shown by errorBoundary
         if (this.elements.saveProgressModal) {
           this.elements.saveProgressModal.classList.remove('visible');
         }
@@ -852,6 +868,8 @@ class NoteTimestamperApp {
       }
     }
 
+    // Note: Don't wrap saveSession with timeout - it includes file picker dialog
+    // where user needs unlimited time to choose save location
     const result = await window.api.saveSession({
       noteHtml,
       // pass mediaFilePath when available so main can stream into zip
@@ -889,7 +907,10 @@ class NoteTimestamperApp {
     let mediaFilePath = null;
 
     if (recordedBlob) {
-      const tmp = await window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId });
+      const tmp = await errorBoundary.wrapIPC(
+        () => window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId }),
+        { operationName: 'create temp media file', context: { sessionId } }
+      );
       if (!tmp || !tmp.ok) {
         this.elements.status.textContent = 'Failed to create temp media file.';
         if (this.elements.saveProgressModal) {
@@ -905,9 +926,15 @@ class NoteTimestamperApp {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          await window.api.appendTempMedia(id, value, sessionId);
+          await errorBoundary.wrapIPC(
+            () => window.api.appendTempMedia(id, value, sessionId),
+            { operationName: 'append media chunk', context: { sessionId, chunkSize: value.length } }
+          );
         }
-        const closed = await window.api.closeTempMedia(id);
+        const closed = await errorBoundary.wrapIPC(
+          () => window.api.closeTempMedia(id),
+          { operationName: 'finalize temp media file', context: { sessionId } }
+        );
         if (!closed || !closed.ok) {
           this.elements.status.textContent = 'Failed to finalize temp media file.';
           if (this.elements.saveProgressModal) {
@@ -918,7 +945,7 @@ class NoteTimestamperApp {
         mediaFilePath = closed.path;
       } catch (err) {
         console.error('Error streaming media to temp file', err);
-        this.elements.status.textContent = 'Failed to stream media to temp file.';
+        // Error already shown by errorBoundary
         if (this.elements.saveProgressModal) {
           this.elements.saveProgressModal.classList.remove('visible');
         }
@@ -926,6 +953,8 @@ class NoteTimestamperApp {
       }
     }
 
+    // Note: Don't wrap saveSession with timeout - it includes file picker dialog
+    // where user needs unlimited time to choose save location
     const result = await window.api.saveSession({
       noteHtml,
       mediaFilePath,
@@ -945,7 +974,10 @@ class NoteTimestamperApp {
    * Load existing session
    */
   async handleLoadSession() {
-    const result = await window.api.loadSession();
+    const result = await errorBoundary.wrapIPC(
+      () => window.api.loadSession(),
+      { operationName: 'load session' }
+    );
     if (!result || !result.ok) return;
 
     // Load notes
@@ -1065,7 +1097,10 @@ class NoteTimestamperApp {
    * Handle image upload from file picker
    */
   async handleImageUpload() {
-    const result = await window.api.pickImage();
+    const result = await errorBoundary.wrapIPC(
+      () => window.api.pickImage(),
+      { operationName: 'pick image' }
+    );
     if (result && result.ok) {
       await imageManager.insertDataUrlImage(result.dataUrl);
     }
@@ -1086,7 +1121,7 @@ class NoteTimestamperApp {
       }
     } catch (error) {
       console.error('Camera capture error:', error);
-      this.elements.status.textContent = 'Camera capture failed.';
+      this.elements.status.textContent = error.message || 'Camera capture failed.';
     }
   }
 
@@ -1105,7 +1140,7 @@ class NoteTimestamperApp {
       }
     } catch (error) {
       console.error('Drawing error:', error);
-      this.elements.status.textContent = 'Drawing failed.';
+      this.elements.status.textContent = error.message || 'Drawing failed.';
     }
   }
 
@@ -1272,6 +1307,35 @@ class NoteTimestamperApp {
   hasContent() {
     const text = this.quill && this.quill.getText().trim();
     return !!recordingSystem.getRecordedBlob() || (text && text.length > 0);
+  }
+
+  /**
+   * Set up global unhandled promise rejection handler
+   * Prevents silent failures from crashing the app
+   */
+  setupUnhandledRejectionHandler() {
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+
+      // Log to error boundary
+      errorBoundary.logError(
+        'unhandled promise rejection',
+        event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
+        1,
+        'logged',
+        { type: 'unhandled_rejection' }
+      );
+
+      // Update status bar with generic error message
+      if (this.elements.status) {
+        const message = event.reason?.message || String(event.reason) || 'An unexpected error occurred';
+        this.elements.status.textContent = `Error: ${message}`;
+        this.elements.status.style.color = '#d32f2f';
+      }
+
+      // Prevent default behavior (console error)
+      // event.preventDefault(); // Commented out to still show in console
+    });
   }
 }
 

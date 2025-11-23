@@ -108,6 +108,7 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 - **audioLevel.js**: Real-time audio level monitoring integrated with Web Audio analyser
 - **deviceManager.js**: Device enumeration, selection persistence, constraint building with CONFIG integration
 - **exportSystem.js**: Advanced HTML export with embedded or separate media files
+- **errorBoundary.js**: Comprehensive error handling system with timeout protection, retry logic, and structured logging
 
 ### Editor System (`src/editor/`)
 - **customBlots.js**: Custom Quill.js elements (clickable timestamps, images with dimensions)
@@ -300,6 +301,137 @@ try {
 - ✅ Specific error detection enables targeted solutions
 - ✅ Consistent error formatting across all modules
 - ✅ Proper cleanup prevents cascading failures
+
+## 🛡️ Error Boundary System
+
+The application implements a comprehensive error boundary system that wraps critical operations with timeout protection, automatic retry, and graceful degradation.
+
+### Core Components
+
+**ErrorBoundary Class** (`src/modules/errorBoundary.js`):
+```javascript
+// Three main wrapper methods for different operation types
+errorBoundary.wrapAsync(fn, options)      // Generic async with timeout/retry
+errorBoundary.wrapIPC(fn, options)        // IPC calls with 10s timeout + 2 retries
+errorBoundary.wrapDeviceAccess(fn, opts)  // Device access with recovery dialog
+```
+
+### Wrapper Method Details
+
+**1. wrapAsync() - Generic Operation Wrapper**
+- Configurable timeout and retry count
+- Exponential backoff between retries (base delay * 2^attempt)
+- Custom error handlers for operation-specific recovery
+- Status bar updates during retry attempts
+
+**2. wrapIPC() - IPC Communication Protection**
+- 10-second timeout for background operations
+- 2 automatic retry attempts with 500ms base delay
+- Modal dialog for persistent failures
+- Detailed context logging (operation name, parameters)
+- **Note**: File picker operations (save/load/export) intentionally not wrapped to allow unlimited user time
+
+**3. wrapDeviceAccess() - Device Recovery System**
+- Shows user-friendly recovery dialog on device failures
+- Offers to refresh device list and retry once
+- Respects user preference to disable retry prompts
+- Logs device IDs and context for debugging
+
+### Structured Error Logging
+
+All errors are logged with comprehensive telemetry:
+```javascript
+{
+  timestamp: '2025-11-22T00:00:00.000Z',
+  operation: 'device access for recording',
+  errorType: 'DEVICE_PERMISSION_DENIED',
+  message: 'Microphone access denied...',
+  attemptNumber: 1,
+  recoveryAction: 'retry',
+  context: { micId: 'default', camId: '...' }
+}
+```
+
+**Error Type Classification**:
+- `IPC_TIMEOUT`: IPC operation exceeded timeout
+- `DEVICE_PERMISSION_DENIED`: User denied device access (NotAllowedError)
+- `DEVICE_NOT_FOUND`: Device not available (NotFoundError)
+- `DEVICE_IN_USE`: Device busy (NotReadableError)
+- `DEVICE_ACCESS_FAILED`: General device access failure
+- `FILE_SYSTEM_ERROR`: File operations failed
+- `CODEC_ERROR`: MediaRecorder codec issues
+- `UNKNOWN`: Unclassified errors
+
+### User Preference Persistence
+
+Error recovery preferences stored in localStorage:
+```javascript
+{
+  deviceRetryEnabled: true,    // Show device retry dialogs
+  ipcRetryEnabled: true,       // Enable automatic IPC retries
+  showRecoveryDialogs: true    // Show recovery dialogs globally
+}
+```
+
+Accessed via `CONFIG.ERROR_BOUNDARY.STORAGE_KEY`.
+
+### Integration Points
+
+**IPC Operations** (temp media streaming retains timeout):
+```javascript
+// Wrapped - background file operations with timeout
+await errorBoundary.wrapIPC(
+  () => window.api.createTempMedia({...}),
+  { operationName: 'create temp media file', context: {...} }
+);
+
+// Not wrapped - file picker needs unlimited time
+const result = await window.api.saveSession({...});
+```
+
+**Device Access** (recording start):
+```javascript
+await errorBoundary.wrapDeviceAccess(
+  () => mixerSystem.createMixerStream(),
+  {
+    operationName: 'device access for recording',
+    deviceManager: mixerSystem.deviceManager,
+    context: { micId, camId, isAudioOnly }
+  }
+);
+```
+
+**Global Unhandled Rejection Handler**:
+```javascript
+window.addEventListener('unhandledrejection', (event) => {
+  errorBoundary.logError('unhandled promise rejection', ...);
+  statusElement.textContent = `Error: ${event.reason.message}`;
+});
+```
+
+### Configuration
+
+`CONFIG.ERROR_BOUNDARY` settings:
+```javascript
+{
+  DEFAULT_TIMEOUT: 30000,      // 30s for general operations
+  IPC_TIMEOUT: 10000,          // 10s for IPC calls
+  IPC_MAX_RETRIES: 2,          // Number of retry attempts
+  RETRY_DELAY: 500,            // Base delay (exponential backoff)
+  STORAGE_KEY: 'nt_error_boundary_prefs'
+}
+```
+
+### Benefits
+
+✅ **Timeout Protection**: All IPC background operations have 10-second timeouts
+✅ **Automatic Retry**: Transient failures retry with exponential backoff
+✅ **User Recovery**: Device failures show recovery dialogs with actionable options
+✅ **Structured Logging**: All errors logged with context for analytics
+✅ **Cleanup Guarantees**: Modal cleanup runs even on error paths
+✅ **User Preferences**: Retry behavior persists across sessions
+✅ **No Silent Failures**: Global handler catches all unhandled rejections
+✅ **Selective Timeouts**: User-facing operations (file pickers) exempt from timeout
 
 ## 🔧 Advanced Features
 

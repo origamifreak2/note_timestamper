@@ -2,7 +2,32 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
-## [Unreleased]
+## [0.11.1]
+### Added
+- **Error Boundary System** (`src/modules/errorBoundary.js`)
+  - Comprehensive error handling wrapper for critical operations
+  - `wrapAsync()`: Generic async operation wrapper with timeout and retry logic
+  - `wrapIPC()`: Specialized wrapper for IPC calls with 10-second timeout and automatic retry
+  - `wrapDeviceAccess()`: Device access wrapper with user recovery dialog
+  - Structured error logging with telemetry data (timestamp, error type, context, recovery action)
+  - User preference persistence in localStorage for retry behavior
+  - Standardized notifications: status bar for non-critical errors, modal dialogs for blocking errors
+- **Global unhandled promise rejection handler**
+  - Catches all unhandled promise rejections to prevent silent failures
+  - Logs errors to error boundary for analytics
+  - Displays user-friendly messages in status bar
+- **IPC operation protection** with timeout and retry
+  - All IPC calls now have 10-second timeout protection for background operations
+  - Automatic retry with exponential backoff for transient failures
+  - File picker operations (save/load/export) exempt from timeout to allow user time
+- **Device access retry system**
+  - Recovery dialog on device access failures with actionable options
+  - Offers to refresh device list and retry once
+  - Respects user preference to disable retry prompts
+- **Modal cleanup guarantees**
+  - Camera and drawing modals ensure cleanup on error paths
+  - Prevents DOM pollution and resource leaks on failures
+
 ### Security
 - **Fixed critical security vulnerability** in media permission handler
   - Added origin validation to `setPermissionRequestHandler` in `main.js`

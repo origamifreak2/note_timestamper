@@ -82,6 +82,15 @@ export const CONFIG = {
     HISTORY_DELAY: 500,
     MAX_HISTORY_STACK: 200,
     RESIZE_HANDLE_SIZE: 8
+  },
+
+  // Error Boundary settings
+  ERROR_BOUNDARY: {
+    DEFAULT_TIMEOUT: 30000, // 30 seconds for general async operations
+    IPC_TIMEOUT: 10000, // 10 seconds for IPC calls
+    IPC_MAX_RETRIES: 2, // Number of retry attempts for IPC operations
+    RETRY_DELAY: 500, // Base delay in ms before retry (uses exponential backoff)
+    STORAGE_KEY: 'nt_error_boundary_prefs' // localStorage key for user preferences
   }
 };
 

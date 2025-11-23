@@ -282,6 +282,7 @@ function cleanupOrphanedTempFiles() {
 - **Device handling**: `src/modules/deviceManager.js` (enumerating mics/cameras)
 - **Editor features**: `src/editor/customBlots.js` (Quill.js timestamp/image embeds)
 - **Configuration**: `src/config.js` (centralized constants and settings)
+- **Error handling**: `src/modules/errorBoundary.js` (timeout protection, retry logic, structured logging)
 - **UI coordination**: `src/main.js` (event handling, state management)
 
 ## 📦 Critical Patterns
@@ -294,6 +295,40 @@ class MySystem {
   init(domElements, callbacks) { /* setup */ }
 }
 export const mySystem = new MySystem(); // singleton
+```
+
+### Error Boundary Usage
+Wrap critical operations with appropriate error boundary methods:
+```javascript
+// IPC operations (background file operations only - NOT file pickers)
+await errorBoundary.wrapIPC(
+  () => window.api.createTempMedia({...}),
+  { operationName: 'create temp media file', context: {...} }
+);
+
+// File picker operations - NO timeout (user needs unlimited time)
+const result = await window.api.saveSession({...});
+
+// Device access with retry capability
+await errorBoundary.wrapDeviceAccess(
+  () => mixerSystem.createMixerStream(),
+  {
+    operationName: 'device access',
+    deviceManager: mixerSystem.deviceManager,
+    context: { micId, camId }
+  }
+);
+
+// Generic async with custom timeout/retry
+await errorBoundary.wrapAsync(
+  () => someAsyncOperation(),
+  {
+    operationName: 'operation name',
+    timeout: 5000,
+    maxRetries: 1,
+    context: {...}
+  }
+);
 ```
 
 ### State Management Architecture
@@ -439,21 +474,22 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   - `NotFoundError`: Device not found → prompts to connect device and reload
   - `NotReadableError`: Device in use → suggests closing other applications
   - Timeout errors: Indicates potential hardware malfunction
-- **Error Flow**: Device layer throws descriptive errors → recording system catches → UI displays in status bar
+- **Error Flow**: Device layer throws descriptive errors → errorBoundary catches and logs → UI displays in status bar
 - **User Guidance**: All errors include actionable resolution steps
-- **Error Propagation**:
+- **Error Boundary Integration**:
   ```javascript
-  // mixerSystem.js throws specific errors
-  throw new Error('Microphone access denied. Please allow microphone permissions...');
-
-  // main.js catches and displays
-  catch (error) {
-    this.elements.status.textContent = error.message;
-  }
+  // Wrap device access with error boundary
+  await errorBoundary.wrapDeviceAccess(
+    () => mixerSystem.createMixerStream(),
+    { deviceManager, operationName: 'device access', context: {...} }
+  );
+  // Shows recovery dialog on failure with device refresh option
   ```
+- **Structured Logging**: All errors logged with timestamp, error type, context, and recovery action
 - **Live Switching Errors**: Device switching failures during recording show alerts with guidance
 - **Cleanup on Failure**: Partial device setup is cleaned up when errors occur
 - **Pattern to Follow**: Always throw descriptive errors with resolution guidance, never silent failures
+- **IPC Timeout Pattern**: Wrap background IPC operations with `errorBoundary.wrapIPC()`, but NOT file picker dialogs
 
 ### Electron IPC (Main ↔ Renderer)
 - `preload.cjs` exposes session and file operation APIs with four categories:
@@ -549,9 +585,13 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** create blob URLs without tracking them for cleanup - always revoke with `URL.revokeObjectURL()`
 - **Don't** use silent error handling (console.warn) - throw descriptive errors with user guidance
 - **Don't** leave errors unhandled - catch and display in UI with actionable messages
+- **Don't** wrap file picker IPC calls with timeout - user needs unlimited time to choose location
+- **Don't** bypass error boundary for new IPC background operations - wrap with `errorBoundary.wrapIPC()`
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
 - **Do** validate all IPC handler inputs to prevent security vulnerabilities
 - **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs
 - **Do** detect specific error types (NotAllowedError, NotFoundError, NotReadableError) and provide targeted guidance
 - **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)
+- **Do** use `errorBoundary.wrapDeviceAccess()` for device operations that might need retry
+- **Do** distinguish between user-facing operations (no timeout) and background operations (with timeout)

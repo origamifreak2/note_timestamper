@@ -123,6 +123,14 @@ export class CameraSystem {
 
       alert(errorMessage);
       return null;
+    } finally {
+      // Ensure modal is marked as closed to allow reopening
+      this.isModalOpen = false;
+
+      // Ensure cleanup runs if modal is still in DOM (error before button click)
+      if (cameraModal && cameraModal.parentNode) {
+        this.cleanup(cameraStream, cameraModal);
+      }
     }
   }
 

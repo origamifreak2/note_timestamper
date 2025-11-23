@@ -4,6 +4,7 @@
  */
 
 import { arrayBufferToBase64 } from '../modules/utils.js';
+import { errorBoundary } from '../modules/errorBoundary.js';
 
 /**
  * Export system for converting sessions to HTML formats
@@ -67,6 +68,8 @@ export class ExportSystem {
     }
 
     const html = this.generateEmbeddedHTML(notesHtml, mediaB64, mediaMime);
+    // Note: Don't wrap with timeout - it includes file picker dialog
+    // where user needs unlimited time to choose save location
     return await window.api.saveHtml({ html });
   }
 
@@ -88,6 +91,8 @@ export class ExportSystem {
     const { html, images } = this.extractAndReplaceImages(notesHtml, '__BASENAME___images');
     const finalHtml = this.generateSeparateHTML(html);
 
+    // Note: Don't wrap with timeout - it includes file picker dialog
+    // where user needs unlimited time to choose save location
     return await window.api.saveHtmlVideo({
       html: finalHtml,
       mediaBuffer,

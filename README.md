@@ -33,7 +33,12 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Live Preview**: Real-time preview during recording
 - **Keyboard Shortcuts**: `Cmd+Alt+T` (Mac) / `Ctrl+Alt+T` (Windows/Linux) for timestamps
 - **Responsive Design**: Works on various screen sizes
-- **Error Recovery**: Graceful handling of device failures and permissions
+- **Error Recovery**: Comprehensive error boundary system with:
+  - Automatic retry for transient failures
+  - Device access recovery dialogs with actionable guidance
+  - Timeout protection for background operations
+  - Structured error logging for diagnostics
+  - User-configurable retry preferences
 
 ## 🏗️ Architecture
 
