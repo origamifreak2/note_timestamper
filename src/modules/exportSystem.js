@@ -114,9 +114,12 @@ export class ExportSystem {
     // Replace base64 data URLs with file references
     const updatedHtml = html.replace(/src="data:image\/([^;]+);base64,([^"]+)"/g, (match, mimeExtension, base64Data) => {
       // Convert MIME type to file extension
+      // Handle special cases like svg+xml -> svg
       let fileExtension = mimeExtension;
       if (mimeExtension === 'jpeg') {
         fileExtension = 'jpg';
+      } else if (mimeExtension === 'svg+xml') {
+        fileExtension = 'svg';
       }
 
       const imageFileName = `image_${imageCounter.toString().padStart(3, '0')}.${fileExtension}`;
