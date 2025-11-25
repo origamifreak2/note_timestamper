@@ -61,6 +61,10 @@ All notable changes to **Note Timestamper** will be documented here.
   - Enhanced error messages in `src/config.js` with comprehensive ERRORS object
   - Errors properly caught and displayed in status bar via `src/main.js`
   - Live device switching failures now provide actionable feedback
+ - **Drawing modal error recovery** in `src/ui/drawingSystem.js`
+   - Added initialization success flag plus `finally` block guaranteeing cleanup when Fabric.js setup fails early
+   - Stored Escape key handler reference on modal and removed it in `cleanup()` to prevent orphaned listeners
+   - Consolidated cleanup path (removed duplicate catch cleanup) for consistent resource release
 
 ### Fixed
 - **Fixed memory leaks** in `src/recording/recordingSystem.js`
