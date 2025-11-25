@@ -576,6 +576,20 @@ class NoteTimestamperApp {
   }
 
   /**
+   * Ensure the editor ends with a trailing block so the cursor can
+   * be placed after an ending embed (e.g., image). Uses 'silent'
+   * to avoid triggering change events or polluting undo history.
+   */
+  ensureTrailingParagraph() {
+    if (!this.quill) return;
+    const length = this.quill.getLength();
+    const lastChar = this.quill.getText(Math.max(0, length - 1), 1);
+    if (lastChar !== '\n') {
+      this.quill.insertText(length, '\n', 'silent');
+    }
+  }
+
+  /**
    * Handle timestamp button clicks
    */
   onTimestampClick(e) {
@@ -985,6 +999,7 @@ class NoteTimestamperApp {
     if (html.trim()) {
       const delta = this.quill.clipboard.convert({ html });
       this.quill.setContents(delta, 'api');
+      this.ensureTrailingParagraph();
     } else {
       this.quill.setText('');
     }
