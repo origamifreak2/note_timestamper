@@ -31,7 +31,10 @@
 - [ ] **Fix timeout error handling** in `src/modules/utils.js`
   - Update `withTimeout()` to properly cancel timed-out operations
   - Clear timeout handles when promise resolves
-- [ ] **Improve modal error recovery** in `src/ui/drawingSystem.js`
+- [x] **Improve modal error recovery** in `src/ui/drawingSystem.js`
+  - Added success flag + finally block to guarantee cleanup on initialization failure
+  - Escape handler reference stored on modal and removed in cleanup
+  - Centralized cleanup call removed from catch; relies on finally for consistency
   - Ensure modal cleanup runs even when Fabric.js initialization fails
   - Add finally block for DOM cleanup
 

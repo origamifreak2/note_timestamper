@@ -38,6 +38,7 @@ export class DrawingSystem {
     this.isModalOpen = true;
     let drawingModal = null;
     let canvas = null;
+    let initializedSuccessfully = false; // Track whether we reached successful promise return
 
     try {
       // Create modal overlay
@@ -118,6 +119,8 @@ export class DrawingSystem {
         canvas.renderAll();
       }
 
+      // Mark success before returning promise so finally won't clean up prematurely
+      initializedSuccessfully = true;
       // Return Promise that resolves with { dataUrl, fabricJSON } or null if cancelled
       return new Promise((resolve) => {
         const saveBtn = drawingModal.querySelector('#drawingSaveBtn');
@@ -147,10 +150,21 @@ export class DrawingSystem {
 
     } catch (error) {
       console.error('Drawing modal error:', error);
-      if (drawingModal && drawingModal.parentNode) {
-        this.cleanup(drawingModal, canvas);
+      throw error; // Cleanup handled in finally
+    } finally {
+      // Ensure cleanup if initialization failed before returning promise
+      if (!initializedSuccessfully) {
+        if (drawingModal) {
+          try {
+            this.cleanup(drawingModal, canvas);
+          } catch (cleanupErr) {
+            console.error('Failed during drawing modal cleanup:', cleanupErr);
+          }
+        } else {
+          // Reset modal open state if nothing was created
+          this.isModalOpen = false;
+        }
       }
-      throw error;
     }
   }
 
@@ -660,6 +674,9 @@ export class DrawingSystem {
     };
     document.addEventListener('keydown', handleEscape);
 
+    // Store escape handler reference for robust cleanup if initialization fails early
+    modal._escapeHandler = handleEscape;
+
     return modal;
   }
 
@@ -1088,6 +1105,11 @@ export class DrawingSystem {
     }
     if (modal && modal.parentNode) {
       modal.parentNode.removeChild(modal);
+    }
+    // Remove escape handler if it was attached
+    if (modal && modal._escapeHandler) {
+      document.removeEventListener('keydown', modal._escapeHandler);
+      modal._escapeHandler = null;
     }
     this.isModalOpen = false;
 
