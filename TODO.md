@@ -2,93 +2,55 @@
 
 ## 1) Code Quality & Architecture Improvements
 
-### Immediate Priority (This Week)
-- [x] **Fix critical security vulnerability** in `main.js` (lines 238-248)
-  - Add origin validation to media permission handler
-  - Prevent untrusted origins from accessing camera/microphone
-- [x] **Fix memory leaks** in `src/recording/recordingSystem.js`
-  - Add blob URL cleanup with `URL.revokeObjectURL()`
-  - Track and revoke URLs in `finalizePreview()` and `cleanup()` methods
-- [x] **Fix canvas animation cleanup** in `src/recording/mixerSystem.js`
-  - Add proper lifecycle checks to canvas draw loop
-  - Clear timeout when video element is destroyed
-- [x] **Improve error handling** in `src/recording/mixerSystem.js`
-  - Add user-facing notifications for microphone/camera failures
-  - Replace silent console warnings with actionable error messages
-- [x] **Remove obsolete code**
-  - Delete `renderer.js` (3423-line legacy file)
-  - Delete `renderer.js.backup`
-  - Verify `index.html` loads `src/main.js` instead
+### AI-Readiness Enhancements
+- [ ] **Type safety without full migration**
+  - Add `// @ts-check` to key modules (`src/recording/recordingSystem.js`, `src/recording/mixerSystem.js`, `src/modules/deviceManager.js`, `src/modules/exportSystem.js`, `src/editor/*`)
+  - Expand JSDoc for all public methods (`@param`, `@returns`, `@throws`), including side-effects and invariants
+- [ ] **Central type declarations**
+  - Create `types/global.d.ts` for shared domain types: `RecordingState`, `SaveProgress`, `TimestampValue`, `ImageValue`, `DeviceSelection`, `SessionMeta`
+  - Declare IPC surfaces: `window.api`, `window.menu`, `window.session` with method signatures
+- [ ] **JSON Schemas for persisted formats**
+  - Add `schemas/session.schema.json` (`session.json` structure)
+  - Add `schemas/notes-embed.schema.json` (Quill embeds: timestamp/image object formats)
+  - Integrate lightweight validation on load using `ajv` (only for background operations; do not block file pickers)
+- [ ] **Standard error codes**
+  - Introduce `ERROR_CODES` in `src/config.js` and an `ErrorWithCode` helper
+  - Throw errors with codes from device/mixer/recording layers; map to user-facing messages via `errorBoundary`
+- [ ] **Public API surface docs**
+  - Add concise “Public API” section at top of each singleton module listing callable methods and side-effects; mark internal helpers clearly
+- [ ] **IPC contract documentation**
+  - Create `docs/ipc-api.md` detailing exposed preload APIs, arguments/returns, timeout behavior, and which calls must not be wrapped (e.g., file pickers)
 
-### Short Term (This Month)
-- [x] **Add error boundary system**
-  - Create `ErrorBoundary` class wrapper for all public module methods
-  - Prevent module failures from crashing entire app
-  - Add fallback handlers for graceful degradation
-- [x] **Refactor export system** in `src/modules/exportSystem.js`
-  - Extract shared HTML templates between `exportAsEmbeddedHtml` and `exportAsSeparateFiles`
-  - Create reusable template builder to reduce 200+ lines of duplication
-- [x] **Fix timeout error handling** in `src/modules/utils.js`
-  - Update `withTimeout()` to properly cancel timed-out operations
-  - Clear timeout handles when promise resolves
-- [x] **Improve modal error recovery** in `src/ui/drawingSystem.js`
-  - Added success flag + finally block to guarantee cleanup on initialization failure
-  - Escape handler reference stored on modal and removed in cleanup
-  - Centralized cleanup call removed from catch; relies on finally for consistency
-  - Ensure modal cleanup runs even when Fabric.js initialization fails
-  - Add finally block for DOM cleanup
+### Tooling & CI
+- [ ] **Lint & format**
+  - Add ESLint with ESM config + `eslint-plugin-jsdoc`
+  - Add Prettier; wire `npm run lint` and `npm run format`
+- [ ] **Testing migration to Vitest**
+  - Add Vitest for fast ESM-friendly tests
+  - Add initial tests: `utils`, `zipUtils/exportSystem`, `errorBoundary`, `editor/customBlots`
+- [ ] **CI workflow**
+  - GitHub Actions: run `postinstall`, `lint`, `test` on push/PR
 
-### Testing Infrastructure
-- [ ] **Set up Jest testing framework**
-  - Install `jest`, `@testing-library/dom`, `electron-mock-ipc`
-  - Configure Jest for ES6 modules and Electron environment
-- [ ] **Add unit tests for core modules**
-  - `src/modules/timer.js` - Timer calculations and pause exclusion
-  - `src/recording/recordingSystem.js` - State transitions and lifecycle
-  - `src/modules/utils.js` - Utility functions and edge cases
-  - `src/modules/exportSystem.js` - HTML generation and template logic
-- [ ] **Target 60%+ code coverage** for critical paths
+### Documentation Additions
+- [ ] **Module contracts**: Inputs / Outputs / Side-effects / Invariants / Failure modes blocks at top of key modules
+- [ ] **Decision records**: Add `docs/adr/` for major choices (Canvas capture, streaming save pipeline, file picker timeout policy)
+- [ ] **AI Guide**: `docs/AI_GUIDE.md` covering safe-to-edit zones, do-not-alter areas, extension patterns, and PR checklists
 
-### TypeScript Migration
-- [ ] **Phase 1: Configuration and types**
-  - Rename `src/config.js` → `src/config.ts`
-  - Add interfaces for `RecordingConfig`, `DeviceConstraints`, `MixerConfig`
-  - Create type definitions for all CONFIG constants
-- [ ] **Phase 2: Core modules**
-  - Migrate `src/modules/timer.js` → `.ts`
-  - Migrate `src/modules/deviceManager.js` → `.ts`
-  - Migrate `src/modules/utils.js` → `.ts`
-- [ ] **Phase 3: Recording system**
-  - Migrate `src/recording/mixerSystem.js` → `.ts`
-  - Migrate `src/recording/recordingSystem.js` → `.ts`
-- [ ] **Phase 4: Editor and UI**
-  - Migrate `src/editor/*` files
-  - Migrate `src/ui/*` files
-  - Migrate `src/main.js` → `.ts`
+### Developer Experience
+- [ ] **NPM scripts**: add `lint`, `format`, `test`, `typecheck` (`tsc --noEmit` with `checkJs`)
+- [ ] **Version pinning**: add `.nvmrc` and `engines` to align Node/Electron versions
+- [ ] **.editorconfig** for consistent whitespace/indent
 
-### Code Quality Improvements
-- [ ] **Standardize error message formatting**
-  - Replace string concatenation with template literals across all files
-  - Use consistent error message structure
-- [ ] **Add comprehensive JSDoc comments**
-  - Document all public methods with `@param`, `@returns`, `@throws`
-  - Add usage examples for complex APIs
-- [ ] **Optimize image dimension calculations** in `src/modules/utils.js`
-  - Add timeout handling to prevent hanging
-  - Consider extracting metadata before full image load
-- [ ] **Add debouncing to image resize** in `src/editor/imageManager.js`
-  - Batch Quill updates during drag operations
-  - Reduce unnecessary re-renders
+### Example & Validation
+- [ ] **Sample artifacts**: add `examples/` with a small `.notepack`, `session.json`, and `notes.html` containing timestamp/image with `fabricJSON`
+- [ ] **Runtime validation**: validate `session.json` against `schemas/session.schema.json` on load; report actionable messages via `errorBoundary`
 
-### Accessibility (Post-TypeScript)
-- [ ] **Add ARIA labels to modals**
-  - `src/ui/cameraSystem.js` - Camera preview modal
-  - `src/ui/drawingSystem.js` - Drawing canvas modal
-  - Add `role="dialog"`, `aria-labelledby`, `aria-modal` attributes
-- [ ] **Improve keyboard navigation**
-  - Ensure all modals are keyboard-accessible
-  - Add focus trapping for modal dialogs
-  - Test with screen readers
+## Decisions & Preferences (from discussion)
+- **Type safety approach:** Prefer whichever improves AI understanding most; start with `// @ts-check` + `types/` now, full TS migration later.
+- **Tooling:** Yes to ESLint/Prettier and minimal Vitest; wire CI in GitHub Actions.
+- **Schemas & validation:** Yes; add JSON Schemas and lightweight `ajv` validation on session load.
+- **Version constraints:** Pin Node `>=25` and Electron `>=30` in `engines`/`.nvmrc`.
+- **Implementation timing:** First-pass implementation (types, `@ts-check`, lint/test scripts, `docs/ipc-api.md`) deferred for now; keep tasks tracked here.
 
 ### Long Term Goals
 - [ ] **Event-driven architecture refactor**
@@ -100,23 +62,3 @@
   - Profile and optimize canvas rendering pipeline
   - Add Web Worker support for heavy computations
   - Implement progressive loading for large sessions
-
----
-
-## 2) Movable divider between video and notes (split view)
-- [ ] **Feature:** Draggable resizer between the preview pane and the notes pane.
-- [ ] **Tech plan:**
-  - Convert main layout to CSS grid or flex with a central **drag handle**.
-  - Implement mouse/touch drag to adjust `grid-template-columns`/flex-basis.
-  - Persist user split preference in `localStorage`.
-- [ ] **Accessibility:** Resizer is keyboard-focusable; support arrow keys to nudge widths.
-- [ ] **Acceptance:** Smooth resizing; state restored across app restarts.
-
----
-
-## Nice-to-haves (future)
-- [ ] Device Diagnostics panel (recorder state, current device IDs, last chunk size, canvas fps).
-- [ ] Waveform preview for audio tracks (from analyzer node).
-- [ ] Clip trimming and export selections.
-- [ ] Optional Markdown export alongside HTML.
-- [ ] Configurable stop delay (50–200 ms) in a settings panel.
