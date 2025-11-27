@@ -91,7 +91,7 @@ export class DrawingSystem {
       if (fabricJSON) {
         try {
           const jsonData = typeof fabricJSON === 'string' ? JSON.parse(fabricJSON) : fabricJSON;
-          
+
           await new Promise((resolve, reject) => {
             canvas.loadFromJSON(jsonData, () => {
               // CRITICAL: Set canvas mode INSIDE the callback after JSON is fully loaded
@@ -99,27 +99,27 @@ export class DrawingSystem {
               canvas.isDrawingMode = this.currentTool === 'freedraw';
               canvas.selection = this.currentTool !== 'freedraw';
               canvas.calcOffset();
-              
+
               // Force all objects to be visible and trigger multiple renders
               canvas.getObjects().forEach(obj => {
                 obj.setCoords();
                 obj.visible = true;
               });
-              
+
               canvas.renderAll(); // Force complete render after loading
-              
+
               // Additional render after a short delay to ensure visibility
               setTimeout(() => {
                 canvas.renderAll();
               }, 50);
-              
+
               resolve();
             }, (o, object) => {
               // Error handler for individual objects
               console.warn('Error loading object:', o, object);
             });
           });
-          
+
           // Save initial state after loading
           setTimeout(() => {
             this.saveCanvasState(canvas);
