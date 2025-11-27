@@ -28,7 +28,7 @@
 - [x] **Refactor export system** in `src/modules/exportSystem.js`
   - Extract shared HTML templates between `exportAsEmbeddedHtml` and `exportAsSeparateFiles`
   - Create reusable template builder to reduce 200+ lines of duplication
-- [ ] **Fix timeout error handling** in `src/modules/utils.js`
+- [x] **Fix timeout error handling** in `src/modules/utils.js`
   - Update `withTimeout()` to properly cancel timed-out operations
   - Clear timeout handles when promise resolves
 - [x] **Improve modal error recovery** in `src/ui/drawingSystem.js`

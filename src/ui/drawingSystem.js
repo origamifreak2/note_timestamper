@@ -11,7 +11,7 @@ import { imageManager } from '../editor/imageManager.js';
 export class DrawingSystem {
   constructor() {
     this.isModalOpen = false;
-    this.currentTool = 'freedraw';
+    this.currentTool = 'rect';
     this.isDrawing = false;
     this.startPoint = null;
     this.canvasHistory = [];
@@ -67,7 +67,9 @@ export class DrawingSystem {
       });
 
       canvas.setDimensions({ width: maxWidth, height: maxHeight });
-      canvas.isDrawingMode = true;
+      // Set initial drawing mode based on default tool
+      canvas.isDrawingMode = this.currentTool === 'freedraw';
+      canvas.selection = this.currentTool !== 'freedraw';
       canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
       canvas.freeDrawingBrush.width = 3;
       canvas.freeDrawingBrush.color = '#000000';
@@ -89,17 +91,35 @@ export class DrawingSystem {
       if (fabricJSON) {
         try {
           const jsonData = typeof fabricJSON === 'string' ? JSON.parse(fabricJSON) : fabricJSON;
+          
           await new Promise((resolve, reject) => {
             canvas.loadFromJSON(jsonData, () => {
+              // CRITICAL: Set canvas mode INSIDE the callback after JSON is fully loaded
               canvas.backgroundColor = 'white';
-              canvas.requestRenderAll();
+              canvas.isDrawingMode = this.currentTool === 'freedraw';
+              canvas.selection = this.currentTool !== 'freedraw';
               canvas.calcOffset();
+              
+              // Force all objects to be visible and trigger multiple renders
+              canvas.getObjects().forEach(obj => {
+                obj.setCoords();
+                obj.visible = true;
+              });
+              
+              canvas.renderAll(); // Force complete render after loading
+              
+              // Additional render after a short delay to ensure visibility
+              setTimeout(() => {
+                canvas.renderAll();
+              }, 50);
+              
               resolve();
             }, (o, object) => {
               // Error handler for individual objects
               console.warn('Error loading object:', o, object);
             });
           });
+          
           // Save initial state after loading
           setTimeout(() => {
             this.saveCanvasState(canvas);
@@ -133,7 +153,10 @@ export class DrawingSystem {
               quality: 1.0,
               multiplier: 2
             });
-            const fabricJSON = JSON.stringify(canvas.toJSON());
+            // Export canvas JSON without isDrawingMode property to avoid conflicts on reload
+            const canvasData = canvas.toJSON();
+            delete canvasData.isDrawingMode;
+            const fabricJSON = JSON.stringify(canvasData);
             this.cleanup(drawingModal, canvas);
             resolve({ dataUrl, fabricJSON });
           } catch (error) {
@@ -427,11 +450,11 @@ export class DrawingSystem {
         <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;">
           <!-- Drawing Mode -->
           <div style="display: flex; gap: 8px;">
-            <button id="drawingFreeDrawBtn" class="drawing-tool-btn active" data-tool="freedraw" style="
+            <button id="drawingFreeDrawBtn" class="drawing-tool-btn" data-tool="freedraw" style="
               padding: 8px 12px;
-              border: 2px solid #2563eb;
-              background: #2563eb;
-              color: white;
+              border: 2px solid #d1d5db;
+              background: white;
+              color: #374151;
               border-radius: 4px;
               cursor: pointer;
               font-size: 12px;
@@ -441,11 +464,11 @@ export class DrawingSystem {
             ">
               <i class="fa-solid fa-pencil"></i> Draw
             </button>
-            <button id="drawingRectBtn" class="drawing-tool-btn" data-tool="rect" style="
+            <button id="drawingRectBtn" class="drawing-tool-btn active" data-tool="rect" style="
               padding: 8px 12px;
-              border: 2px solid #d1d5db;
-              background: white;
-              color: #374151;
+              border: 2px solid #2563eb;
+              background: #2563eb;
+              color: white;
               border-radius: 4px;
               cursor: pointer;
               font-size: 12px;
@@ -1119,8 +1142,8 @@ export class DrawingSystem {
       this.keyboardHandler = null;
     }
 
-    // Reset state
-    this.currentTool = 'freedraw';
+    // Reset state to default tool (rect)
+    this.currentTool = 'rect';
     this.isDrawing = false;
     this.startPoint = null;
     this.canvasHistory = [];

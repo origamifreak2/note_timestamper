@@ -78,6 +78,10 @@ All notable changes to **Note Timestamper** will be documented here.
   - Enhanced `destroy()` method with proper cleanup order and null assignments
   - Prevents runaway animations and "Failed to execute 'drawImage'" console errors
   - Eliminates unnecessary CPU consumption after mixer cleanup
+- **Fixed timeout error handling** in `src/modules/utils.js`
+  - Updated `withTimeout()` to clear timeout handle on resolve/reject
+  - Prevents dangling timers and potential memory leaks
+  - Ensures timed operations cancel cleanly when underlying promise settles first
 
 ## [0.11.0] - 2025-11-16
 ### Added

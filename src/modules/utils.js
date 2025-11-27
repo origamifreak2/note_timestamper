@@ -44,17 +44,32 @@ export function sleep(ms) {
 /**
  * Wraps a promise with a timeout, rejecting if the promise doesn't resolve in time
  * Used for handling potentially hanging operations like broken webcam initialization
+ * Properly clears timeout handle when promise resolves to prevent memory leaks
  * @param {Promise} promise - The promise to wrap with a timeout
  * @param {number} ms - Timeout in milliseconds
  * @param {string} errorMsg - Error message to use if timeout occurs
  * @returns {Promise} Promise that resolves with the original result or rejects on timeout
  */
 export function withTimeout(promise, ms, errorMsg = 'Operation timed out') {
+  let timeoutHandle;
+
+  // Create timeout promise that can be cancelled
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(errorMsg));
+    }, ms);
+  });
+
+  // Race the promises and clear timeout when done
   return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(errorMsg)), ms)
-    )
+    promise.then((result) => {
+      clearTimeout(timeoutHandle);
+      return result;
+    }).catch((error) => {
+      clearTimeout(timeoutHandle);
+      throw error;
+    }),
+    timeoutPromise
   ]);
 }
 
