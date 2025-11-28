@@ -10,9 +10,9 @@
  - [x] **Central type declarations**
   - ✅ Implemented `types/global.d.ts` with shared domain types: `RecordingState`, `SaveProgress`, `TimestampValue`, `ImageValue`, `DeviceSelection`, `SessionMeta`, plus `Mixer`, `RecordingInitOptions`, `Resolution`, `AudioBitrateOption`, `ImageDimensions`, `ExtractedImage`, `SaveSessionPayload`, and more.
   - ✅ Declared IPC surfaces with method signatures: `window.api`, `window.menu`, `window.session` via `WindowAPI`, `WindowMenu`, `WindowSession` interfaces and `declare global` augmentation.
-     - ✅ Added `schemas/session.schema.json` (matches current `session.json` structure: `createdAt`, `mediaFile`, `notesFile`, `version`).
-     - ✅ Added `schemas/notes-embed.schema.json` (defines `TimestampValue`, `ImageValueObject`, and string `ImageValue` formats).
-     - ✅ Integrated lightweight `ajv` validation of `session.json` in main process load path (non-blocking; logs warnings only).
+  - ✅ Added `schemas/session.schema.json` (matches current `session.json` structure: `createdAt`, `mediaFile`, `notesFile`, `version`).
+  - ✅ Added `schemas/notes-embed.schema.json` (defines `TimestampValue`, `ImageValueObject`, and string `ImageValue` formats).
+  - ✅ Integrated lightweight `ajv` validation of `session.json` in main process load path (non-blocking; logs warnings only).
 - [ ] **Standard error codes**
   - Introduce `ERROR_CODES` in `src/config.js` and an `ErrorWithCode` helper
   - Throw errors with codes from device/mixer/recording layers; map to user-facing messages via `errorBoundary`

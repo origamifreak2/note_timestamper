@@ -21,7 +21,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Memory Management**: Efficient blob URL cleanup prevents memory leaks across sessions
 
 ### 💾 Session Management
-- **Save/Load Sessions**: Save complete sessions as `.notepack` folders
+- **Save/Load Sessions**: Save complete sessions as `.notepack` zip files
 - **Export Options**:
   - Single HTML file with embedded media (self-contained)
   - HTML + separate video files (better for large recordings)
@@ -97,6 +97,8 @@ Notes for Windows builds
 ## 📄 File Formats
 
 - **`.notepack`**: Custom session format (single zip file containing `notes.html`, `media.*`, and `session.json`)
+  - `session.json` fields: `createdAt`, `mediaFile` (nullable), `notesFile`, `version`
+  - Validated against `schemas/session.schema.json` during load (non-blocking)
 - **Exported HTML**: Self-contained or linked HTML files for sharing
 - **Media Files**: WebM format with VP9/VP8 video and Opus audio codecs
 
@@ -104,7 +106,7 @@ Notes for Windows builds
 - **Project Overview**: `README.md` (this file)
 - **Architecture Deep Dive**: `ARCHITECTURE.md`
 - **Change History**: `CHANGELOG.md`
-- **AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, and module patterns for contributors and AI assistants)
+- **AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, module patterns, JSON schemas, and validation approach)
 
 ## 🤝 Contributing
 

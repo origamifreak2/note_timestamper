@@ -665,6 +665,19 @@ To avoid memory spikes with large recordings:
    - Pattern matching: `/^\d+-[a-z0-9]+-/` identifies notepack temp files
    - Non-fatal cleanup failures don't block app startup
 
+  ## 🔎 Schema & Validation
+
+  The session metadata (`session.json`) is validated using Ajv to improve robustness without blocking user flows:
+
+  - **Schemas Location**: JSON Schemas live under `schemas/`
+    - `schemas/session.schema.json`: Describes `session.json` fields — `createdAt` (ISO date-time), `mediaFile` (string or null), `notesFile` (string), `version` (integer).
+    - `schemas/notes-embed.schema.json`: Defines Quill embed formats (`TimestampValue`, `ImageValueObject`, and string `ImageValue`).
+  - **Integration Point**: Validation occurs in `main.js` during `load-session` after the zip is read.
+    - Ajv is lazily loaded and the schema compiled once per app run for performance.
+    - Validation is non-blocking: errors are logged as warnings and do not interrupt file picker operations.
+  - **Types Alignment**: `types/global.d.ts` `SessionMeta` mirrors the schema fields for consistent IntelliSense across modules.
+
+
 ### Progress Reporting Architecture
 Real-time progress feedback during save and file open operations:
 

@@ -72,6 +72,37 @@ The mixer enables seamless device switching during recording:
 - **Video switching**: Updates canvas source video element dynamically
 - **Recording continuity**: MediaRecorder.requestData() ensures no gaps in output
 
+## 🔎 Schema & Validation
+
+The app uses JSON Schemas with AJV validation for session metadata:
+
+### Schema Files
+- **`schemas/session.schema.json`**: Defines `session.json` structure
+  - Fields: `createdAt` (ISO date-time), `mediaFile` (string or null), `notesFile` (string), `version` (integer)
+  - Ensures data integrity when loading saved sessions
+- **`schemas/notes-embed.schema.json`**: Defines Quill embed formats
+  - `TimestampValue`: { ts: number, label: string }
+  - `ImageValueObject`: { src: string, width?: number, height?: number, fabricJSON?: string }
+  - `ImageValueString`: "src|widthxheight" format
+
+### Validation Integration
+```javascript
+// In main.js - lazy-loaded validation during session load
+const validate = await getSessionValidator();
+if (validate) {
+  const valid = validate(meta);
+  if (!valid) {
+    console.warn('session.json validation errors:', validate.errors);
+  }
+}
+```
+
+**Key Points**:
+- Validation is **non-blocking**: logs warnings only, never interrupts file picker operations
+- Ajv instance is lazy-loaded and schema compiled once per app run for performance
+- `types/global.d.ts` `SessionMeta` mirrors schema fields for type consistency
+- Validation runs after zip extraction in `load-session` handler
+
 ## ⚙️ Configuration System
 
 All app settings are centralized in `src/config.js`:
@@ -285,13 +316,14 @@ function cleanupOrphanedTempFiles() {
 
 ### Key Files to Modify
 - **Type definitions**: `types/global.d.ts` (add new types for data structures)
+- **JSON Schemas**: `schemas/session.schema.json`, `schemas/notes-embed.schema.json` (validation rules)
 - **Mixing logic**: `src/recording/mixerSystem.js` (Web Audio + Canvas coordination, @ts-check enabled)
 - **Recording lifecycle**: `src/recording/recordingSystem.js` (MediaRecorder management, @ts-check enabled)
 - **Device handling**: `src/modules/deviceManager.js` (enumerating mics/cameras, @ts-check enabled)
 - **Editor features**: `src/editor/customBlots.js` (Quill.js timestamp/image embeds, @ts-check enabled)
 - **Configuration**: `src/config.js` (centralized constants and settings)
 - **Error handling**: `src/modules/errorBoundary.js` (timeout protection, retry logic, structured logging)
-- **UI coordination**: `src/main.js` (event handling, state management)
+- **UI coordination**: `src/main.js` (event handling, state management, session validation)
 
 ## 📦 Critical Patterns
 
@@ -323,7 +355,7 @@ async myMethod(param) { ... }
 - Recording types: `RecordingState`, `Mixer`, `RecordingInitOptions`
 - Device types: `Resolution`, `DeviceSelection`, `AudioBitrateOption`
 - Editor types: `TimestampValue`, `ImageValue`, `ImageDimensions`
-- Session types: `SessionMeta`, `SaveProgress`, `SaveSessionPayload`
+- Session types: `SessionMeta` (createdAt, mediaFile, notesFile, version), `SaveProgress`, `SaveSessionPayload`
 - IPC interfaces: `WindowAPI`, `WindowMenu`, `WindowSession`
 - Error types: `ErrorBoundaryWrapOptions`, `ErrorLogEntry`
 
@@ -553,7 +585,9 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   - Archive structure: `notes.html`, `media.{ext}`, `session.json`
   - `notes.json` contains embedded Quill.js delta for rich text editing
   - `session.json` stores metadata (createdAt, mediaFile, notesFile, version)
+  - Validated against `schemas/session.schema.json` during load (non-blocking)
   - Enables seamless load/save of audio/video + timestamped notes
+- **IPC Response Shape**: `loadSession()` returns `{ ok, notesHtml, mediaArrayBuffer, mediaFile }` (mediaFile was renamed from mediaFileName for consistency)
 
 ### Electron Security (Permission Handling)
 - **Media Permissions**: `main.js` uses `setPermissionRequestHandler` with origin validation

@@ -36,6 +36,20 @@ All notable changes to **Note Timestamper** will be documented here.
 - **Self-Documenting Code**: JSDoc comments provide inline documentation visible in IDE tooltips
 - **Architecture Documentation**: Updated `ARCHITECTURE.md` and `README.md` to document type safety approach
 
+### Schema & Validation
+- **JSON Schemas** added under `schemas/`:
+  - `schemas/session.schema.json` describing `session.json` (`createdAt`, `mediaFile`, `notesFile`, `version`).
+  - `schemas/notes-embed.schema.json` defining editor embed formats (`TimestampValue`, `ImageValueObject`, string `ImageValue`).
+- **AJV validation** integrated in `main.js` for `load-session`:
+  - Lazy-loaded validator compiles `session.schema.json` and validates `session.json` on load.
+  - Non-blocking: logs warnings on validation errors, does not interrupt file picker flows.
+
+### Consistency & Types
+- **SessionMeta alignment**: Updated `types/global.d.ts` `SessionMeta` to mirror schema fields (`createdAt`, `mediaFile`, `notesFile`, `version`).
+- **IPC response rename**: Changed `load-session` return field from `mediaFileName` → `mediaFile` in `main.js`.
+- **WindowAPI types**: Updated `types/global.d.ts` `WindowAPI.loadSession()` to return `{ notesHtml, mediaArrayBuffer, mediaFile }`.
+- **Docs updated**: `ARCHITECTURE.md` and `.github/copilot-instructions.md` now reference `createdAt/mediaFile/notesFile/version` and `mediaFile` response.
+
 ### Benefits
 - ✅ Type safety with zero build overhead (no TypeScript compilation required)
 - ✅ Gradual migration path - can move to full TypeScript incrementally
