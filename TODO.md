@@ -7,10 +7,9 @@
   - ✅ Add `// @ts-check` to key modules (`src/recording/recordingSystem.js`, `src/recording/mixerSystem.js`, `src/modules/deviceManager.js`, `src/modules/exportSystem.js`, `src/editor/*`)
   - ✅ Expand JSDoc for all public methods (`@param`, `@returns`, `@throws`), including side-effects and invariants
   - ✅ Created `types/global.d.ts` with shared domain types (RecordingState, SaveProgress, TimestampValue, ImageValue, DeviceSelection, SessionMeta, IPC interfaces)
-- [ ] **Central type declarations**
-  - Create `types/global.d.ts` for shared domain types: `RecordingState`, `SaveProgress`, `TimestampValue`, `ImageValue`, `DeviceSelection`, `SessionMeta`
-  - Declare IPC surfaces: `window.api`, `window.menu`, `window.session` with method signatures
-- [ ] **JSON Schemas for persisted formats**
+ - [x] **Central type declarations**
+   - ✅ Implemented `types/global.d.ts` with shared domain types: `RecordingState`, `SaveProgress`, `TimestampValue`, `ImageValue`, `DeviceSelection`, `SessionMeta`, plus `Mixer`, `RecordingInitOptions`, `Resolution`, `AudioBitrateOption`, `ImageDimensions`, `ExtractedImage`, `SaveSessionPayload`, and more.
+   - ✅ Declared IPC surfaces with method signatures: `window.api`, `window.menu`, `window.session` via `WindowAPI`, `WindowMenu`, `WindowSession` interfaces and `declare global` augmentation.
   - Add `schemas/session.schema.json` (`session.json` structure)
   - Add `schemas/notes-embed.schema.json` (Quill embeds: timestamp/image object formats)
   - Integrate lightweight validation on load using `ajv` (only for background operations; do not block file pickers)
