@@ -42,19 +42,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 
 ## 🏗️ Architecture
 
-The application has been completely refactored from a monolithic structure into a modular, maintainable architecture:
-
-```
-src/
-├── main.js                 # Application coordinator
-├── config.js              # Configuration and constants
-├── modules/                # Core utilities
-├── editor/                # Text editor functionality
-├── recording/             # Audio/video recording
-└── ui/                   # User interface components
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation of the modular structure.
+Brief overview: modular ES6 architecture with single-responsibility modules (editor, recording, devices, export) coordinated by `src/main.js`, plus centralized config and shared types. See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete breakdown and diagrams.
 
 ## 🚀 Development
 
@@ -108,9 +96,15 @@ Notes for Windows builds
 
 ## 📄 File Formats
 
-- **`.notepack`**: Custom session format (folder containing HTML, media, and metadata)
+- **`.notepack`**: Custom session format (single zip file containing `notes.html`, `media.*`, and `session.json`)
 - **Exported HTML**: Self-contained or linked HTML files for sharing
 - **Media Files**: WebM format with VP9/VP8 video and Opus audio codecs
+
+## 📚 Documentation Map
+- **Project Overview**: `README.md` (this file)
+- **Architecture Deep Dive**: `ARCHITECTURE.md`
+- **Change History**: `CHANGELOG.md`
+- **AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, and module patterns for contributors and AI assistants)
 
 ## 🤝 Contributing
 
