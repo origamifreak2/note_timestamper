@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Device management for audio and video devices
  * Handles device enumeration, selection persistence, and constraints building
@@ -32,12 +33,16 @@ export class DeviceManager {
 
   /**
    * Initialize device manager with DOM references
-   * @param {HTMLSelectElement} micSelect - Microphone selector dropdown
-   * @param {HTMLSelectElement} camSelect - Camera selector dropdown
-   * @param {HTMLSelectElement} resSelect - Resolution selector dropdown
-   * @param {HTMLSelectElement} fpsSelect - Framerate selector dropdown
-   * @param {HTMLSelectElement} audioBitrateSelect - Audio bitrate selector dropdown
-   * @param {HTMLInputElement} audioOnlyCheckbox - Audio-only mode checkbox
+   * @param {HTMLSelectElement | null} micSelect - Microphone selector dropdown
+   * @param {HTMLSelectElement | null} camSelect - Camera selector dropdown
+   * @param {HTMLSelectElement | null} resSelect - Resolution selector dropdown
+   * @param {HTMLSelectElement | null} fpsSelect - Framerate selector dropdown
+   * @param {HTMLSelectElement | null} audioBitrateSelect - Audio bitrate selector dropdown
+   * @param {HTMLInputElement | null} audioOnlyCheckbox - Audio-only mode checkbox
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores references to all DOM elements for later use
    */
   init(micSelect, camSelect, resSelect, fpsSelect, audioBitrateSelect, audioOnlyCheckbox) {
     this.micSelect = micSelect;
@@ -50,8 +55,12 @@ export class DeviceManager {
 
   /**
    * Gets the selected device ID from a dropdown, filtering out special values
-   * @param {HTMLSelectElement} selectEl - The device selection dropdown
-   * @returns {string|undefined} Device ID or undefined for default/none
+   * @param {HTMLSelectElement | null} selectEl - The device selection dropdown
+   * @returns {string | undefined} Device ID or undefined for default/none
+   *
+   * Invariants:
+   * - Returns undefined for null/undefined selectEl
+   * - Filters out 'default' and 'none' special values
    */
   getSelectedDeviceId(selectEl) {
     const v = selectEl && selectEl.value;
@@ -60,7 +69,10 @@ export class DeviceManager {
 
   /**
    * Gets the selected recording resolution from the dropdown
-   * @returns {Object} Object with width and height properties
+   * @returns {import('../../types/global').Resolution} Object with width and height properties
+   *
+   * Invariants:
+   * - Always returns valid resolution, defaults to 1280x720 if parsing fails
    */
   getSelectedResolution() {
     const resValue = (this.resSelect && this.resSelect.value) || '1280x720';
@@ -71,6 +83,9 @@ export class DeviceManager {
   /**
    * Gets the selected recording framerate from the dropdown
    * @returns {number} Framerate in FPS
+   *
+   * Invariants:
+   * - Always returns valid number, defaults to CONFIG.RECORDING.DEFAULT_FRAMERATE if parsing fails
    */
   getSelectedFramerate() {
     const fpsValue = (this.fpsSelect && this.fpsSelect.value) || CONFIG.RECORDING.DEFAULT_FRAMERATE.toString();
@@ -81,6 +96,9 @@ export class DeviceManager {
   /**
    * Gets the selected audio bitrate from the dropdown
    * @returns {number} Audio bitrate in bits per second
+   *
+   * Invariants:
+   * - Always returns valid number, defaults to CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE if parsing fails
    */
   getSelectedAudioBitrate() {
     const bitrateValue = (this.audioBitrateSelect && this.audioBitrateSelect.value) || CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE.toString();
@@ -91,7 +109,15 @@ export class DeviceManager {
   /**
    * Builds MediaStream constraints based on current UI selections
    * Handles audio-only mode, specific device selection, and video resolution preferences
-   * @returns {Object} MediaStream constraints object for getUserMedia()
+   * @returns {MediaStreamConstraints} MediaStream constraints object for getUserMedia()
+   *
+   * Side effects:
+   * - Queries DOM elements for current selections
+   *
+   * Invariants:
+   * - Audio constraints always defined (required)
+   * - Video constraints set to false in audio-only mode
+   * - Resolution preferences always included when video is requested
    */
   buildConstraints() {
     const audioId = this.getSelectedDeviceId(this.micSelect);
@@ -113,6 +139,11 @@ export class DeviceManager {
 
   /**
    * Saves current device selections to localStorage for persistence across sessions
+   * @returns {void}
+   *
+   * Side effects:
+   * - Writes to localStorage using CONFIG.STORAGE_KEYS
+   * - Removes keys when selections are cleared
    */
   persistSelection() {
     const micId = this.getSelectedDeviceId(this.micSelect);
@@ -141,6 +172,15 @@ export class DeviceManager {
    * Requests media permissions to enable device enumeration with proper labels
    * Tries audio+video first, falls back to audio-only if video fails
    * Immediately stops tracks after permission grant to avoid keeping devices active
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Requests browser media permissions
+   * - Briefly activates devices then immediately stops them
+   *
+   * Invariants:
+   * - Never leaves devices active after call completes
+   * - Silent failure is acceptable (devices will show generic names)
    */
   async ensurePermissions() {
     try {
@@ -161,6 +201,17 @@ export class DeviceManager {
   /**
    * Populates device selection dropdowns with available audio/video devices
    * Restores previously selected devices from localStorage if they're still available
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Populates micSelect and camSelect dropdowns
+   * - Reads from localStorage to restore previous selections
+   * - Updates device UI state based on available devices
+   * - Calls updateDeviceUIState with noCameras flag
+   *
+   * Invariants:
+   * - Always adds 'System default' option as first entry
+   * - Only restores saved device if it still exists in enumerated devices
    */
   async loadDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -229,7 +280,17 @@ export class DeviceManager {
 
   /**
    * Updates the state of device selection UI elements
-   * @param {boolean} noCameras - Whether cameras are available
+   * @param {boolean} [noCameras=false] - Whether cameras are available
+   * @param {boolean} [isRecording=false] - Whether recording is currently active
+   * @returns {void}
+   *
+   * Side effects:
+   * - Enables/disables camera, resolution, and framerate dropdowns
+   * - Enables/disables audio bitrate dropdown based on recording state
+   *
+   * Invariants:
+   * - Camera/resolution/fps disabled when: audio-only OR no cameras OR recording
+   * - Audio bitrate disabled only when recording
    */
   updateDeviceUIState(noCameras = false, isRecording = false) {
     if (this.camSelect && this.resSelect && this.fpsSelect && this.audioOnlyCheckbox) {
@@ -250,7 +311,7 @@ export class DeviceManager {
 
   /**
    * Get the currently selected microphone device ID
-   * @returns {string|undefined} Device ID or undefined for default
+   * @returns {string | undefined} Device ID or undefined for default
    */
   getSelectedMicId() {
     return this.getSelectedDeviceId(this.micSelect);
@@ -258,7 +319,7 @@ export class DeviceManager {
 
   /**
    * Get the currently selected camera device ID
-   * @returns {string|undefined} Device ID or undefined for default
+   * @returns {string | undefined} Device ID or undefined for default
    */
   getSelectedCamId() {
     return this.getSelectedDeviceId(this.camSelect);

@@ -3,9 +3,10 @@
 ## 1) Code Quality & Architecture Improvements
 
 ### AI-Readiness Enhancements
-- [ ] **Type safety without full migration**
-  - Add `// @ts-check` to key modules (`src/recording/recordingSystem.js`, `src/recording/mixerSystem.js`, `src/modules/deviceManager.js`, `src/modules/exportSystem.js`, `src/editor/*`)
-  - Expand JSDoc for all public methods (`@param`, `@returns`, `@throws`), including side-effects and invariants
+- [x] **Type safety without full migration**
+  - ✅ Add `// @ts-check` to key modules (`src/recording/recordingSystem.js`, `src/recording/mixerSystem.js`, `src/modules/deviceManager.js`, `src/modules/exportSystem.js`, `src/editor/*`)
+  - ✅ Expand JSDoc for all public methods (`@param`, `@returns`, `@throws`), including side-effects and invariants
+  - ✅ Created `types/global.d.ts` with shared domain types (RecordingState, SaveProgress, TimestampValue, ImageValue, DeviceSelection, SessionMeta, IPC interfaces)
 - [ ] **Central type declarations**
   - Create `types/global.d.ts` for shared domain types: `RecordingState`, `SaveProgress`, `TimestampValue`, `ImageValue`, `DeviceSelection`, `SessionMeta`
   - Declare IPC surfaces: `window.api`, `window.menu`, `window.session` with method signatures

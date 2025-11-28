@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Custom Quill.js blots for timestamps and images
  * Defines custom embed types for enhanced editor functionality
@@ -20,8 +21,15 @@ export class TimestampBlot extends Embed {
 
   /**
    * Creates a new timestamp button element
-   * @param {Object} value - Object with ts (timestamp in seconds) and label properties
+   * @param {import('../../types/global').TimestampValue | any} value - Object with ts (timestamp in seconds) and label properties
    * @returns {HTMLButtonElement} The created button element
+   *
+   * Side effects:
+   * - Creates new HTMLButtonElement with timestamp data
+   *
+   * Invariants:
+   * - Sets contenteditable=false to prevent editing
+   * - Stores timestamp in data-ts attribute
    */
   static create(value) {
     const node = super.create();
@@ -39,7 +47,11 @@ export class TimestampBlot extends Embed {
   /**
    * Extracts timestamp data from an existing button element
    * @param {HTMLButtonElement} node - The button element to read from
-   * @returns {Object} Object with ts and label properties
+   * @returns {import('../../types/global').TimestampValue} Object with ts and label properties
+   *
+   * Invariants:
+   * - Always returns valid TimestampValue object
+   * - Defaults to 0 if data-ts is missing
    */
   static value(node) {
     return {
@@ -59,8 +71,17 @@ export class CustomImage extends BlockEmbed {
 
   /**
    * Creates a new image element with optional dimensions and fabric data
-   * @param {string|Object} value - Image source or object with src, dimensions, and fabricJSON
+   * @param {import('../../types/global').ImageValue | any} value - Image source or object with src, dimensions, and fabricJSON
    * @returns {HTMLImageElement} The created image element
+   *
+   * Side effects:
+   * - Creates new HTMLImageElement with src and styling
+   * - Adds data-fabric-json attribute for editable drawings
+   *
+   * Invariants:
+   * - Supports string format: "url|widthxheight" or "url|width"
+   * - Supports object format: { src, width, height, fabricJSON }
+   * - Adds editable-drawing class and pointer cursor for drawings with fabricJSON
    */
   static create(value) {
     const node = super.create();
@@ -107,7 +128,12 @@ export class CustomImage extends BlockEmbed {
   /**
    * Extracts image data from an existing image element
    * @param {HTMLImageElement} node - The image element to read from
-   * @returns {string|Object} Image source with optional dimensions, or object with fabricJSON
+   * @returns {import('../../types/global').ImageValue} Image source with optional dimensions, or object with fabricJSON
+   *
+   * Invariants:
+   * - Returns object format if fabricJSON is present
+   * - Returns string format ("src|widthxheight") for regular images with dimensions
+   * - Returns plain src string for images without dimensions
    */
   static value(node) {
     const src = node.getAttribute('src');
@@ -142,6 +168,14 @@ export class CustomImage extends BlockEmbed {
 /**
  * Registers custom blots with Quill
  * Call this function to enable custom timestamp and image functionality
+ * @returns {void}
+ *
+ * Side effects:
+ * - Registers TimestampBlot with Quill
+ * - Registers CustomImage with Quill (overrides default image blot)
+ *
+ * Invariants:
+ * - Must be called before creating Quill instance
  */
 export function registerCustomBlots() {
   Quill.register(TimestampBlot);

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Image handling functionality for the editor
  * Handles image insertion, drag-and-drop, and dimension management
@@ -15,7 +16,13 @@ export class ImageManager {
 
   /**
    * Initialize the image manager with Quill instance
-   * @param {Quill} quill - Quill editor instance
+   * @param {any} quill - Quill editor instance
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores reference to Quill instance
+   * - Sets up drag-and-drop handlers
+   * - Sets up paste handlers
    */
   init(quill) {
     this.quill = quill;
@@ -28,6 +35,16 @@ export class ImageManager {
    * Inserts a drawing with embedded Fabric.js JSON into the editor
    * @param {string} dataUrl - Base64 data URL of the drawing image
    * @param {string} fabricJSON - Fabric.js canvas JSON data for re-editing
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Inserts image embed into Quill at cursor position
+   * - Moves cursor after inserted image
+   *
+   * Invariants:
+   * - Uses object format to preserve fabricJSON
+   * - Calculates default dimensions to prevent oversized exports
+   * - Falls back to insertion without dimensions on error
    */
   async insertDrawingImage(dataUrl, fabricJSON) {
     if (!this.quill) return;
@@ -66,6 +83,15 @@ export class ImageManager {
    * Inserts an image from a data URL into the editor at current cursor position
    * Includes default dimensions to prevent huge images in exports
    * @param {string} dataUrl - Base64 data URL of the image
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Inserts image embed into Quill at cursor position
+   * - Moves cursor after inserted image
+   *
+   * Invariants:
+   * - Uses string format ("src|widthxheight") for regular images
+   * - Falls back to insertion without dimensions on error
    */
   async insertDataUrlImage(dataUrl) {
     if (!this.quill) return;
@@ -97,7 +123,17 @@ export class ImageManager {
 
   /**
    * Handles dropped or pasted files, filtering for images and converting to data URLs
-   * @param {FileList} files - Files from drag/drop or paste event
+   * @param {FileList | File[]} files - Files from drag/drop or paste event
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Reads file as data URL using FileReader
+   * - Inserts image into editor
+   * - Shows alert for oversized images
+   *
+   * Invariants:
+   * - Only processes first image file found
+   * - Enforces 15MB size limit
    */
   async handleFiles(files) {
     // Find first image file in the list
@@ -118,6 +154,15 @@ export class ImageManager {
 
   /**
    * Sets up drag-and-drop handlers for images
+   * @returns {void}
+   *
+   * Side effects:
+   * - Adds 'drop' event listener to editor root
+   * - Adds 'dragover' event listener to editor root
+   *
+   * Invariants:
+   * - Only handles image files from drag events
+   * - Ensures cursor position before inserting
    */
   setupDragAndDrop() {
     if (!this.quill) return;
@@ -153,6 +198,14 @@ export class ImageManager {
 
   /**
    * Sets up paste handler for images from clipboard
+   * @returns {void}
+   *
+   * Side effects:
+   * - Adds 'paste' event listener to editor root
+   *
+   * Invariants:
+   * - Only handles image items from clipboard
+   * - Prevents default paste behavior for images
    */
   setupPasteHandler() {
     if (!this.quill) return;
@@ -170,7 +223,17 @@ export class ImageManager {
 
   /**
    * Updates an existing image's dimensions in the Quill editor
-   * @param {HTMLImageElement} img - The image element to update
+   * @param {HTMLImageElement | null} img - The image element to update
+   * @returns {void}
+   *
+   * Side effects:
+   * - Deletes old image blot from Quill
+   * - Inserts updated image blot with new dimensions
+   *
+   * Invariants:
+   * - Preserves fabricJSON if present
+   * - Uses silent mode to avoid triggering undo/redo history
+   * - Safe to call with null (no-op)
    */
   updateImageInQuill(img) {
     if (!img || !this.quill) return;

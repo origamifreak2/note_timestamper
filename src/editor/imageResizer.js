@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Interactive image resizing functionality
  * Provides drag handles for resizing images directly in the Quill editor
@@ -30,9 +31,15 @@ export class ImageResizer {
 
   /**
    * Initialize the image resizer
-   * @param {Quill} quill - Quill editor instance
-   * @param {HTMLElement} wrapper - Editor wrapper element
-   * @param {Object} imageManager - Image manager instance for updates
+   * @param {any} quill - Quill editor instance
+   * @param {HTMLElement | null} wrapper - Editor wrapper element
+   * @param {any} imageManager - Image manager instance for updates
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores references to quill, wrapper, and imageManager
+   * - Sets up all event listeners
+   * - Creates ResizeObserver for editor changes
    */
   init(quill, wrapper, imageManager) {
     this.quill = quill;
@@ -48,6 +55,14 @@ export class ImageResizer {
 
   /**
    * Sets up all event listeners for the resizer
+   * @returns {void}
+   *
+   * Side effects:
+   * - Adds click listener to editor root
+   * - Adds keydown listener to document
+   * - Adds scroll listeners to window and scroll host
+   * - Creates ResizeObserver for editor root
+   * - Adds text-change listener to Quill
    */
   setupEventListeners() {
     if (!this.quill || !this.wrapper) return;
@@ -72,6 +87,16 @@ export class ImageResizer {
 
   /**
    * Creates resize overlay with drag handles
+   * @returns {void}
+   *
+   * Side effects:
+   * - Creates and appends overlay div to wrapper
+   * - Creates four corner drag handles
+   * - Adds mousedown listeners to handles
+   *
+   * Invariants:
+   * - Overlay positioned absolutely
+   * - Handle positions: nw, ne, sw, se corners
    */
   createOverlay() {
     this.overlay = document.createElement('div');
@@ -115,6 +140,12 @@ export class ImageResizer {
 
   /**
    * Removes resize overlay and cleans up
+   * @returns {void}
+   *
+   * Side effects:
+   * - Removes event listeners from handles
+   * - Removes overlay from DOM
+   * - Nullifies overlay and targetImg references
    */
   removeOverlay() {
     if (this.overlay) {
@@ -129,7 +160,15 @@ export class ImageResizer {
 
   /**
    * Positions overlay to match the target image
-   * @param {HTMLImageElement} img - Image to position overlay for
+   * @param {HTMLImageElement | null} img - Image to position overlay for
+   * @returns {void}
+   *
+   * Side effects:
+   * - Updates overlay position and dimensions
+   *
+   * Invariants:
+   * - Accounts for scroll offsets
+   * - Uses getBoundingClientRect for accurate positioning
    */
   positionOverlayFor(img) {
     if (!this.overlay || !img || !this.wrapper) return;
@@ -149,6 +188,12 @@ export class ImageResizer {
   /**
    * Selects an image for resizing
    * @param {HTMLImageElement} img - Image to select
+   * @returns {void}
+   *
+   * Side effects:
+   * - Sets targetImg reference
+   * - Creates overlay if needed
+   * - Positions overlay over image
    */
   selectImage(img) {
     this.targetImg = img;
@@ -161,6 +206,15 @@ export class ImageResizer {
   /**
    * Handle mouse down on resize handles
    * @param {MouseEvent} e - Mouse event
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores initial resize state
+   * - Adds mousemove and mouseup listeners
+   *
+   * Invariants:
+   * - Calculates initial dimensions and aspect ratio
+   * - Records which handle was grabbed (nw, ne, sw, se)
    */
   onHandleDown(e) {
     if (!this.targetImg) return;
@@ -186,6 +240,16 @@ export class ImageResizer {
   /**
    * Handle mouse drag for resizing
    * @param {MouseEvent} e - Mouse event
+   * @returns {void}
+   *
+   * Side effects:
+   * - Updates target image dimensions
+   * - Repositions overlay to match
+   *
+   * Invariants:
+   * - Maintains aspect ratio when shift is held
+   * - Enforces minimum size of 20px
+   * - Direction-aware resizing based on handle
    */
   onDrag(e) {
     if (!this.start || !this.targetImg) return;
@@ -221,6 +285,12 @@ export class ImageResizer {
 
   /**
    * Handle mouse up after resizing
+   * @returns {void}
+   *
+   * Side effects:
+   * - Removes mousemove listener
+   * - Updates image dimensions in Quill editor
+   * - Nullifies resize state
    */
   onUp() {
     document.removeEventListener('mousemove', this.onDrag);
@@ -236,6 +306,11 @@ export class ImageResizer {
   /**
    * Handle clicks on images or outside
    * @param {MouseEvent} e - Mouse event
+   * @returns {void}
+   *
+   * Side effects:
+   * - Selects clicked image
+   * - Removes overlay if clicking outside
    */
   onClick(e) {
     const img = e.target.closest('img');
@@ -249,6 +324,10 @@ export class ImageResizer {
   /**
    * Handle keyboard events
    * @param {KeyboardEvent} e - Keyboard event
+   * @returns {void}
+   *
+   * Side effects:
+   * - Removes overlay on Escape key
    */
   onKeyDown(e) {
     if (e.key === 'Escape') {
@@ -258,6 +337,10 @@ export class ImageResizer {
 
   /**
    * Handle scroll events to reposition overlay
+   * @returns {void}
+   *
+   * Side effects:
+   * - Repositions overlay to match scrolled image
    */
   onScroll() {
     if (this.targetImg && this.overlay) {
@@ -267,6 +350,10 @@ export class ImageResizer {
 
   /**
    * Handle resize events to reposition overlay
+   * @returns {void}
+   *
+   * Side effects:
+   * - Repositions overlay to match resized editor
    */
   onResize() {
     if (this.targetImg && this.overlay) {
@@ -276,6 +363,10 @@ export class ImageResizer {
 
   /**
    * Handle text changes to clean up overlay when images are deleted
+   * @returns {void}
+   *
+   * Side effects:
+   * - Removes overlay if target image no longer in DOM
    */
   onTextChange() {
     if (this.targetImg && !document.body.contains(this.targetImg)) {
@@ -285,6 +376,12 @@ export class ImageResizer {
 
   /**
    * Clean up event listeners and overlay
+   * @returns {void}
+   *
+   * Side effects:
+   * - Removes all event listeners
+   * - Removes overlay
+   * - Disconnects ResizeObserver
    */
   cleanup() {
     this.removeOverlay();

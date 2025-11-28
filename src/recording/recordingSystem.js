@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Main recording system using MediaRecorder API
  * Handles recording lifecycle, codec selection, and data management
@@ -34,7 +35,13 @@ export class RecordingSystem {
 
   /**
    * Initialize recording system with DOM references and callbacks
-   * @param {Object} options - Configuration object
+   * @param {import('../../types/global').RecordingInitOptions} options - Configuration object
+   * @returns {void}
+   * @throws {Error} If required DOM elements are not provided
+   *
+   * Side effects:
+   * - Stores references to DOM elements
+   * - Initializes timer system with DOM references
    */
   init(options) {
     this.player = options.player;
@@ -48,6 +55,19 @@ export class RecordingSystem {
 
   /**
    * Starts a new recording session
+   * @returns {Promise<void>}
+   * @throws {Error} If device access fails or MediaRecorder initialization fails
+   *
+   * Side effects:
+   * - Requests microphone and camera permissions
+   * - Creates MediaRecorder instance
+   * - Starts audio level monitoring
+   * - Updates UI state to 'recording'
+   * - Starts timer system
+   *
+   * Invariants:
+   * - Must be called when not already recording
+   * - Cleans up any existing mixer before starting new session
    */
   async startRecording() {
     try {
@@ -169,6 +189,15 @@ export class RecordingSystem {
 
   /**
    * Pauses or resumes recording
+   * @returns {void}
+   *
+   * Side effects:
+   * - Pauses or resumes MediaRecorder
+   * - Pauses or resumes timer system
+   * - Updates UI state
+   *
+   * Invariants:
+   * - MediaRecorder must be active (not 'inactive' state)
    */
   togglePause() {
     if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') return;
@@ -190,6 +219,19 @@ export class RecordingSystem {
 
   /**
    * Stops the recording with robust data flushing
+   * @returns {Promise<void>}
+   *
+   * Side effects:
+   * - Stops MediaRecorder and flushes remaining data
+   * - Stops all media tracks
+   * - Destroys mixer system
+   * - Stops timer and audio level monitoring
+   * - Creates final blob and sets up playback
+   * - Updates UI state to 'stopped'
+   *
+   * Invariants:
+   * - Safe to call even if recorder is already stopped
+   * - Implements 3-second timeout protection for robust stopping
    */
   async stopRecording() {
     if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
@@ -274,6 +316,17 @@ export class RecordingSystem {
 
   /**
    * Assembles recorded chunks into final blob and sets up playback
+   * @returns {void}
+   *
+   * Side effects:
+   * - Revokes previous blob URL to prevent memory leaks
+   * - Creates new blob from recorded chunks
+   * - Sets player source to recorded blob
+   * - Starts playback timer
+   * - Triggers onStateChange callback
+   *
+   * Invariants:
+   * - Can be called multiple times safely (cleans up previous blob URLs)
    */
   finalizePreview() {
     // Ensure the last data chunk is included
@@ -328,7 +381,13 @@ export class RecordingSystem {
 
   /**
    * Updates button states based on recording state
-   * @param {string} state - Current state: 'idle', 'recording', 'paused', 'stopped'
+   * @param {import('../../types/global').RecordingState} state - Current state: 'idle', 'recording', 'paused', 'stopped'
+   * @returns {void}
+   *
+   * Side effects:
+   * - Enables/disables control buttons
+   * - Updates button text and icons
+   * - Triggers onStateChange callback
    */
   updateUIState(state) {
     const { btnStart, btnPause, btnStop } = this.buttons;
@@ -368,6 +427,19 @@ export class RecordingSystem {
 
   /**
    * Resets recording state and clears data
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stops MediaRecorder if active
+   * - Stops all media tracks
+   * - Destroys mixer system
+   * - Revokes blob URLs to prevent memory leaks
+   * - Resets all internal state
+   * - Resets player and timer systems
+   * - Updates UI to 'idle' state
+   *
+   * Invariants:
+   * - Safe to call at any time, even if not recording
    */
   reset() {
     // Stop recording if active
@@ -418,6 +490,16 @@ export class RecordingSystem {
   /**
    * Switch microphone device during active recording
    * @param {string} deviceId - New microphone device ID
+   * @returns {Promise<void>}
+   * @throws {Error} If device switching fails
+   *
+   * Side effects:
+   * - Switches microphone input in mixer system
+   * - Requests new data chunk from MediaRecorder for continuity
+   *
+   * Invariants:
+   * - Only works when mixer is active
+   * - Shows alert to user if switching fails
    */
   async switchMicrophoneLive(deviceId) {
     if (!mixerSystem.isActive()) return;
@@ -437,6 +519,16 @@ export class RecordingSystem {
   /**
    * Switch camera device during active recording
    * @param {string} deviceId - New camera device ID
+   * @returns {Promise<void>}
+   * @throws {Error} If device switching fails
+   *
+   * Side effects:
+   * - Switches camera input in mixer system
+   * - Requests new data chunk from MediaRecorder for continuity
+   *
+   * Invariants:
+   * - Only works when mixer is active
+   * - Shows alert to user if switching fails
    */
   async switchCameraLive(deviceId) {
     if (!mixerSystem.isActive()) return;
@@ -480,7 +572,18 @@ export class RecordingSystem {
 
   /**
    * Load a recorded blob for playback
-   * @param {ArrayBuffer} mediaArrayBuffer - Media data as ArrayBuffer
+   * @param {ArrayBuffer | null} mediaArrayBuffer - Media data as ArrayBuffer
+   * @returns {void}
+   *
+   * Side effects:
+   * - Revokes previous blob URL to prevent memory leaks
+   * - Creates new blob from array buffer
+   * - Sets player source to loaded media
+   * - Starts playback timer
+   * - Triggers onStateChange callback
+   *
+   * Invariants:
+   * - Safe to call with null to clear playback
    */
   loadRecording(mediaArrayBuffer) {
     // Revoke previous blob URL to prevent memory leaks

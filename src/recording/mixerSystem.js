@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Audio/Video mixer system for combining multiple media sources
  * Creates a combined MediaStream from separate audio and video sources
@@ -19,7 +20,11 @@ export class MixerSystem {
 
   /**
    * Initialize mixer with device manager reference
-   * @param {Object} deviceManager - Device manager instance
+   * @param {any} deviceManager - Device manager instance
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores reference to device manager for device selection queries
    */
   init(deviceManager) {
     this.deviceManager = deviceManager;
@@ -28,7 +33,27 @@ export class MixerSystem {
   /**
    * Creates a mixed MediaStream combining audio from Web Audio API and video from canvas
    * Supports live device switching and handles fallbacks when devices are unavailable
-   * @returns {Object} Mixer object containing the combined stream and component references
+   * @returns {Promise<import('../../types/global').Mixer>} Mixer object containing the combined stream and component references
+   * @throws {Error} If microphone access fails with detailed user-facing error message
+   * @throws {Error} If camera access fails (when video is requested) with detailed user-facing error message
+   *
+   * Side effects:
+   * - Requests microphone and camera permissions
+   * - Creates Web Audio context and nodes
+   * - Creates canvas and video elements for video processing
+   * - Starts canvas drawing loop for video capture
+   * - Stores mixer object in instance state
+   *
+   * Invariants:
+   * - Cleans up partial setup if errors occur
+   * - Always attempts microphone access (required)
+   * - Camera is optional based on deviceManager.isAudioOnly()
+   *
+   * Error types:
+   * - NotAllowedError: Permission denied by user
+   * - NotFoundError: Device not found/connected
+   * - NotReadableError: Device in use by another app
+   * - Timeout: Device initialization timeout (camera only)
    */
   async createMixerStream() {
     const audioId = this.deviceManager.getSelectedMicId();
@@ -202,6 +227,19 @@ export class MixerSystem {
    * Switches the microphone input to a new device while recording is active
    * Maintains audio continuity by seamlessly reconnecting Web Audio nodes
    * @param {string} deviceId - ID of the new microphone device
+   * @returns {Promise<void>}
+   * @throws {Error} If microphone switching fails with user-facing error message
+   *
+   * Side effects:
+   * - Stops old microphone stream
+   * - Disconnects old audio source nodes
+   * - Creates new microphone stream
+   * - Reconnects audio pipeline with new source
+   * - Updates analyser node reference for audio level monitoring
+   *
+   * Invariants:
+   * - Only works when mixer is active
+   * - Cleans up old microphone on both success and failure
    */
   async switchMicLive(deviceId) {
     if (!this.mixer) return;
@@ -248,6 +286,17 @@ export class MixerSystem {
    * Switches the camera input to a new device while recording is active
    * Updates the canvas source video to maintain video continuity
    * @param {string} deviceId - ID of the new camera device
+   * @returns {Promise<void>}
+   * @throws {Error} If camera switching fails with user-facing error message
+   *
+   * Side effects:
+   * - Stops old camera stream
+   * - Creates new camera stream with current resolution settings
+   * - Updates video element source (canvas drawing loop continues automatically)
+   *
+   * Invariants:
+   * - Only works when mixer is active and not in audio-only mode
+   * - Canvas drawing loop continues without interruption
    */
   async switchCamLive(deviceId) {
     if (!this.mixer || this.deviceManager.isAudioOnly()) return;
@@ -293,6 +342,19 @@ export class MixerSystem {
   /**
    * Cleanly shuts down the mixer system, stopping all streams and timers
    * Called when stopping recording or resetting the session
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stops canvas drawing loop
+   * - Pauses and clears video element
+   * - Stops all media tracks (camera and microphone)
+   * - Closes Web Audio context
+   * - Clears audio level monitor
+   * - Nullifies mixer state
+   *
+   * Invariants:
+   * - Safe to call multiple times
+   * - Safe to call when mixer is null
    */
   destroy() {
     if (!this.mixer) return;
@@ -325,7 +387,7 @@ export class MixerSystem {
 
   /**
    * Get the current mixer instance
-   * @returns {Object|null} Current mixer object or null if not created
+   * @returns {import('../../types/global').Mixer | null} Current mixer object or null if not created
    */
   getMixer() {
     return this.mixer;

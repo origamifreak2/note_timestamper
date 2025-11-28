@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Export functionality for sessions
  * Handles exporting sessions as HTML files with embedded or separate media
@@ -17,8 +18,12 @@ export class ExportSystem {
 
   /**
    * Initialize export system with dependencies
-   * @param {Object} recordingSystem - Recording system instance
-   * @param {Quill} quill - Quill editor instance
+   * @param {any} recordingSystem - Recording system instance
+   * @param {any} quill - Quill editor instance
+   * @returns {void}
+   *
+   * Side effects:
+   * - Stores references to recordingSystem and quill for export operations
    */
   init(recordingSystem, quill) {
     this.recordingSystem = recordingSystem;
@@ -30,6 +35,13 @@ export class ExportSystem {
    * This cleans up the export to remove internal editing metadata
    * @param {string} html - HTML content to clean
    * @returns {string} Cleaned HTML without fabric data
+   *
+   * Side effects:
+   * - Creates temporary DOM element for safe HTML manipulation
+   *
+   * Invariants:
+   * - Does not modify original html parameter (creates temp DOM)
+   * - Removes: data-fabric-json, editable-drawing class, title attribute, pointer cursor
    */
   stripFabricData(html) {
     // Create a temporary DOM to safely manipulate HTML
@@ -53,7 +65,16 @@ export class ExportSystem {
 
   /**
    * Export session as embedded HTML (single file with base64-encoded media)
-   * @returns {Promise<Object>} Result from main process
+   * @returns {Promise<{ok: boolean; path?: string; error?: string}>} Result from main process
+   *
+   * Side effects:
+   * - Reads recorded blob from recordingSystem
+   * - Converts blob to base64 for embedding
+   * - Strips fabric data from notes HTML
+   * - Invokes IPC call to main process (includes file picker)
+   *
+   * Invariants:
+   * - Does NOT use timeout wrapper (user needs unlimited time to pick save location)
    */
   async exportAsEmbeddedHtml() {
     const notesHtml = this.stripFabricData(this.quill.root.innerHTML);
@@ -75,7 +96,17 @@ export class ExportSystem {
 
   /**
    * Export session as separate HTML + video files
-   * @returns {Promise<Object>} Result from main process
+   * @returns {Promise<{ok: boolean; path?: string; error?: string}>} Result from main process
+   *
+   * Side effects:
+   * - Reads recorded blob from recordingSystem
+   * - Strips fabric data from notes HTML
+   * - Extracts images to separate files
+   * - Invokes IPC call to main process (includes file picker)
+   *
+   * Invariants:
+   * - Does NOT use timeout wrapper (user needs unlimited time to pick save location)
+   * - Backend replaces __BASENAME__ placeholder with actual folder name
    */
   async exportAsSeparateFiles() {
     const notesHtml = this.stripFabricData(this.quill.root.innerHTML);
@@ -104,8 +135,16 @@ export class ExportSystem {
   /**
    * Extract base64 images from HTML and replace with file references
    * @param {string} html - HTML content containing base64 images
-   * @param {string} folderPrefix - Folder prefix to use (defaults to 'images')
-   * @returns {Object} Object containing updated HTML and extracted images array
+   * @param {string} [folderPrefix='images'] - Folder prefix to use (defaults to 'images')
+   * @returns {{html: string; images: import('../../types/global').ExtractedImage[]}} Object containing updated HTML and extracted images array
+   *
+   * Side effects:
+   * - None (pure function, returns new data)
+   *
+   * Invariants:
+   * - Preserves all non-image content
+   * - Generates sequential image filenames (image_001.ext, image_002.ext, ...)
+   * - Handles MIME type to extension conversion (jpeg→jpg, svg+xml→svg)
    */
   extractAndReplaceImages(html, folderPrefix = 'images') {
     const images = [];
@@ -143,6 +182,9 @@ export class ExportSystem {
   /**
    * Get shared CSS styles for exported HTML
    * @returns {string} CSS styles
+   *
+   * Invariants:
+   * - Includes styles for: body, video/audio, timestamp buttons, grid layout, image modal
    */
   getSharedStyles() {
     return `  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 16px; }
@@ -194,6 +236,9 @@ export class ExportSystem {
   /**
    * Get shared JavaScript utilities for exported HTML
    * @returns {string} JavaScript utilities
+   *
+   * Invariants:
+   * - Includes: fmtTime function, player and tNow element references
    */
   getSharedUtilities() {
     return `  function fmtTime(s){ const ms=Math.floor((s%1)*100); s=Math.floor(s); const m=Math.floor(s/60); const sec=s%60; const pad=n=>String(n).padStart(2,'0'); return \`\${pad(m)}:\${pad(sec)}.\${pad(ms)}\`; }
@@ -246,6 +291,11 @@ export class ExportSystem {
    * @param {string} mediaB64 - Base64-encoded media data
    * @param {string} mediaMime - Media MIME type
    * @returns {string} JavaScript for loading embedded media
+   *
+   * Invariants:
+   * - Includes b64ToUint8 conversion function
+   * - Creates blob URL from base64 data
+   * - Handles missing media gracefully (replaces player with message)
    */
   getEmbeddedMediaScript(mediaB64, mediaMime) {
     return `  function b64ToUint8(b64){ const bin=atob(b64), len=bin.length, bytes=new Uint8Array(len); for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
@@ -262,6 +312,10 @@ export class ExportSystem {
   /**
    * Get media loading script for separate files export
    * @returns {string} JavaScript for loading external media
+   *
+   * Invariants:
+   * - Uses __VIDEO_FILE__ placeholder replaced by backend
+   * - Handles missing media file gracefully (shows error message)
    */
   getSeparateMediaScript() {
     return `
@@ -279,6 +333,14 @@ export class ExportSystem {
    * @param {string} notesHtml - HTML content from editor
    * @param {string} mediaScript - JavaScript for loading media (embedded or separate)
    * @returns {string} Complete HTML document
+   *
+   * Side effects:
+   * - None (pure function, returns string)
+   *
+   * Invariants:
+   * - Escapes closing script tags in notes content to prevent injection
+   * - Combines: styles, utilities, notes content, media script, event handlers
+   * - Includes image modal structure
    */
   buildHTMLTemplate(notesHtml, mediaScript) {
     // Escape closing script tags in notes content
@@ -326,6 +388,10 @@ ${this.getSharedEventHandlers()}
    * @param {string} mediaB64 - Base64-encoded media data
    * @param {string} mediaMime - Media MIME type
    * @returns {string} Complete HTML document
+   *
+   * Invariants:
+   * - Single-file output with embedded base64 media
+   * - No external dependencies
    */
   generateEmbeddedHTML(notesHtml, mediaB64, mediaMime) {
     const mediaScript = this.getEmbeddedMediaScript(mediaB64, mediaMime);
@@ -336,6 +402,10 @@ ${this.getSharedEventHandlers()}
    * Generate HTML template for separate files export
    * @param {string} notesHtml - HTML content from editor
    * @returns {string} Complete HTML document
+   *
+   * Invariants:
+   * - References external media file via __VIDEO_FILE__ placeholder
+   * - Requires media file to be in same directory
    */
   generateSeparateHTML(notesHtml) {
     const mediaScript = this.getSeparateMediaScript();
