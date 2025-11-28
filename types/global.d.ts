@@ -168,12 +168,14 @@ export interface ExportInitOptions {
  * Session metadata stored in session.json
  */
 export interface SessionMeta {
-  /** Creation timestamp */
-  created: string;
-  /** Media filename (e.g., "media.webm") */
-  mediaFileName: string;
-  /** App version that created the session */
-  appVersion: string;
+  /** ISO timestamp when the session was created */
+  createdAt: string;
+  /** Filename of the media file inside the archive (e.g., "media.webm"). Can be null if missing */
+  mediaFile: string | null;
+  /** Filename of the notes HTML inside the archive (typically notes.html) */
+  notesFile: string;
+  /** Internal schema version number for session.json */
+  version: number;
 }
 
 /**
@@ -238,7 +240,7 @@ export interface TempMediaStream {
 export interface WindowAPI {
   // Session operations
   saveSession(payload: SaveSessionPayload): Promise<{ ok: boolean; path?: string; error?: string }>;
-  loadSession(): Promise<{ ok: boolean; noteHtml?: string; mediaBuffer?: ArrayBuffer; error?: string }>;
+  loadSession(): Promise<{ ok: boolean; notesHtml?: string; mediaArrayBuffer?: ArrayBuffer; mediaFile?: string | null; error?: string }>;
 
   // Temp media streaming
   createTempMedia(opts: { fileName: string; sessionId: string }): Promise<{ ok: boolean; id?: string; path?: string; error?: string }>;

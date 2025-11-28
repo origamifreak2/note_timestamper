@@ -699,7 +699,7 @@ ipcMain.handle('save-session', async (evt, payload) => {
 ipcMain.handle('load-session', async () => {
   // Shows file picker for .notepack files
   // Sends file-loading-start / file-loading-complete events
-  // Returns: { ok: true, notesHtml, mediaArrayBuffer, mediaFileName }
+  // Returns: { ok: true, notesHtml, mediaArrayBuffer, mediaFile }
 });
 ```
 

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://note-timestamper.app/schemas/session.schema.json",
+  "title": "Note Timestamper Session Metadata",
+  "description": "Metadata stored in session.json within a .notepack archive.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["createdAt", "mediaFile", "notesFile", "version"],
+  "properties": {
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when the session was created."
+    },
+    "mediaFile": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Filename of the media file inside the archive (e.g., media.webm). Can be null if missing."
+    },
+    "notesFile": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Filename of the notes HTML inside the archive (typically notes.html)."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Internal schema version number for session.json."
+    }
+  }
+}

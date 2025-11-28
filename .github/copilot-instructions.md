@@ -121,7 +121,7 @@ All user sessions are saved as zip files with `.notepack` extension:
 mySession.notepack (zip file)
 ├── notes.html           # Quill.js editor HTML with delta + media embeds
 ├── media.webm           # Audio/video recording (extension varies)
-└── session.json         # Metadata: { created, mediaFileName, appVersion }
+└── session.json         # Metadata: { createdAt, mediaFile, notesFile, version }
 ```
 
 **File Characteristics:**
@@ -552,7 +552,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - Session format: `.notepack` zip files with yazl/yauzl libraries
   - Archive structure: `notes.html`, `media.{ext}`, `session.json`
   - `notes.json` contains embedded Quill.js delta for rich text editing
-  - `session.json` stores metadata (created date, media filename, app version)
+  - `session.json` stores metadata (createdAt, mediaFile, notesFile, version)
   - Enables seamless load/save of audio/video + timestamped notes
 
 ### Electron Security (Permission Handling)

@@ -4,6 +4,26 @@ import path from 'path';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import { fileURLToPath } from 'url';
+// Lazy-load Ajv when needed to keep startup fast
+let __ajvInstance = null;
+let __sessionValidator = null;
+
+async function getSessionValidator() {
+  if (__sessionValidator) return __sessionValidator;
+  try {
+    const { default: Ajv } = await import('ajv');
+    if (!__ajvInstance) {
+      __ajvInstance = new Ajv({ allErrors: true, strict: false });
+    }
+    const schemaPath = path.join(__dirname, 'schemas', 'session.schema.json');
+    const schemaJson = JSON.parse(await fs.readFile(schemaPath, 'utf-8'));
+    __sessionValidator = __ajvInstance.compile(schemaJson);
+  } catch (e) {
+    console.warn('Schema validator initialization failed:', e?.message || String(e));
+    __sessionValidator = null;
+  }
+  return __sessionValidator;
+}
 
 // ES module compatibility: Get current file path and directory
 const __filename = fileURLToPath(import.meta.url);
@@ -628,7 +648,25 @@ ipcMain.handle('load-session', async () => {
           // Build response from entries
           const notesHtml = entries['notes.html'] ? entries['notes.html'].toString('utf-8') : '';
           let mediaArrayBuffer = null;
-          let mediaFileName = null;
+          let mediaFile = null;
+          // Validate session.json (non-blocking)
+          (async () => {
+            try {
+              const metaBuf = entries['session.json'];
+              if (metaBuf) {
+                const meta = JSON.parse(metaBuf.toString('utf-8'));
+                const validate = await getSessionValidator();
+                if (validate) {
+                  const valid = validate(meta);
+                  if (!valid) {
+                    console.warn('session.json validation errors:', validate.errors);
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('session.json validation failure:', e?.message || String(e));
+            }
+          })();
 
           try {
             const metaBuf = entries['session.json'];
@@ -640,14 +678,14 @@ ipcMain.handle('load-session', async () => {
 
             if (entries[mediaFile]) {
               const b = entries[mediaFile];
-              mediaFileName = mediaFile;
+              mediaFile = mediaFile;
               mediaArrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
             }
           } catch (e) {
             // ignore parse errors and continue
           }
 
-          return resolve({ ok: true, notesHtml, mediaArrayBuffer, mediaFileName });
+          return resolve({ ok: true, notesHtml, mediaArrayBuffer, mediaFile });
         });
       });
     });
