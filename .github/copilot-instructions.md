@@ -309,10 +309,10 @@ All key modules use `// @ts-check` for TypeScript validation without transpilati
  * @param {import('../../types/global').TypeName} param - Parameter description
  * @returns {Promise<void>}
  * @throws {Error} Error conditions
- * 
+ *
  * Side effects:
  * - What state/DOM changes occur
- * 
+ *
  * Invariants:
  * - Pre/post-conditions and safety guarantees
  */

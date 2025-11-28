@@ -59,13 +59,13 @@ All key modules use `// @ts-check` to enable TypeScript validation without trans
  * Starts a new recording session
  * @returns {Promise<void>}
  * @throws {Error} If device access fails or MediaRecorder initialization fails
- * 
+ *
  * Side effects:
  * - Requests microphone and camera permissions
  * - Creates MediaRecorder instance
  * - Starts audio level monitoring
  * - Updates UI state to 'recording'
- * 
+ *
  * Invariants:
  * - Must be called when not already recording
  * - Cleans up any existing mixer before starting new session
