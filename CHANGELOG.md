@@ -2,6 +2,47 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.0] - 2025-11-28
+### Added
+- **Type Safety without TypeScript Migration**
+  - Created `types/global.d.ts` with comprehensive TypeScript definitions for all domain types:
+    - Recording types: `RecordingState`, `PlayerState`, `Mixer`, `RecordingInitOptions`
+    - Device types: `Resolution`, `DeviceSelection`, `AudioBitrateOption`
+    - Editor types: `TimestampValue`, `ImageValue`, `ImageDimensions`, `ExtractedImage`
+    - Session types: `SessionMeta`, `SaveSessionPayload`, `SaveProgress`, `TempMediaStream`
+    - IPC interfaces: `WindowAPI`, `WindowMenu`, `WindowSession` with complete method signatures
+    - Error boundary types: `ErrorBoundaryWrapOptions`, `DeviceAccessWrapOptions`, `ErrorLogEntry`
+    - Utility types: `Result<T, E>`, `Callback<T>`, `CleanupFunction`
+  - Enabled `// @ts-check` in all key modules for TypeScript validation without transpilation:
+    - `src/recording/recordingSystem.js`
+    - `src/recording/mixerSystem.js`
+    - `src/modules/deviceManager.js`
+    - `src/modules/exportSystem.js`
+    - `src/editor/customBlots.js`
+    - `src/editor/imageManager.js`
+    - `src/editor/imageResizer.js`
+- **Comprehensive JSDoc Documentation** for all public methods:
+  - `@param` annotations with proper TypeScript type references
+  - `@returns` annotations with typed return values including Promise and union types
+  - `@throws` annotations documenting specific error conditions
+  - **Side effects** documentation showing what state/DOM changes occur
+  - **Invariants** documentation describing pre/post-conditions and safety guarantees
+  - Type references link to shared types in `types/global.d.ts` using import syntax
+
+### Enhanced
+- **AI-Friendly Codebase**: Type definitions make data structures explicit and discoverable for AI tools
+- **Developer Experience**: Full IDE IntelliSense, autocomplete, and type checking without build step
+- **Error Prevention**: Catch type errors at development time with VS Code type checking
+- **Self-Documenting Code**: JSDoc comments provide inline documentation visible in IDE tooltips
+- **Architecture Documentation**: Updated `ARCHITECTURE.md` and `README.md` to document type safety approach
+
+### Benefits
+- ✅ Type safety with zero build overhead (no TypeScript compilation required)
+- ✅ Gradual migration path - can move to full TypeScript incrementally
+- ✅ Jump-to-definition works for all custom types across the codebase
+- ✅ Method contracts explicitly documented with side effects and invariants
+- ✅ Consistent type annotations across all 7 core modules
+
 ## [0.11.1]
 ### Refactored
 - **Export System** (`src/modules/exportSystem.js`)

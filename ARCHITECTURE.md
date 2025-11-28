@@ -4,7 +4,7 @@ This document describes the architecture of the Note Timestamper application, fe
 
 ## 🏗️ Architecture Overview
 
-The application uses a layered modular architecture
+The application uses a layered modular architecture with comprehensive type safety:
 
 ```
 src/
@@ -14,19 +14,82 @@ src/
 │   ├── utils.js           # Common utility functions
 │   ├── timer.js           # Recording/playback timing system
 │   ├── audioLevel.js      # Real-time audio level monitoring
-│   ├── deviceManager.js   # Device enumeration and selection
-│   └── exportSystem.js    # Session export functionality
+│   ├── deviceManager.js   # Device enumeration and selection (@ts-check enabled)
+│   └── exportSystem.js    # Session export functionality (@ts-check enabled)
 ├── editor/                # Quill.js customizations (blots, images, resizing)
-│   ├── customBlots.js     # Custom Quill.js blots (timestamp, image)
-│   ├── imageManager.js    # Image handling and drag-drop
-│   └── imageResizer.js    # Interactive image resizing
+│   ├── customBlots.js     # Custom Quill.js blots (@ts-check enabled)
+│   ├── imageManager.js    # Image handling and drag-drop (@ts-check enabled)
+│   └── imageResizer.js    # Interactive image resizing (@ts-check enabled)
 ├── recording/             # Advanced MediaRecorder + Web Audio mixing
-│   ├── mixerSystem.js     # Web Audio API + Canvas video mixing
-│   └── recordingSystem.js # MediaRecorder lifecycle management
+│   ├── mixerSystem.js     # Web Audio API + Canvas mixing (@ts-check enabled)
+│   └── recordingSystem.js # MediaRecorder lifecycle (@ts-check enabled)
 └── ui/                    # Modal dialogs (camera, drawing)
     ├── cameraSystem.js    # Camera capture functionality
     └── drawingSystem.js   # Drawing canvas with Fabric.js
+
+types/
+└── global.d.ts            # TypeScript type definitions for all modules
 ```
+
+## 🔒 Type Safety Architecture
+
+The application implements **type safety without full TypeScript migration** using JSDoc annotations and TypeScript type checking:
+
+### Type Definitions (`types/global.d.ts`)
+Centralized TypeScript definitions provide type safety across the codebase:
+
+- **Recording Types**: `RecordingState`, `PlayerState`, `Mixer`, `RecordingInitOptions`
+- **Device Types**: `Resolution`, `DeviceSelection`, `AudioBitrateOption`
+- **Editor Types**: `TimestampValue`, `ImageValue`, `ImageDimensions`, `ExtractedImage`
+- **Session Types**: `SessionMeta`, `SaveSessionPayload`, `SaveProgress`, `TempMediaStream`
+- **IPC Interfaces**: `WindowAPI`, `WindowMenu`, `WindowSession` with complete method signatures
+- **Error Types**: `ErrorBoundaryWrapOptions`, `DeviceAccessWrapOptions`, `ErrorLogEntry`
+- **Utility Types**: `Result<T, E>`, `Callback<T>`, `CleanupFunction`
+
+### JSDoc + @ts-check Pattern
+All key modules use `// @ts-check` to enable TypeScript validation without transpilation:
+
+```javascript
+// @ts-check
+/**
+ * @fileoverview Main recording system using MediaRecorder API
+ */
+
+/**
+ * Starts a new recording session
+ * @returns {Promise<void>}
+ * @throws {Error} If device access fails or MediaRecorder initialization fails
+ * 
+ * Side effects:
+ * - Requests microphone and camera permissions
+ * - Creates MediaRecorder instance
+ * - Starts audio level monitoring
+ * - Updates UI state to 'recording'
+ * 
+ * Invariants:
+ * - Must be called when not already recording
+ * - Cleans up any existing mixer before starting new session
+ */
+async startRecording() { ... }
+```
+
+### Enhanced JSDoc Documentation
+Every public method includes comprehensive documentation:
+
+- **@param**: Parameter types with proper TypeScript references
+- **@returns**: Return types including Promise and union types
+- **@throws**: Documented error conditions with specific error types
+- **Side effects**: What state/DOM changes occur
+- **Invariants**: Pre/post-conditions and safety guarantees
+
+### Benefits
+
+✅ **AI-Friendly**: Type definitions make the codebase structure explicit and discoverable
+✅ **IntelliSense**: Full IDE autocomplete and type checking
+✅ **Error Prevention**: Catch type errors at development time
+✅ **Self-Documenting**: JSDoc comments provide inline documentation
+✅ **No Build Step**: Runs directly without TypeScript compilation
+✅ **Gradual Adoption**: Can migrate to full TypeScript incrementally
 
 ## 🎯 Innovation: Web Audio + Canvas Mixing
 
@@ -95,6 +158,13 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED;
 - **MESSAGES**: Success messages for user feedback
 
 ## 📦 Module Responsibilities
+
+### Type Definitions (`types/global.d.ts`)
+- **Domain Types**: RecordingState, DeviceSelection, ImageValue, TimestampValue, etc.
+- **IPC Interfaces**: Complete type definitions for window.api, window.menu, window.session
+- **Error Types**: Structured error handling types with recovery options
+- **Utility Types**: Generic Result<T, E>, Callback<T>, CleanupFunction patterns
+- **AI-Readable**: Serves as authoritative source of truth for data structures
 
 ### Core Configuration (`src/config.js`)
 - **Centralized Settings**: All application constants and configuration
@@ -685,10 +755,12 @@ ipcMain.handle('close-temp-media', async (evt, id) => {
 ## 🎯 Development Workflows
 
 ### Adding New Recording Features
-1. **Mixer Changes**: Update `mixerSystem.js` for audio/video processing modifications
-2. **Recording Logic**: Modify `recordingSystem.js` for MediaRecorder lifecycle changes
-3. **UI Integration**: Add state handling in main app's `updateRecordingControlsState()`
-4. **Configuration**: Update relevant `CONFIG` sections for new settings
+1. **Type Definitions**: Add new types to `types/global.d.ts` if introducing new data structures
+2. **Mixer Changes**: Update `mixerSystem.js` for audio/video processing modifications
+3. **Recording Logic**: Modify `recordingSystem.js` for MediaRecorder lifecycle changes
+4. **UI Integration**: Add state handling in main app's `updateRecordingControlsState()`
+5. **Configuration**: Update relevant `CONFIG` sections for new settings
+6. **JSDoc**: Document new methods with @param, @returns, @throws, side effects, and invariants
 
 ### Editor Customizations
 1. **Custom Blots**: Create new Quill.js elements in `src/editor/customBlots.js`
@@ -716,20 +788,28 @@ ipcMain.handle('close-temp-media', async (evt, id) => {
 - Dependency injection enables testing and mocking
 - Easy feature addition without core system modification
 
-### 2. **Advanced Media Processing**
+### 2. **Type Safety & Documentation**
+- TypeScript type definitions without migration overhead
+- JSDoc provides inline documentation visible in IDE
+- @ts-check catches type errors at development time
+- Side effects and invariants explicitly documented
+- AI-friendly codebase structure with discoverable types
+
+### 3. **Advanced Media Processing**
 - Web Audio API provides professional-grade audio processing
 - Canvas capture enables sophisticated video manipulation
 - Live device switching without recording interruption
 - Real-time audio level monitoring and visualization
 
-### 3. **Robust State Management**
+### 4. **Robust State Management**
 - Multiple specialized UI update methods prevent conflicts
 - Pre-emptive state updates eliminate race conditions
 - Centralized configuration reduces magic strings and inconsistencies
 - Proper event-driven architecture with clear data flows
 
-### 4. **Professional Development Experience**
+### 5. **Professional Development Experience**
 - Comprehensive JSDoc documentation for all modules
+- TypeScript-powered IntelliSense and type checking
 - Consistent code organization and naming conventions
 - Enhanced debugging with focused, smaller modules
 - Future-proof architecture for continued development

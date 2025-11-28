@@ -103,6 +103,8 @@ Notes for Windows builds
 - **MediaRecorder API**: High-quality audio/video recording
 - **Fabric.js**: Interactive drawing canvas
 - **ES6 Modules**: Modern JavaScript module system
+- **Type Safety**: JSDoc + TypeScript type checking without transpilation
+- **Comprehensive Documentation**: All modules include side effects and invariants
 
 ## 📄 File Formats
 
@@ -116,8 +118,10 @@ The modular architecture makes contributions easier:
 
 1. Each module has a single responsibility
 2. Clear interfaces between components
-3. Comprehensive JSDoc documentation
-4. Consistent coding standards
+3. Comprehensive JSDoc documentation with type annotations
+4. Type safety via `@ts-check` and `types/global.d.ts`
+5. Document side effects and invariants for all public methods
+6. Consistent coding standards
 
 ## 📝 License
 

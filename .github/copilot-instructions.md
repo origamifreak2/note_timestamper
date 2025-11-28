@@ -4,17 +4,23 @@ This Electron app records audio/video with timestamped notes using a sophisticat
 
 ## 🏗️ Core Architecture
 
-The app uses a layered modular architecture:
+The app uses a layered modular architecture with comprehensive type safety:
 
 ```
 src/main.js                 # Main coordinator (NoteTimestamperApp class)
 src/config.js              # Centralized configuration and constants
 src/modules/                # Core utilities (timer, devices, export, audioLevel)
+│   ├── deviceManager.js    # Device enumeration (@ts-check enabled)
+│   └── exportSystem.js     # Session export (@ts-check enabled)
 src/editor/                 # Quill.js customizations (blots, images, resizing)
+│   ├── customBlots.js      # Custom Quill blots (@ts-check enabled)
+│   ├── imageManager.js     # Image handling (@ts-check enabled)
+│   └── imageResizer.js     # Interactive resizing (@ts-check enabled)
 src/recording/              # Advanced MediaRecorder + Web Audio mixing
-│   ├── mixerSystem.js      # Web Audio API + Canvas video mixing
-│   └── recordingSystem.js  # MediaRecorder lifecycle management
+│   ├── mixerSystem.js      # Web Audio + Canvas (@ts-check enabled)
+│   └── recordingSystem.js  # MediaRecorder lifecycle (@ts-check enabled)
 src/ui/                     # Modal dialogs (camera, drawing)
+types/global.d.ts           # TypeScript type definitions for all modules
 ```
 
 **Key Patterns**:
@@ -22,6 +28,7 @@ src/ui/                     # Modal dialogs (camera, drawing)
 - All singletons are initialized in `src/main.js` with proper dependency injection
 - The main `NoteTimestamperApp` class acts as a coordinator that wires modules together
 - Centralized configuration through `CONFIG` object in `src/config.js`
+- **Type safety via JSDoc + @ts-check** without TypeScript transpilation
 
 ## 🎯 Web Audio + Canvas Mixing Architecture
 
@@ -277,15 +284,55 @@ function cleanupOrphanedTempFiles() {
 - **Electron**: `npm start` for dev, `npm run build:mac/build:win` for packaging
 
 ### Key Files to Modify
-- **Mixing logic**: `src/recording/mixerSystem.js` (Web Audio + Canvas coordination)
-- **Recording lifecycle**: `src/recording/recordingSystem.js` (MediaRecorder management)
-- **Device handling**: `src/modules/deviceManager.js` (enumerating mics/cameras)
-- **Editor features**: `src/editor/customBlots.js` (Quill.js timestamp/image embeds)
+- **Type definitions**: `types/global.d.ts` (add new types for data structures)
+- **Mixing logic**: `src/recording/mixerSystem.js` (Web Audio + Canvas coordination, @ts-check enabled)
+- **Recording lifecycle**: `src/recording/recordingSystem.js` (MediaRecorder management, @ts-check enabled)
+- **Device handling**: `src/modules/deviceManager.js` (enumerating mics/cameras, @ts-check enabled)
+- **Editor features**: `src/editor/customBlots.js` (Quill.js timestamp/image embeds, @ts-check enabled)
 - **Configuration**: `src/config.js` (centralized constants and settings)
 - **Error handling**: `src/modules/errorBoundary.js` (timeout protection, retry logic, structured logging)
 - **UI coordination**: `src/main.js` (event handling, state management)
 
 ## 📦 Critical Patterns
+
+### Type Safety & Documentation
+All key modules use `// @ts-check` for TypeScript validation without transpilation:
+
+```javascript
+// @ts-check
+/**
+ * @fileoverview Module description
+ */
+
+/**
+ * Method description
+ * @param {import('../../types/global').TypeName} param - Parameter description
+ * @returns {Promise<void>}
+ * @throws {Error} Error conditions
+ * 
+ * Side effects:
+ * - What state/DOM changes occur
+ * 
+ * Invariants:
+ * - Pre/post-conditions and safety guarantees
+ */
+async myMethod(param) { ... }
+```
+
+**Type Definitions** (`types/global.d.ts`):
+- Recording types: `RecordingState`, `Mixer`, `RecordingInitOptions`
+- Device types: `Resolution`, `DeviceSelection`, `AudioBitrateOption`
+- Editor types: `TimestampValue`, `ImageValue`, `ImageDimensions`
+- Session types: `SessionMeta`, `SaveProgress`, `SaveSessionPayload`
+- IPC interfaces: `WindowAPI`, `WindowMenu`, `WindowSession`
+- Error types: `ErrorBoundaryWrapOptions`, `ErrorLogEntry`
+
+**Documentation Standards**:
+- `@param`: Include proper TypeScript type references from `types/global.d.ts`
+- `@returns`: Document return types including Promise and union types
+- `@throws`: Specify error conditions with error types
+- **Side effects**: Document what state/DOM changes occur
+- **Invariants**: Describe pre/post-conditions and safety guarantees
 
 ### Module Initialization
 All modules follow this pattern:
@@ -397,18 +444,22 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 **Drawing System (`src/ui/drawingSystem.js`):**
 - `openDrawingModal(fabricJSON = null)` accepts optional fabric data for editing
 - Returns `{ dataUrl, fabricJSON }` with both rendered PNG and canvas JSON
-- Uses `canvas.loadFromJSON()` to restore previous drawing state
-- All Fabric.js objects (shapes, text, imported images) are editable
+## 🎯 Common Tasks
 
-**Image Manager (`src/editor/imageManager.js`):**
-- `insertDrawingImage(dataUrl, fabricJSON)` handles drawing-specific insertion
-- `updateImageInQuill(img)` preserves fabric data during resize operations
-- Checks for `data-fabric-json` attribute and uses object format when present
+### Adding New Recording Features
+1. **Add types** to `types/global.d.ts` if introducing new data structures
+2. Modify `recordingSystem.js` for MediaRecorder changes
+3. Update `mixerSystem.js` if audio/video mixing is involved
+4. Add UI state handling in main app's `updateRecordingControlsState()`
+5. **Document with JSDoc**: Include @param, @returns, @throws, side effects, and invariants
 
-**Custom Image Blot (`src/editor/customBlots.js`):**
-- `create()` method adds `data-fabric-json` attribute when `value.fabricJSON` exists
-- Adds `editable-drawing` class and pointer cursor for visual feedback
-- `value()` method returns object format for drawings, string format for regular images
+### Editor Customizations
+1. **Add types** to `types/global.d.ts` for new Quill embed formats
+2. Create custom blots in `src/editor/customBlots.js` (use @ts-check)
+3. Add toolbar handlers in main app's `setupCustomToolbarButtons()`
+4. Update clipboard handling in `setupClipboardHandlers()` for paste support
+5. Consider whether new blots need special export handling (like fabric data stripping)
+6. **Document with JSDoc**: Include side effects and invariants
 
 **Clipboard Handler (`src/main.js`):**
 - `setupClipboardHandlers()` includes matcher for `img` elements
@@ -571,13 +622,9 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Video Processing**: Add filter system (likely in `mixerSystem.js` or new module)
 - **Image Interaction**: Enhanced image viewing in both editor and exported HTML
 
-### Extension Points
-- **New Fabric.js tools**: Extend `drawingSystem.openDrawingModal()` with additional canvas tools
-- **Export customization**: Modify `exportAsEmbeddedHtml()` and `exportAsSeparateFiles()` methods
-- **Video effects**: Add filter pipeline in recording or post-processing chain
-
 ## 🚫 Common Pitfalls
 
+### Code Patterns
 - **Don't** modify recording controls directly - use `updateRecordingControlsState()`
 - **Don't** forget to call module `.init()` methods with proper DOM references
 - **Don't** assume synchronous MediaRecorder operations - use await/promises
@@ -587,9 +634,26 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** leave errors unhandled - catch and display in UI with actionable messages
 - **Don't** wrap file picker IPC calls with timeout - user needs unlimited time to choose location
 - **Don't** bypass error boundary for new IPC background operations - wrap with `errorBoundary.wrapIPC()`
+
+### Type Safety & Documentation
+- **Don't** add new modules without `// @ts-check` directive
+- **Don't** create new data structures without adding types to `types/global.d.ts`
+- **Don't** write public methods without comprehensive JSDoc (including side effects and invariants)
+- **Don't** use generic `Object` or `any` types - reference specific types from `types/global.d.ts`
+- **Do** use `@param {import('../../types/global').TypeName}` for type references
+- **Do** document side effects (what state/DOM changes occur)
+- **Do** document invariants (pre/post-conditions and safety guarantees)
+- **Do** include `@throws` for all error conditions
+
+### Best Practices
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
 - **Do** validate all IPC handler inputs to prevent security vulnerabilities
+- **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs
+- **Do** detect specific error types (NotAllowedError, NotFoundError, NotReadableError) and provide targeted guidance
+- **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)
+- **Do** use `errorBoundary.wrapDeviceAccess()` for device operations that might need retry
+- **Do** distinguish between user-facing operations (no timeout) and background operations (with timeout)
 - **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs
 - **Do** detect specific error types (NotAllowedError, NotFoundError, NotReadableError) and provide targeted guidance
 - **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)
