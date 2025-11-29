@@ -2,6 +2,32 @@
  * @fileoverview Error Boundary System
  * Wraps critical operations with timeout protection, retry logic, and graceful degradation
  * Provides structured error logging and standardized user notifications
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(statusElement: HTMLElement): void
+ *       Initializes error boundary with status element.
+ *   - logError(operation, error, attemptNumber, recoveryAction, context?): void
+ *       Logs structured error entry for analytics.
+ *   - classifyError(error: Error): string
+ *       Classifies error into standard error type.
+ *   - mapErrorToMessage(error: Error): string
+ *       Maps error to user-friendly message.
+ *   - updateStatus(message: string, isError?: boolean): void
+ *       Updates status bar with message.
+ *   - async showErrorDialog(message, title?, options?): Promise<any>
+ *       Shows modal error dialog with retry/cancel options.
+ *   - async wrapAsync(fn, options?): Promise<any>
+ *       Wraps async operation with timeout and retry logic.
+ *   - async wrapIPC(fn, options?): Promise<any>
+ *       Wraps IPC operations with timeout (NOT for file pickers).
+ *   - async wrapDeviceAccess(fn, options?): Promise<any>
+ *       Wraps device access with retry and recovery dialog.
+ *
+ * Internal helpers: loadErrorPreferences, saveErrorPreferences.
+ * Invariants and side effects are documented per method.
  */
 
 import { CONFIG, ERRORS, ERROR_CODES } from '../config.js';

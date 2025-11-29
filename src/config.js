@@ -1,6 +1,24 @@
 /**
  * @fileoverview Application configuration and constants
  * Centralized configuration for the Note Timestamper application
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Exports:
+ *   - CONFIG: Object
+ *       Application configuration (RECORDING, AUDIO, TIMER, DEVICE, IMAGE, UI, STORAGE_KEYS, ERROR_BOUNDARY).
+ *   - STATES: Object
+ *       State constants (RECORDING states).
+ *   - ERROR_CODES: Object
+ *       Standardized error codes for errorBoundary integration.
+ *   - ERRORS: Object
+ *       User-facing error messages (CAMERA, MIC, IPC).
+ *   - MESSAGES: Object
+ *       Success/status messages (RECORDING, EXPORT).
+ *
+ * This is a pure configuration module with no methods.
+ * All values are read-only constants.
  */
 
 /**

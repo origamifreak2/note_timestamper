@@ -19,8 +19,10 @@
   - ✅ Updated throw sites in `mixerSystem`, `recordingSystem`, `deviceManager`
   - ✅ Added coded error handling for session save/load wrappers (zipUtils) and export operations groundwork
   - Remaining future adoption: main-process IPC (when migrating to shared helpers) and additional validation surfaces.
-- [ ] **Public API surface docs**
-  - Add concise “Public API” section at top of each singleton module listing callable methods and side-effects; mark internal helpers clearly
+- [x] **Public API surface docs**
+  - ✅ Added concise "Public API" section at top of each singleton module listing callable methods and side-effects
+  - ✅ Marked internal helpers clearly
+  - ✅ Updated modules: recordingSystem, mixerSystem, deviceManager, exportSystem, timer, audioLevel, utils, customBlots, imageManager, imageResizer, cameraSystem, drawingSystem, zipUtils, errorBoundary, config, main
 - [ ] **IPC contract documentation**
   - Create `docs/ipc-api.md` detailing exposed preload APIs, arguments/returns, timeout behavior, and which calls must not be wrapped (e.g., file pickers)
 

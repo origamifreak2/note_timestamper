@@ -1,7 +1,26 @@
 // @ts-check
+
 /**
  * @fileoverview Custom Quill.js blots for timestamps and images
  * Defines custom embed types for enhanced editor functionality
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Classes:
+ *   - TimestampBlot (extends Embed)
+ *       Methods:
+ *         - static create(value: TimestampValue): HTMLButtonElement
+ *         - static value(node: HTMLButtonElement): TimestampValue
+ *   - CustomImageBlot (extends BlockEmbed)
+ *       Methods:
+ *         - static create(value: ImageValue): HTMLImageElement
+ *         - static value(node: HTMLImageElement): ImageValue
+ *   - registerCustomBlots(): void
+ *       Registers custom blots with Quill instance.
+ *
+ * Side effects and invariants are documented per method.
+ * Internal helpers are marked 'Internal'.
  */
 
 import { formatTime } from '../modules/utils.js';

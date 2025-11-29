@@ -31,6 +31,68 @@ types/
 └── global.d.ts            # TypeScript type definitions for all modules
 ```
 
+## 📚 Public API Surface Documentation
+
+Every singleton module includes a comprehensive "Public API Surface" documentation block at the top of the file, providing a clear contract for what the module exposes:
+
+```javascript
+/**
+ * @fileoverview Module description
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - methodName(param: Type): ReturnType
+ *       Brief description of what the method does.
+ *       Side effects: What state/DOM changes occur.
+ *   - async asyncMethod(param: Type): Promise<ReturnType>
+ *       Brief description.
+ *       Side effects: ...
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
+ */
+```
+
+### Documentation Coverage
+All 17 core modules include Public API documentation:
+
+**Recording System:**
+- `recordingSystem.js`: 8 public methods (init, start/stop/pause, finalize, reset, state management)
+- `mixerSystem.js`: 6 public methods (init, createMixerStream, live switching, destroy)
+
+**Core Modules:**
+- `deviceManager.js`: 13 public methods (device enumeration, selection, constraints)
+- `exportSystem.js`: 14 public methods (export modes, template builders, utilities)
+- `timer.js`: 8 public methods (recording/playback timing, state management)
+- `audioLevel.js`: 6 public methods (monitoring, UI control)
+- `utils.js`: 5 utility functions (time formatting, base64, sleep, timeout, errors)
+- `zipUtils.js`: 2 coded persistence wrappers (load/save with error codes)
+- `errorBoundary.js`: 9 public methods (error wrapping, logging, dialogs, state)
+
+**Editor System:**
+- `customBlots.js`: 2 Quill blot classes (TimestampBlot, CustomImageBlot)
+- `imageManager.js`: 7 public methods (insert, drag-drop, paste, update)
+- `imageResizer.js`: 13 public methods (overlay, selection, drag handlers)
+
+**UI Components:**
+- `cameraSystem.js`: 6 public methods (capture modal, device switching, cleanup)
+- `drawingSystem.js`: 2 primary methods (openDrawingModal, setupDrawingUI)
+
+**Configuration:**
+- `config.js`: 5 exported objects (CONFIG, STATES, ERROR_CODES, ERRORS, MESSAGES)
+- `main.js`: 40+ public methods organized by category (initialization, recording, session, export, editor)
+
+### Benefits
+
+✅ **AI-Friendly**: Clear API contracts improve code generation and understanding
+✅ **Developer Onboarding**: New developers can quickly understand module capabilities
+✅ **Maintenance**: Easy to identify what's public vs. internal
+✅ **Refactoring Safety**: Clear contracts prevent accidental breaking changes
+✅ **Documentation at Source**: No need to maintain separate API docs
+✅ **Consistency**: Standardized format across all modules
+
 ## 🔒 Type Safety Architecture
 
 The application implements **type safety without full TypeScript migration** using JSDoc annotations and TypeScript type checking:

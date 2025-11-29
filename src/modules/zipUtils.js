@@ -3,6 +3,20 @@
  * @fileoverview Zip/session utility helpers with standardized coded errors
  * Provides lightweight wrappers for save/load IPC operations that surface
  * ERROR_CODES for consistent errorBoundary handling.
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Functions:
+ *   - async loadSessionWithCodes(): Promise<any>
+ *       Wraps load-session IPC, throws coded errors on failure.
+ *       Returns undefined on user cancellation (not an error).
+ *   - async saveSessionWithCodes(payload: object): Promise<any|undefined>
+ *       Wraps save-session IPC, throws coded errors on write failure.
+ *       Returns undefined on user cancellation (not an error).
+ *
+ * These wrappers preserve user cancellation semantics while providing
+ * standardized error codes for errorBoundary integration.
  */
 
 import { ERROR_CODES } from '../config.js';

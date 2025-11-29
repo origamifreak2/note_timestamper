@@ -1,6 +1,66 @@
 /**
  * @fileoverview Main renderer process entry point for Note Timestamper
  * Coordinates all modules and handles application initialization
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * NoteTimestamperApp Class - Main coordinator
+ *
+ * Initialization:
+ *   - async init(): void
+ *       Main initialization method that sets up all modules.
+ *   - getDOMReferences(): void
+ *       Collects all DOM element references.
+ *   - initializeQuillEditor(): void
+ *       Initializes Quill.js editor with custom blots.
+ *   - initializeModules(): void
+ *       Initializes all singleton modules with dependencies.
+ *   - setupEventHandlers(): void
+ *       Sets up all event listeners and keyboard shortcuts.
+ *   - async initializeDevices(): Promise<void>
+ *       Initializes device manager and loads devices.
+ *
+ * Recording Controls:
+ *   - async handleStartRecording(): Promise<void>
+ *   - handleStopRecording(): void
+ *   - async handleAudioOnlyChange(): Promise<void>
+ *   - async handleMicrophoneChange(): Promise<void>
+ *   - async handleCameraChange(): Promise<void>
+ *   - async refreshDevices(): Promise<void>
+ *
+ * Session Management:
+ *   - async handleSaveSession(): Promise<void>
+ *   - async handleSaveSessionAs(): Promise<void>
+ *   - async handleLoadSession(): Promise<void>
+ *   - async handleResetSession(): Promise<void>
+ *
+ * Export Operations:
+ *   - async exportAsEmbeddedHtml(): Promise<void>
+ *   - async exportAsSeparateFiles(): Promise<void>
+ *
+ * Editor Operations:
+ *   - insertTimestamp(): void
+ *   - async handleImageUpload(): Promise<void>
+ *   - async handleCameraCapture(): Promise<void>
+ *   - async handleDrawing(): Promise<void>
+ *
+ * UI State Management:
+ *   - updateUIState(): void - Full UI refresh
+ *   - updateContentState(): void - Content-only updates
+ *   - updateRecordingControlsState(): void - Recording controls
+ *   - updateSaveState(): void - Save button state
+ *   - updateLoadState(): void - Load button state
+ *
+ * Event Handlers:
+ *   - onStateChange(): void
+ *   - onQuillTextChange(): void
+ *   - onTimestampClick(e: Event): void
+ *   - onKeyboardShortcut(e: KeyboardEvent): void
+ *   - onSaveProgress(data: SaveProgress): void
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 // Import all modules

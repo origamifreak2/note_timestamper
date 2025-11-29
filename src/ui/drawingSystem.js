@@ -1,6 +1,20 @@
+
 /**
  * @fileoverview Drawing system using Fabric.js canvas
  * Provides a drawing interface for creating and inserting drawings
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - async openDrawingModal(fabricJSON?: string|null): Promise<{ dataUrl: string, fabricJSON: string }|null>
+ *       Opens drawing modal, returns drawing dataUrl and fabricJSON.
+ *   - setupDrawingUI(modal: HTMLElement, canvas: fabric.Canvas): void
+ *       Sets up drawing UI and event handlers for Fabric.js canvas.
+ *   - [other internal methods for modal creation, tool handling, undo/redo, etc.]
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { imageManager } from '../editor/imageManager.js';

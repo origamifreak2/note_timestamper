@@ -1,7 +1,44 @@
 // @ts-check
+
 /**
  * @fileoverview Export functionality for sessions
  * Handles exporting sessions as HTML files with embedded or separate media
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(recordingSystem, quill): void
+ *       Initializes export system with dependencies.
+ *       Side effects: stores recordingSystem and quill refs.
+ *   - stripFabricData(html: string): string
+ *       Removes fabric JSON and drawing attributes from HTML for clean export.
+ *       Side effects: creates temp DOM, strips metadata.
+ *   - async exportAsEmbeddedHtml(): Promise<{ html: string, fileName: string }>
+ *       Exports session as single HTML file with embedded media.
+ *   - async exportAsSeparateFiles(): Promise<{ html: string, mediaFile: Blob, notesFile: string }>
+ *       Exports session as separate HTML and media files.
+ *   - extractAndReplaceImages(html: string, folderPrefix?: string): string
+ *       Replaces embedded images with file references for export.
+ *   - getSharedStyles(): string
+ *       Returns shared CSS styles for exported HTML.
+ *   - getSharedUtilities(): string
+ *       Returns shared JS utilities for exported HTML.
+ *   - getSharedEventHandlers(): string
+ *       Returns shared event handlers for exported HTML.
+ *   - getEmbeddedMediaScript(mediaB64: string, mediaMime: string): string
+ *       Returns script for embedded media playback.
+ *   - getSeparateMediaScript(): string
+ *       Returns script for separate media playback.
+ *   - buildHTMLTemplate(notesHtml: string, mediaScript: string): string
+ *       Builds full HTML export template.
+ *   - generateEmbeddedHTML(notesHtml: string, mediaB64: string, mediaMime: string): string
+ *       Generates HTML with embedded media.
+ *   - generateSeparateHTML(notesHtml: string): string
+ *       Generates HTML for separate media export.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { arrayBufferToBase64, createError } from '../modules/utils.js';

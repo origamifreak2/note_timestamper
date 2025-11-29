@@ -1,6 +1,37 @@
+
 /**
  * @fileoverview Timer system for tracking recording and playback time
  * Handles timing during recording (excluding paused periods) and during playback
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(timeDisplay: HTMLElement, player: HTMLVideoElement): void
+ *       Initializes timer system with DOM references.
+ *   - setMediaRecorder(mediaRecorder: MediaRecorder): void
+ *       Sets media recorder reference for state checks.
+ *   - getCurrentRecordingTime(): number
+ *       Gets current recording or playback time (seconds).
+ *   - updateRecordingTimer(): void
+ *       Updates recording timer display (internal, auto-called).
+ *   - startRecording(): void
+ *       Starts recording timer.
+ *   - pauseRecording(): void
+ *       Pauses recording timer.
+ *   - resumeRecording(): void
+ *       Resumes recording timer.
+ *   - stopRecording(): void
+ *       Stops recording timer.
+ *   - startPlaybackTimer(): void
+ *       Starts playback timer for video/audio.
+ *   - stopPlaybackTimer(): void
+ *       Stops playback timer.
+ *   - reset(): void
+ *       Resets timer system state and display.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { formatTime } from './utils.js';

@@ -93,6 +93,7 @@ Notes for Windows builds
 - **Fabric.js**: Interactive drawing canvas
 - **ES6 Modules**: Modern JavaScript module system
 - **Type Safety**: JSDoc + TypeScript type checking without transpilation
+- **Public API Documentation**: Every module includes comprehensive API surface documentation
 - **Comprehensive Documentation**: All modules include side effects and invariants
 - **Standardized Errors**: `ERROR_CODES` + `createError()` with mapping in `errorBoundary`; persistence via `zipUtils.saveSessionWithCodes()` / `loadSessionWithCodes()`
 
@@ -116,10 +117,11 @@ The modular architecture makes contributions easier:
 
 1. Each module has a single responsibility
 2. Clear interfaces between components
-3. Comprehensive JSDoc documentation with type annotations
-4. Type safety via `@ts-check` and `types/global.d.ts`
-5. Document side effects and invariants for all public methods
-6. Consistent coding standards
+3. Public API Surface documentation at the top of each module
+4. Comprehensive JSDoc documentation with type annotations
+5. Type safety via `@ts-check` and `types/global.d.ts`
+6. Document side effects and invariants for all public methods
+7. Consistent coding standards
 
 ## 📝 License
 

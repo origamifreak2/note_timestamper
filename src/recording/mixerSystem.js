@@ -1,7 +1,35 @@
 // @ts-check
+
 /**
  * @fileoverview Audio/Video mixer system for combining multiple media sources
  * Creates a combined MediaStream from separate audio and video sources
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(deviceManager: DeviceManager): void
+ *       Initializes mixer with device manager reference.
+ *       Side effects: stores device manager ref.
+ *   - async createMixerStream(): Promise<Mixer>
+ *       Creates mixed MediaStream (audio+video) using Web Audio and Canvas.
+ *       Side effects: requests device permissions, creates audio/video nodes, starts canvas loop, stores mixer.
+ *   - async switchMicLive(deviceId: string): Promise<void>
+ *       Switches microphone during live recording.
+ *       Side effects: reconnects audio nodes, updates analyser.
+ *   - async switchCamLive(deviceId: string): Promise<void>
+ *       Switches camera during live recording.
+ *       Side effects: updates video element/canvas source.
+ *   - destroy(): void
+ *       Destroys mixer, stops all tracks, cleans up resources.
+ *       Side effects: stops audio/video, releases nodes/canvas.
+ *   - getMixer(): Mixer | null
+ *       Returns current mixer object.
+ *   - isActive(): boolean
+ *       Returns true if mixer is active.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { audioLevelMonitor } from '../modules/audioLevel.js';

@@ -2,6 +2,27 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.2] - 2025-11-28
+### Added
+- **Public API Surface Documentation** across all modules
+  - Added comprehensive "Public API Surface" documentation blocks to 17 modules
+  - Each module now lists all public methods with parameters, return types, and side effects
+  - Internal helpers clearly marked for easy distinction
+  - Modules updated:
+    - Recording: `recordingSystem.js`, `mixerSystem.js`
+    - Modules: `deviceManager.js`, `exportSystem.js`, `timer.js`, `audioLevel.js`, `utils.js`, `zipUtils.js`, `errorBoundary.js`
+    - Editor: `customBlots.js`, `imageManager.js`, `imageResizer.js`
+    - UI: `cameraSystem.js`, `drawingSystem.js`
+    - Config: `config.js`
+    - Main: `main.js`
+
+### Enhanced
+- **AI-Readability and Developer Experience**
+  - Consistent API documentation format across entire codebase
+  - Clear method contracts with documented side effects and invariants
+  - Easy-to-scan structure for AI tools and human developers
+  - Improved code discoverability and maintainability
+
 ## [0.12.1] - 2025-11-28
 ### Added
 - Standardized error code system

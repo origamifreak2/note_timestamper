@@ -1,6 +1,25 @@
+
 /**
  * @fileoverview Utility functions for the Note Timestamper application
  * Common helper functions used throughout the application
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - formatTime(s: number): string
+ *       Formats seconds as MM:SS.CC for timestamp display.
+ *   - arrayBufferToBase64(ab: ArrayBuffer): string
+ *       Converts ArrayBuffer to base64 string for HTML embedding.
+ *   - sleep(ms: number): Promise<void>
+ *       Promise-based sleep/delay utility.
+ *   - withTimeout(promise: Promise, ms: number, errorMsg?: string): Promise<any>
+ *       Wraps a promise with a timeout, rejects on timeout.
+ *   - createError(code: string, message?: string, cause?: any): Error
+ *       Creates an Error object with code/message/cause properties.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 /**

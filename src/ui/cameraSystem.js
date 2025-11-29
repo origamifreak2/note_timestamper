@@ -1,6 +1,27 @@
+
 /**
  * @fileoverview Camera capture functionality
  * Handles capturing photos from device camera while recording
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - async capturePhotoFromCamera(): Promise<string|null>
+ *       Opens camera modal, captures photo, inserts into editor.
+ *   - createCameraModal(): HTMLElement
+ *       Creates modal overlay for camera interface.
+ *   - async loadAvailableCameras(): Promise<void>
+ *       Loads available camera devices for selection.
+ *   - async switchCamera(videoElement: HTMLVideoElement, cameraId: string): Promise<void>
+ *       Switches video element to selected camera device.
+ *   - cleanupWithVideoElement(videoElement: HTMLVideoElement, cameraModal: HTMLElement): void
+ *       Cleans up video element and modal after capture.
+ *   - cleanup(cameraStream: MediaStream, cameraModal: HTMLElement): void
+ *       Cleans up camera stream and modal resources.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { imageManager } from '../editor/imageManager.js';

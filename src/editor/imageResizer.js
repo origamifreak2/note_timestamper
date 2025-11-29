@@ -1,7 +1,44 @@
 // @ts-check
+
 /**
  * @fileoverview Interactive image resizing functionality
  * Provides drag handles for resizing images directly in the Quill editor
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(quill: Quill, wrapper: HTMLElement, imageManager: ImageManager): void
+ *       Initializes image resizer with Quill, wrapper, and imageManager.
+ *   - setupEventListeners(): void
+ *       Sets up all event listeners for resizing and interaction.
+ *   - createOverlay(): void
+ *       Creates overlay UI for resizing handles.
+ *   - removeOverlay(): void
+ *       Removes overlay UI.
+ *   - positionOverlayFor(img: HTMLImageElement): void
+ *       Positions overlay for target image.
+ *   - selectImage(img: HTMLImageElement): void
+ *       Selects image for resizing.
+ *   - onHandleDown(e: MouseEvent): void
+ *       Handles mouse down on resize handle.
+ *   - onDrag(e: MouseEvent): void
+ *       Handles drag event for resizing.
+ *   - onUp(e: MouseEvent): void
+ *       Handles mouse up event after resizing.
+ *   - onClick(e: MouseEvent): void
+ *       Handles click event for selection.
+ *   - onKeyDown(e: KeyboardEvent): void
+ *       Handles keyboard events for accessibility.
+ *   - onScroll(): void
+ *       Handles scroll events for overlay positioning.
+ *   - onResize(): void
+ *       Handles editor resize events.
+ *   - onTextChange(): void
+ *       Handles text change events for overlay update.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 /**

@@ -369,6 +369,20 @@ All key modules use `// @ts-check` for TypeScript validation without transpilati
 // @ts-check
 /**
  * @fileoverview Module description
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(param: Type): void
+ *       Brief description.
+ *       Side effects: ...
+ *   - async methodName(param: Type): Promise<ReturnType>
+ *       Brief description.
+ *       Side effects: ...
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 /**
@@ -395,11 +409,13 @@ async myMethod(param) { ... }
 - Error types: `ErrorBoundaryWrapOptions`, `ErrorLogEntry`
 
 **Documentation Standards**:
+- **Public API Surface**: Add a concise "Public API Surface" section at the top of each module listing all callable methods with brief descriptions
 - `@param`: Include proper TypeScript type references from `types/global.d.ts`
 - `@returns`: Document return types including Promise and union types
 - `@throws`: Specify error conditions with error types
 - **Side effects**: Document what state/DOM changes occur
 - **Invariants**: Describe pre/post-conditions and safety guarantees
+- **Internal helpers**: Clearly mark internal methods as 'Internal' in API surface docs
 
 ### Module Initialization
 All modules follow this pattern:
@@ -518,7 +534,8 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 2. Modify `recordingSystem.js` for MediaRecorder changes
 3. Update `mixerSystem.js` if audio/video mixing is involved
 4. Add UI state handling in main app's `updateRecordingControlsState()`
-5. **Document with JSDoc**: Include @param, @returns, @throws, side effects, and invariants
+5. **Update Public API docs**: Add new methods to the "Public API Surface" section at top of file
+6. **Document with JSDoc**: Include @param, @returns, @throws, side effects, and invariants
 
 ### Editor Customizations
 1. **Add types** to `types/global.d.ts` for new Quill embed formats
@@ -526,7 +543,8 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 3. Add toolbar handlers in main app's `setupCustomToolbarButtons()`
 4. Update clipboard handling in `setupClipboardHandlers()` for paste support
 5. Consider whether new blots need special export handling (like fabric data stripping)
-6. **Document with JSDoc**: Include side effects and invariants
+6. **Update Public API docs**: Add new blots/methods to the "Public API Surface" section
+7. **Document with JSDoc**: Include side effects and invariants
 
 **Clipboard Handler (`src/main.js`):**
 - `setupClipboardHandlers()` includes matcher for `img` elements
@@ -707,9 +725,14 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 
 ### Type Safety & Documentation
 - **Don't** add new modules without `// @ts-check` directive
+- **Don't** create new modules without adding a "Public API Surface" documentation block
 - **Don't** create new data structures without adding types to `types/global.d.ts`
 - **Don't** write public methods without comprehensive JSDoc (including side effects and invariants)
 - **Don't** use generic `Object` or `any` types - reference specific types from `types/global.d.ts`
+- **Don't** forget to update the Public API section when adding/removing public methods
+- **Do** add "Public API Surface" documentation at the top of each new module
+- **Do** list all public methods with brief descriptions in the API surface section
+- **Do** mark internal helpers clearly as 'Internal' in API documentation
 - **Do** use `@param {import('../../types/global').TypeName}` for type references
 - **Do** document side effects (what state/DOM changes occur)
 - **Do** document invariants (pre/post-conditions and safety guarantees)

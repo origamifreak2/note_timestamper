@@ -1,7 +1,30 @@
 // @ts-check
+
 /**
  * @fileoverview Image handling functionality for the editor
  * Handles image insertion, drag-and-drop, and dimension management
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(quill: Quill): void
+ *       Initializes image manager with Quill instance, sets up DnD and paste handlers.
+ *   - async insertDrawingImage(dataUrl: string, fabricJSON: string): Promise<void>
+ *       Inserts drawing image with fabric JSON into editor.
+ *   - async insertDataUrlImage(dataUrl: string): Promise<void>
+ *       Inserts image from data URL into editor.
+ *   - async handleFiles(files: FileList): Promise<void>
+ *       Handles dropped or pasted image files.
+ *   - setupDragAndDrop(): void
+ *       Sets up drag-and-drop event handlers for images.
+ *   - setupPasteHandler(): void
+ *       Sets up paste event handlers for images.
+ *   - updateImageInQuill(img: HTMLImageElement): void
+ *       Updates image embed in Quill after edit.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { calculateDefaultImageDimensions } from '../modules/utils.js';

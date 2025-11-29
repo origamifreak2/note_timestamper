@@ -1,7 +1,43 @@
 // @ts-check
+
 /**
  * @fileoverview Device management for audio and video devices
  * Handles device enumeration, selection persistence, and constraints building
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(micSelect, camSelect, resSelect, fpsSelect, audioBitrateSelect, audioOnlyCheckbox): void
+ *       Initializes device manager with DOM references.
+ *       Side effects: stores DOM refs for selectors.
+ *   - getSelectedDeviceId(selectEl): string | undefined
+ *       Gets selected device ID from dropdown.
+ *   - getSelectedResolution(): string | undefined
+ *       Gets selected resolution value.
+ *   - getSelectedFramerate(): string | undefined
+ *       Gets selected framerate value.
+ *   - getSelectedAudioBitrate(): string | undefined
+ *       Gets selected audio bitrate value.
+ *   - buildConstraints(): MediaStreamConstraints
+ *       Builds constraints for getUserMedia.
+ *   - persistSelection(): void
+ *       Persists current device selections to localStorage.
+ *   - async ensurePermissions(): Promise<void>
+ *       Requests media device permissions.
+ *   - async loadDevices(): Promise<void>
+ *       Loads available devices and populates selectors.
+ *   - updateDeviceUIState(noCameras = false, isRecording = false): void
+ *       Updates device UI controls based on state.
+ *   - getSelectedMicId(): string | undefined
+ *       Gets selected microphone ID.
+ *   - getSelectedCamId(): string | undefined
+ *       Gets selected camera ID.
+ *   - isAudioOnly(): boolean
+ *       Returns true if audio-only mode is selected.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { CONFIG, ERROR_CODES } from '../config.js';

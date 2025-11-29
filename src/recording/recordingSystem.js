@@ -1,7 +1,39 @@
 // @ts-check
+
 /**
  * @fileoverview Main recording system using MediaRecorder API
  * Handles recording lifecycle, codec selection, and data management
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(options: RecordingInitOptions): void
+ *       Initializes recording system with DOM references and callbacks.
+ *       Side effects: stores DOM refs, initializes timer system.
+ *   - async startRecording(): Promise<void>
+ *       Starts a new recording session.
+ *       Side effects: requests device permissions, creates MediaRecorder, updates UI, starts timer.
+ *   - togglePause(): void
+ *       Pauses or resumes recording.
+ *       Side effects: toggles MediaRecorder/timer, updates UI.
+ *   - async stopRecording(): Promise<void>
+ *       Stops recording and flushes data.
+ *       Side effects: stops MediaRecorder, stops tracks, destroys mixer, stops timer/audio level.
+ *   - finalizePreview(): void
+ *       Finalizes preview blob and cleans up old blob URLs.
+ *       Side effects: creates/revokes blob URLs, updates preview.
+ *   - handleStop(): void
+ *       Internal: Handles MediaRecorder stop event, triggers finalizePreview and state change.
+ *   - updateUIState(state: string): void
+ *       Updates UI controls based on recording state.
+ *       Side effects: enables/disables buttons, updates status.
+ *   - reset(): void
+ *       Resets recording system state and cleans up resources.
+ *       Side effects: stops MediaRecorder, stops tracks, revokes blob URLs, resets UI.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 import { sleep, createError } from '../modules/utils.js';

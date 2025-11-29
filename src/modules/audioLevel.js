@@ -1,6 +1,29 @@
+
 /**
  * @fileoverview Audio level monitoring for microphone input
  * Provides visual feedback of audio levels during recording
+ *
+ * =====================
+ * Public API Surface
+ * =====================
+ * Methods:
+ *   - init(levelMeter: HTMLElement, levelFill: HTMLElement, levelText: HTMLElement): void
+ *       Initializes audio level monitor with DOM references.
+ *   - setAnalyser(analyser: AnalyserNode): void
+ *       Sets up Web Audio analyser node for level detection.
+ *   - updateAudioLevel(): void
+ *       Updates audio level meter display (internal, auto-called).
+ *   - start(): void
+ *       Starts audio level monitoring loop.
+ *   - stop(): void
+ *       Stops audio level monitoring loop.
+ *   - toggle(show: boolean): void
+ *       Shows or hides audio level meter UI.
+ *   - cleanup(): void
+ *       Cleans up and resets audio level meter UI.
+ *
+ * Internal helpers are marked 'Internal'.
+ * Invariants and side effects are documented per method.
  */
 
 /**
