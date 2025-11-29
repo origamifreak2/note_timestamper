@@ -29,6 +29,7 @@ types/global.d.ts           # TypeScript type definitions for all modules
 - The main `NoteTimestamperApp` class acts as a coordinator that wires modules together
 - Centralized configuration through `CONFIG` object in `src/config.js`
 - **Type safety via JSDoc + @ts-check** without TypeScript transpilation
+- **IPC contract documentation**: See `docs/ipc-api.md` for preload API contracts, arguments/returns, timeout policy, and non-wrapped calls (file pickers)
 
 ## 🎯 Web Audio + Canvas Mixing Architecture
 
@@ -536,6 +537,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 4. Add UI state handling in main app's `updateRecordingControlsState()`
 5. **Update Public API docs**: Add new methods to the "Public API Surface" section at top of file
 6. **Document with JSDoc**: Include @param, @returns, @throws, side effects, and invariants
+7. **Update IPC contract documentation**: If preload APIs change, update `docs/ipc-api.md` to reflect new arguments, return types, timeout/error handling, and non-wrapped calls.
 
 ### Editor Customizations
 1. **Add types** to `types/global.d.ts` for new Quill embed formats

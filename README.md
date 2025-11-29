@@ -106,10 +106,11 @@ Notes for Windows builds
 - **Media Files**: WebM format with VP9/VP8 video and Opus audio codecs
 
 ## 📚 Documentation Map
-- **Project Overview**: `README.md` (this file)
-- **Architecture Deep Dive**: `ARCHITECTURE.md`
-- **Change History**: `CHANGELOG.md`
-- **AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, module patterns, JSON schemas, and validation approach)
+**Project Overview**: `README.md` (this file)
+**Architecture Deep Dive**: `ARCHITECTURE.md`
+**Change History**: `CHANGELOG.md`
+**IPC Contract Documentation**: `docs/ipc-api.md` (preload API contracts, arguments/returns, timeout/error handling)
+**AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, module patterns, JSON schemas, and validation approach)
 
 ## 🤝 Contributing
 

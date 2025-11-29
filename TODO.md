@@ -23,8 +23,8 @@
   - ✅ Added concise "Public API" section at top of each singleton module listing callable methods and side-effects
   - ✅ Marked internal helpers clearly
   - ✅ Updated modules: recordingSystem, mixerSystem, deviceManager, exportSystem, timer, audioLevel, utils, customBlots, imageManager, imageResizer, cameraSystem, drawingSystem, zipUtils, errorBoundary, config, main
-- [ ] **IPC contract documentation**
-  - Create `docs/ipc-api.md` detailing exposed preload APIs, arguments/returns, timeout behavior, and which calls must not be wrapped (e.g., file pickers)
+- [x] **IPC contract documentation**
+  - ✅ Create `docs/ipc-api.md` detailing exposed preload APIs, arguments/returns, timeout behavior, and which calls must not be wrapped (e.g., file pickers)
 
 ### Tooling & CI
 - [ ] **Lint & format**
