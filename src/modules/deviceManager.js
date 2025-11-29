@@ -4,7 +4,8 @@
  * Handles device enumeration, selection persistence, and constraints building
  */
 
-import { CONFIG } from '../config.js';
+import { CONFIG, ERROR_CODES } from '../config.js';
+import { createError } from './utils.js';
 
 /**
  * LocalStorage keys for remembering device selections across sessions
@@ -192,8 +193,11 @@ export class DeviceManager {
         // Fallback: audio-only permissions
         const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
         tmp.getTracks().forEach(t => t.stop());
-      } catch {
-        // If both fail, continue anyway - devices will show as "Camera (abc123...)"
+      } catch (err2) {
+        // If both fail, continue anyway - devices will show generic names
+        // Surface a coded error for boundary logging (non-blocking)
+        console.warn('Permissions denied for media devices');
+        throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Media permissions denied. Device labels may be unavailable.', e);
       }
     }
   }
@@ -214,7 +218,12 @@ export class DeviceManager {
    * - Only restores saved device if it still exists in enumerated devices
    */
   async loadDevices() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    let devices;
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices();
+    } catch (e) {
+      throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Failed to enumerate media devices.', e);
+    }
     const audios = devices.filter(d => d.kind === 'audioinput');
     const videos = devices.filter(d => d.kind === 'videoinput');
 

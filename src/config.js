@@ -95,6 +95,36 @@ export const CONFIG = {
 };
 
 /**
+ * Standardized internal error codes
+ * These codes are thrown from lower layers (device/mixer/recording/IPC)
+ * and mapped to user-facing messages via the error boundary.
+ */
+export const ERROR_CODES = {
+  // Device/camera errors
+  DEVICE_PERMISSION_DENIED: 'DEVICE_PERMISSION_DENIED',
+  DEVICE_NOT_FOUND: 'DEVICE_NOT_FOUND',
+  DEVICE_IN_USE: 'DEVICE_IN_USE',
+  CAMERA_INIT_TIMEOUT: 'CAMERA_INIT_TIMEOUT',
+  CAMERA_SWITCH_FAILED: 'CAMERA_SWITCH_FAILED',
+
+  // Microphone/audio errors
+  MIC_SWITCH_FAILED: 'MIC_SWITCH_FAILED',
+  MIC_CONNECT_FAILED: 'MIC_CONNECT_FAILED',
+
+  // Recording/mixing errors
+  RECORDING_START_FAILED: 'RECORDING_START_FAILED',
+  CODEC_UNSUPPORTED: 'CODEC_UNSUPPORTED',
+
+  // IPC / file system / validation
+  IPC_TIMEOUT: 'IPC_TIMEOUT',
+  FILE_SYSTEM_ERROR: 'FILE_SYSTEM_ERROR',
+  SESSION_VALIDATION_FAILED: 'SESSION_VALIDATION_FAILED',
+
+  // Generic fallback
+  UNKNOWN: 'UNKNOWN'
+};
+
+/**
  * Application state constants
  */
 export const STATES = {
@@ -143,6 +173,15 @@ export const ERRORS = {
   IMAGE: {
     TOO_LARGE: 'Image too large (>15MB).',
     INVALID_FORMAT: 'Invalid image format.'
+  },
+
+  IPC: {
+    TIMEOUT: 'Operation timed out communicating with the main process.',
+    FILE_SYSTEM: 'File system operation failed. Please ensure you have write access.'
+  },
+
+  RECORDING: {
+    START_FAILED: 'Failed to start recording. Please check codec support and device access.'
   }
 };
 

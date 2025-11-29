@@ -14,6 +14,7 @@ import { registerCustomBlots } from './editor/customBlots.js';
 import { imageManager } from './editor/imageManager.js';
 import { imageResizer } from './editor/imageResizer.js';
 import { mixerSystem } from './recording/mixerSystem.js';
+import { loadSessionWithCodes, saveSessionWithCodes } from './modules/zipUtils.js';
 import { recordingSystem } from './recording/recordingSystem.js';
 import { cameraSystem } from './ui/cameraSystem.js';
 import { drawingSystem } from './ui/drawingSystem.js';
@@ -884,9 +885,8 @@ class NoteTimestamperApp {
 
     // Note: Don't wrap saveSession with timeout - it includes file picker dialog
     // where user needs unlimited time to choose save location
-    const result = await window.api.saveSession({
+    const result = await saveSessionWithCodes({
       noteHtml,
-      // pass mediaFilePath when available so main can stream into zip
       mediaFilePath,
       mediaSuggestedExt: recordingSystem.getMediaExtension(),
       sessionId
@@ -969,7 +969,7 @@ class NoteTimestamperApp {
 
     // Note: Don't wrap saveSession with timeout - it includes file picker dialog
     // where user needs unlimited time to choose save location
-    const result = await window.api.saveSession({
+    const result = await saveSessionWithCodes({
       noteHtml,
       mediaFilePath,
       mediaSuggestedExt: recordingSystem.getMediaExtension(),
@@ -989,7 +989,7 @@ class NoteTimestamperApp {
    */
   async handleLoadSession() {
     const result = await errorBoundary.wrapIPC(
-      () => window.api.loadSession(),
+      () => loadSessionWithCodes(),
       { operationName: 'load session' }
     );
     if (!result || !result.ok) return;

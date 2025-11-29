@@ -4,7 +4,7 @@
  * Provides structured error logging and standardized user notifications
  */
 
-import { CONFIG, ERRORS } from '../config.js';
+import { CONFIG, ERRORS, ERROR_CODES } from '../config.js';
 import { sleep, withTimeout } from './utils.js';
 
 /**
@@ -130,6 +130,11 @@ class ErrorBoundary {
   classifyError(error) {
     const msg = error.message || '';
 
+    // Prefer explicit error codes when available
+    if (error && /** @type {any} */(error).code) {
+      return /** @type {any} */(error).code;
+    }
+
     // IPC errors
     if (msg.includes('IPC') || msg.includes('timed out')) {
       return 'IPC_TIMEOUT';
@@ -154,6 +159,56 @@ class ErrorBoundary {
     }
 
     return 'UNKNOWN';
+  }
+
+  /**
+   * Map internal error codes to user-facing messages
+   * @param {Error} error - Error possibly containing a `code`
+   * @returns {string} Message to show to the user
+   * @private
+   */
+  mapErrorToMessage(error) {
+    const code = /** @type {any} */(error).code || this.classifyError(error);
+
+    switch (code) {
+      case ERROR_CODES.DEVICE_PERMISSION_DENIED:
+        return ERRORS.CAMERA.NOT_ALLOWED; // camera/mic share wording
+      case ERROR_CODES.DEVICE_NOT_FOUND:
+        return ERRORS.CAMERA.NOT_FOUND;
+      case ERROR_CODES.DEVICE_IN_USE:
+        return ERRORS.CAMERA.NOT_READABLE;
+      case ERROR_CODES.CAMERA_INIT_TIMEOUT:
+        return ERRORS.CAMERA.INIT_TIMEOUT;
+      case ERROR_CODES.CAMERA_SWITCH_FAILED:
+        return ERRORS.CAMERA.SWITCH_FAILED;
+
+      case ERROR_CODES.MIC_SWITCH_FAILED:
+        return ERRORS.MICROPHONE.SWITCH_FAILED;
+      case ERROR_CODES.MIC_CONNECT_FAILED:
+        return ERRORS.MICROPHONE.CONNECT_FAILED;
+
+      case ERROR_CODES.RECORDING_START_FAILED:
+        return ERRORS.RECORDING.START_FAILED;
+      case ERROR_CODES.CODEC_UNSUPPORTED:
+        return ERRORS.RECORDING.START_FAILED;
+
+      case ERROR_CODES.IPC_TIMEOUT:
+        return ERRORS.IPC.TIMEOUT;
+      case ERROR_CODES.FILE_SYSTEM_ERROR:
+        return ERRORS.IPC.FILE_SYSTEM;
+      case ERROR_CODES.SESSION_VALIDATION_FAILED:
+        return 'Loaded session has validation issues. Some data may be incomplete.';
+
+      default:
+        // Fallback based on rough classification
+        const type = this.classifyError(error);
+        if (type === 'DEVICE_PERMISSION_DENIED') return ERRORS.CAMERA.NOT_ALLOWED;
+        if (type === 'DEVICE_NOT_FOUND') return ERRORS.CAMERA.NOT_FOUND;
+        if (type === 'DEVICE_IN_USE') return ERRORS.CAMERA.NOT_READABLE;
+        if (type === 'IPC_TIMEOUT') return ERRORS.IPC.TIMEOUT;
+        if (type === 'FILE_SYSTEM_ERROR') return ERRORS.IPC.FILE_SYSTEM;
+        return 'An unexpected error occurred. Please try again.';
+    }
   }
 
   /**
@@ -264,7 +319,8 @@ class ErrorBoundary {
     }
 
     // All retries failed
-    this.updateStatus(`${operationName} failed: ${lastError.message}`, true);
+    const msg = this.mapErrorToMessage(lastError);
+    this.updateStatus(`${operationName} failed: ${msg}`, true);
 
     // Call custom error handler if provided
     if (onError) {
@@ -295,8 +351,9 @@ class ErrorBoundary {
       context,
       onError: async (error) => {
         // Show modal for IPC failures (blocking errors)
+        const msg = this.mapErrorToMessage(error);
         await this.showErrorDialog(
-          `${operationName} failed: ${error.message}\n\nThis may indicate a problem with file system access or the main process.`,
+          `${operationName} failed: ${msg}\n\nThis may indicate a problem with file system access or the main process.`,
           'Operation Failed',
           { showRetry: false }
         );
@@ -328,7 +385,7 @@ class ErrorBoundary {
 
       // Check if retries are enabled
       if (!this.preferences.deviceRetryEnabled) {
-        this.updateStatus(`${operationName} failed: ${error.message}`, true);
+        this.updateStatus(`${operationName} failed: ${this.mapErrorToMessage(error)}`, true);
         throw error;
       }
 
@@ -367,7 +424,7 @@ class ErrorBoundary {
         return result;
       } catch (retryError) {
         this.logError(operationName, retryError, 2, 'retry_failed', context);
-        this.updateStatus(`${operationName} failed after retry: ${retryError.message}`, true);
+        this.updateStatus(`${operationName} failed after retry: ${this.mapErrorToMessage(retryError)}`, true);
         throw retryError;
       }
     }

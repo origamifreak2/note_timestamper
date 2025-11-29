@@ -4,7 +4,8 @@
  * Handles exporting sessions as HTML files with embedded or separate media
  */
 
-import { arrayBufferToBase64 } from '../modules/utils.js';
+import { arrayBufferToBase64, createError } from '../modules/utils.js';
+import { ERROR_CODES } from '../config.js';
 import { errorBoundary } from '../modules/errorBoundary.js';
 
 /**
@@ -50,12 +51,12 @@ export class ExportSystem {
 
     // Find all images with fabric data and clean them
     const editableImages = tempDiv.querySelectorAll('img[data-fabric-json]');
-    editableImages.forEach(img => {
+    editableImages.forEach(node => {
+      const img = /** @type {HTMLImageElement} */(node);
       img.removeAttribute('data-fabric-json');
       img.classList.remove('editable-drawing');
       img.removeAttribute('title');
-      // Reset cursor style
-      if (img.style.cursor === 'pointer') {
+      if (img.style && img.style.cursor === 'pointer') {
         img.style.cursor = '';
       }
     });
@@ -86,6 +87,9 @@ export class ExportSystem {
       const ab = await recordedBlob.arrayBuffer();
       mediaB64 = arrayBufferToBase64(ab);
       mediaMime = recordedBlob.type || 'video/webm';
+    } else if (!notesHtml.trim()) {
+      // Nothing to export
+      throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Nothing to export (no notes or recording)');
     }
 
     const html = this.generateEmbeddedHTML(notesHtml, mediaB64, mediaMime);
@@ -115,6 +119,8 @@ export class ExportSystem {
     const recordedBlob = this.recordingSystem.getRecordedBlob();
     if (recordedBlob) {
       mediaBuffer = await recordedBlob.arrayBuffer();
+    } else if (!notesHtml.trim()) {
+      throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Nothing to export (no notes or recording)');
     }
 
     // The backend will handle the folder naming based on the chosen filename
@@ -147,6 +153,7 @@ export class ExportSystem {
    * - Handles MIME type to extension conversion (jpeg→jpg, svg+xml→svg)
    */
   extractAndReplaceImages(html, folderPrefix = 'images') {
+    /** @type {import('../../types/global').ExtractedImage[]} */
     const images = [];
     let imageCounter = 1;
 

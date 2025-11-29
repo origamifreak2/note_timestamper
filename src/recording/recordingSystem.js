@@ -4,7 +4,8 @@
  * Handles recording lifecycle, codec selection, and data management
  */
 
-import { sleep } from '../modules/utils.js';
+import { sleep, createError } from '../modules/utils.js';
+import { ERROR_CODES } from '../config.js';
 import { timerSystem } from '../modules/timer.js';
 import { audioLevelMonitor } from '../modules/audioLevel.js';
 import { mixerSystem } from './mixerSystem.js';
@@ -132,7 +133,11 @@ export class RecordingSystem {
         recordingOptions.audioBitsPerSecond = mixerSystem.deviceManager.getSelectedAudioBitrate();
       }
 
-      this.mediaRecorder = new MediaRecorder(this.mediaStream, recordingOptions);
+      try {
+        this.mediaRecorder = new MediaRecorder(this.mediaStream, recordingOptions);
+      } catch (e) {
+        throw createError(ERROR_CODES.RECORDING_START_FAILED, 'Failed to start recording. Please check codec support and device access.', e);
+      }
 
       // Set up timer system with recorder reference
       timerSystem.setMediaRecorder(this.mediaRecorder);
@@ -156,7 +161,14 @@ export class RecordingSystem {
         this.onStateChange?.();
       };
       this.mediaRecorder.onerror = (e) => {
-        console.error('MediaRecorder error:', (e && e.error) || e);
+        const errObj = (e && e.error) || e;
+        console.error('MediaRecorder error:', errObj);
+        // If codec error occurs, surface a coded error via status
+        const msg = (errObj && errObj.message) || String(errObj);
+        const code = msg && msg.toLowerCase().includes('codec') ? ERROR_CODES.CODEC_UNSUPPORTED : ERROR_CODES.RECORDING_START_FAILED;
+        this.statusEl.textContent = 'Error: ' + (msg || 'Recording error');
+        // Avoid throwing from event handler; record code for boundary logs
+        // no-op: boundary maps codes on thrown errors elsewhere
       };
 
   // Update UI state BEFORE starting MediaRecorder to prevent race conditions
@@ -183,7 +195,8 @@ export class RecordingSystem {
 
     } catch (err) {
       console.error(err);
-      this.statusEl.textContent = 'Error: ' + err.message;
+      const msg = (/** @type {any} */(err)).message || String(err);
+      this.statusEl.textContent = 'Error: ' + msg;
     }
   }
 

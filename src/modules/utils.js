@@ -74,6 +74,26 @@ export function withTimeout(promise, ms, errorMsg = 'Operation timed out') {
 }
 
 /**
+ * Creates an Error object with a standardized code and optional cause
+ * Use for throwing errors from lower layers that the error boundary can map.
+ * @param {string} code - One of `ERROR_CODES` values
+ * @param {string} [message] - Optional override message
+ * @param {any} [cause] - Optional underlying error or context
+ * @returns {Error & { code: string, cause?: any }} Error with code property
+ */
+export function createError(code, message = '', cause = undefined) {
+  const err = new Error(message || code);
+  // @ts-ignore - augment with code for standardized handling
+  err.code = code;
+  // Attach cause if provided (kept lightweight)
+  if (cause !== undefined) {
+    // @ts-ignore
+    err.cause = cause;
+  }
+  return err;
+}
+
+/**
  * Detects if running on macOS (affects which modifier key to use)
  * @returns {boolean} True if on macOS
  */

@@ -405,18 +405,22 @@ export const mySystem = new MySystem(); // singleton
 The application implements a sophisticated error handling system that provides actionable guidance to users:
 
 ```javascript
-// Error detection in mixerSystem.js
+// Error detection in mixerSystem.js using standardized codes
+import { ERROR_CODES, ERRORS } from '../config.js';
+import { createError } from '../modules/utils.js';
+
 try {
   micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 } catch (e) {
-  // Detect specific error types
-  if (e.name === 'NotAllowedError') {
-    throw new Error('Microphone access denied. Please allow microphone permissions...');
-  } else if (e.name === 'NotFoundError') {
-    throw new Error('No microphone device found. Please connect a microphone...');
-  } else if (e.name === 'NotReadableError') {
-    throw new Error('Microphone is already in use by another application...');
+  const name = /** @type {any} */(e).name;
+  if (name === 'NotAllowedError') {
+    throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, ERRORS.MIC.PERMISSION_DENIED, e);
+  } else if (name === 'NotFoundError') {
+    throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND, e);
+  } else if (name === 'NotReadableError') {
+    throw createError(ERROR_CODES.DEVICE_IN_USE, ERRORS.MIC.IN_USE, e);
   }
+  throw createError(ERROR_CODES.UNKNOWN, 'Unexpected microphone error', e);
 }
 ```
 
@@ -436,6 +440,11 @@ try {
    - Displays error messages in status bar
    - Re-enables controls after failures
    - Maintains consistent UI state
+
+### Standardized Error Codes
+- `ERROR_CODES` in `src/config.js` is the canonical catalog (e.g., `DEVICE_PERMISSION_DENIED`, `DEVICE_NOT_FOUND`, `DEVICE_IN_USE`, `MIC_SWITCH_FAILED`, `CAMERA_INIT_TIMEOUT`, `RECORDING_START_FAILED`, `CODEC_UNSUPPORTED`, `IPC_TIMEOUT`, `FILE_SYSTEM_ERROR`, `SESSION_VALIDATION_FAILED`, `UNKNOWN`).
+- Use `createError(code, message?, cause?)` to construct thrown errors with `.code`.
+- The `errorBoundary` maps `error.code` to user-facing messages and recovery actions.
 
 ### Error Message Categories
 - **Permission Errors**: Direct users to system settings with clear instructions
@@ -506,10 +515,13 @@ All errors are logged with comprehensive telemetry:
 - `DEVICE_PERMISSION_DENIED`: User denied device access (NotAllowedError)
 - `DEVICE_NOT_FOUND`: Device not available (NotFoundError)
 - `DEVICE_IN_USE`: Device busy (NotReadableError)
-- `DEVICE_ACCESS_FAILED`: General device access failure
 - `FILE_SYSTEM_ERROR`: File operations failed
-- `CODEC_ERROR`: MediaRecorder codec issues
+- `RECORDING_START_FAILED`: MediaRecorder initialization failed
+- `CODEC_UNSUPPORTED`: Codec/constraint unsupported
+- `SESSION_VALIDATION_FAILED`: Session JSON failed schema validation (non-blocking)
 - `UNKNOWN`: Unclassified errors
+
+The error boundary prefers `error.code` when classifying and mapping messages.
 
 ### User Preference Persistence
 
@@ -641,6 +653,12 @@ session.notepack (zip file)
 - Portable and easy to share
 - Smaller footprint with zip compression
 - Consistent file extension across platforms
+
+### Coded Persistence Wrappers
+Use `src/modules/zipUtils.js` helpers for persistence with standardized codes:
+- `saveSessionWithCodes()` and `loadSessionWithCodes()` return `{ ok, ... }` on success or a coded error object.
+- Preserve cancel semantics (user cancellations are not treated as errors).
+- Wrap background work with `errorBoundary.wrapIPC(...)`, but never wrap the file picker UI itself (no timeout for user actions).
 
 ### Streaming Architecture for Large Files
 To avoid memory spikes with large recordings:

@@ -39,6 +39,7 @@ A desktop application for recording audio/video with synchronized timestamped no
   - Timeout protection for background operations
   - Structured error logging for diagnostics
   - User-configurable retry preferences
+  - Standardized error codes with consistent user messaging
 
 ## 🏗️ Architecture
 
@@ -93,6 +94,7 @@ Notes for Windows builds
 - **ES6 Modules**: Modern JavaScript module system
 - **Type Safety**: JSDoc + TypeScript type checking without transpilation
 - **Comprehensive Documentation**: All modules include side effects and invariants
+- **Standardized Errors**: `ERROR_CODES` + `createError()` with mapping in `errorBoundary`; persistence via `zipUtils.saveSessionWithCodes()` / `loadSessionWithCodes()`
 
 ## 📄 File Formats
 

@@ -13,9 +13,12 @@
   - ✅ Added `schemas/session.schema.json` (matches current `session.json` structure: `createdAt`, `mediaFile`, `notesFile`, `version`).
   - ✅ Added `schemas/notes-embed.schema.json` (defines `TimestampValue`, `ImageValueObject`, and string `ImageValue` formats).
   - ✅ Integrated lightweight `ajv` validation of `session.json` in main process load path (non-blocking; logs warnings only).
-- [ ] **Standard error codes**
-  - Introduce `ERROR_CODES` in `src/config.js` and an `ErrorWithCode` helper
-  - Throw errors with codes from device/mixer/recording layers; map to user-facing messages via `errorBoundary`
+- [x] **Standard error codes**
+  - ✅ Introduced `ERROR_CODES` in `src/config.js` and `createError()` helper
+  - ✅ Added mapping in `errorBoundary.mapErrorToMessage()`
+  - ✅ Updated throw sites in `mixerSystem`, `recordingSystem`, `deviceManager`
+  - ✅ Added coded error handling for session save/load wrappers (zipUtils) and export operations groundwork
+  - Remaining future adoption: main-process IPC (when migrating to shared helpers) and additional validation surfaces.
 - [ ] **Public API surface docs**
   - Add concise “Public API” section at top of each singleton module listing callable methods and side-effects; mark internal helpers clearly
 - [ ] **IPC contract documentation**

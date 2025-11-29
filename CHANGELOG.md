@@ -2,6 +2,31 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.1] - 2025-11-28
+### Added
+- Standardized error code system
+  - `ERROR_CODES` in `src/config.js`
+  - `createError(code, message?, cause?)` in `src/modules/utils.js`
+- Zip/Export helpers for coded errors
+  - `loadSessionWithCodes()` and `saveSessionWithCodes()` in `src/modules/zipUtils.js`
+
+### Enhanced
+- Error boundary mapping and messaging
+  - Added `mapErrorToMessage()` and preference for `error.code` in `src/modules/errorBoundary.js`
+  - Consistent status/dialog messages across device, IPC, and recording failures
+- Propagated coded errors across subsystems
+  - `src/recording/mixerSystem.js`: coded errors for mic/cam access and live switching; timeout classified as `CAMERA_INIT_TIMEOUT`
+  - `src/recording/recordingSystem.js`: coded error on `MediaRecorder` init; codec failures surfaced via UI
+  - `src/modules/deviceManager.js`: coded errors for permission and enumeration failures
+  - `src/main.js`: session save/load now use coded wrappers from `zipUtils`
+
+### Fixed
+- `@ts-check` warnings in mixer/exports
+  - Mixer: removed `webkitAudioContext` reference, added null guards for canvas/video/context
+  - Export: typed `HTMLImageElement` in fabric cleanup; annotated extracted images array
+- Unified audio level cleanup via `audioLevelMonitor.cleanup()`
+- Marked “Standard error codes” as completed in `TODO.md`
+
 ## [0.12.0] - 2025-11-28
 ### Added
 - **Type Safety without TypeScript Migration**

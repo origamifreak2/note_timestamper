@@ -143,6 +143,41 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
   - Each error type provides specific resolution steps for users
 - **MESSAGES**: Standardized success messages for user feedback
 
+## 🧩 Standardized Error Codes
+
+Error handling uses coded errors for consistency across modules.
+
+### Definitions
+- `ERROR_CODES` in `src/config.js` is the canonical catalog (e.g., `DEVICE_PERMISSION_DENIED`, `DEVICE_NOT_FOUND`, `DEVICE_IN_USE`, `MIC_SWITCH_FAILED`, `CAMERA_INIT_TIMEOUT`, `RECORDING_START_FAILED`, `CODEC_UNSUPPORTED`, `IPC_TIMEOUT`, `FILE_SYSTEM_ERROR`, `SESSION_VALIDATION_FAILED`, `UNKNOWN`).
+- `createError(code, message?, cause?)` in `src/modules/utils.js` constructs an `Error` with `.code` and optional `.cause`.
+- `errorBoundary` prefers `error.code` and maps it to actionable text via an internal mapping function.
+
+### Usage Guidelines
+- Throw coded errors from modules: `throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND)`.
+- Don’t throw from event handlers (e.g., `MediaRecorder.onerror`) — set status or signal upstream safely.
+- Use wrappers:
+  - IPC/background: `await errorBoundary.wrapIPC(() => window.api.createTempMedia(...), { operationName: '...' })`.
+  - Device access: `await errorBoundary.wrapDeviceAccess(() => mixerSystem.createMixerStream(), { operationName: 'device access', deviceManager, context })`.
+- Session persistence: Prefer `zipUtils.saveSessionWithCodes()` / `zipUtils.loadSessionWithCodes()` which return success objects or coded errors. Preserve cancel semantics. Do not apply timeouts to file picker dialogs.
+
+### Example
+```javascript
+import { ERROR_CODES, ERRORS } from '../config.js';
+import { createError } from './utils.js';
+
+async function ensureMic() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    const name = /** @type {any} */(e).name;
+    if (name === 'NotAllowedError') throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, ERRORS.MIC.PERMISSION_DENIED, e);
+    if (name === 'NotFoundError') throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND, e);
+    if (name === 'NotReadableError') throw createError(ERROR_CODES.DEVICE_IN_USE, ERRORS.MIC.IN_USE, e);
+    throw createError(ERROR_CODES.UNKNOWN, 'Unexpected microphone error', e);
+  }
+}
+```
+
 ## � Session Persistence Architecture (Zip-Based)
 
 ### .notepack File Format
@@ -552,11 +587,11 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - Canvas-based video mixing for visual audio levels
 
 ### Error Handling Architecture
-- **Device Access Errors**: `mixerSystem.js` detects specific MediaStream API errors
-  - `NotAllowedError`: Permission denied → directs user to system settings
-  - `NotFoundError`: Device not found → prompts to connect device and reload
-  - `NotReadableError`: Device in use → suggests closing other applications
-  - Timeout errors: Indicates potential hardware malfunction
+- **Device Access Errors**: `mixerSystem.js` detects specific MediaStream API errors and throws coded errors via `createError()`
+  - `NotAllowedError` → `ERROR_CODES.DEVICE_PERMISSION_DENIED`
+  - `NotFoundError` → `ERROR_CODES.DEVICE_NOT_FOUND`
+  - `NotReadableError` → `ERROR_CODES.DEVICE_IN_USE`
+  - Timeout/switch/connect failures map to appropriate `ERROR_CODES.*`
 - **Error Flow**: Device layer throws descriptive errors → errorBoundary catches and logs → UI displays in status bar
 - **User Guidance**: All errors include actionable resolution steps
 - **Error Boundary Integration**:
@@ -588,6 +623,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   - Validated against `schemas/session.schema.json` during load (non-blocking)
   - Enables seamless load/save of audio/video + timestamped notes
 - **IPC Response Shape**: `loadSession()` returns `{ ok, notesHtml, mediaArrayBuffer, mediaFile }` (mediaFile was renamed from mediaFileName for consistency)
+  - For coded persistence flows, use `zipUtils.loadSessionWithCodes()` / `zipUtils.saveSessionWithCodes()`; wrap background work with `errorBoundary.wrapIPC`, never the file picker itself.
 
 ### Electron Security (Permission Handling)
 - **Media Permissions**: `main.js` uses `setPermissionRequestHandler` with origin validation
