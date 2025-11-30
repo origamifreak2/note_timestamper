@@ -14,7 +14,8 @@
     "lint": "eslint . --ext .js,.cjs,.mjs",
     "lint:fix": "eslint . --ext .js,.cjs,.mjs --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "vitest run"
   },
   "build": {
     "icon": "build/icon.ico",
@@ -75,7 +76,9 @@
     "eslint-plugin-jsdoc": "^48.0.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
-    "globals": "^15.0.0"
+    "globals": "^15.0.0",
+    "vitest": "^2.0.0",
+    "jsdom": "^24.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

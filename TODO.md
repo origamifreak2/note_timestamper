@@ -33,9 +33,18 @@
   - Added `.prettierrc.json` and `.prettierignore`
   - Removed legacy `.eslintrc.*` and `.eslintignore` (migrated ignores into flat config)
   - Relaxed internal JSDoc param/returns noise; preserved public API doc warnings only
-- [ ] **Testing migration to Vitest**
-  - Add Vitest for fast ESM-friendly tests
-  - Add initial tests: `utils`, `zipUtils/exportSystem`, `errorBoundary`, `editor/customBlots`
+- [x] **Testing migration to Vitest**
+  - ✅ Added Vitest (`vitest` dev dependency, `jsdom` for DOM tests) and `npm test` script
+  - ✅ Created `vitest.config.mjs` with Node environment
+  - ✅ Added initial tests:
+    - `tests/utils.test.mjs`: formatTime, withTimeout, createError
+    - `tests/notepack.test.mjs`: zip creation/read roundtrip
+    - `tests/errorBoundary.test.mjs`: error code mapping, wrapAsync retry logic
+    - `tests/customBlots.test.mjs`: TimestampBlot and CustomImage create/value under jsdom
+    - `tests/zipUtils.test.mjs`: coded error flows (success, cancellation, failure) for save/load
+    - `tests/exportSystem.test.mjs`: stripFabricData, extractAndReplaceImages, HTML template generation
+  - ✅ All 39 tests passing across 6 test files
+  - 🚧 Future: add integration tests for recording flows and main process IPC handlers
 - [ ] **CI workflow**
   - GitHub Actions: run `postinstall`, `lint`, `test` on push/PR
 
