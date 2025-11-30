@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Custom Quill.js blots for timestamps and images
+ * @file Custom Quill.js blots for timestamps and images
  * Defines custom embed types for enhanced editor functionality
  *
  * =====================

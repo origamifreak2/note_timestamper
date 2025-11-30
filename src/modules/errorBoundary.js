@@ -1,5 +1,5 @@
 /**
- * @fileoverview Error Boundary System
+ * @file Error Boundary System
  * Wraps critical operations with timeout protection, retry logic, and graceful degradation
  * Provides structured error logging and standardized user notifications
  *

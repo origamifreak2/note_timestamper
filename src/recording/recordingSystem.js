@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Main recording system using MediaRecorder API
+ * @file Main recording system using MediaRecorder API
  * Handles recording lifecycle, codec selection, and data management
  *
  * =====================

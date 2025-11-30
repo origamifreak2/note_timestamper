@@ -1,5 +1,5 @@
 /**
- * @fileoverview Main renderer process entry point for Note Timestamper
+ * @file Main renderer process entry point for Note Timestamper
  * Coordinates all modules and handles application initialization
  *
  * =====================

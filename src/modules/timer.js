@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Timer system for tracking recording and playback time
+ * @file Timer system for tracking recording and playback time
  * Handles timing during recording (excluding paused periods) and during playback
  *
  * =====================

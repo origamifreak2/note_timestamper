@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Device management for audio and video devices
+ * @file Device management for audio and video devices
  * Handles device enumeration, selection persistence, and constraints building
  *
  * =====================
@@ -43,6 +43,19 @@
 import { CONFIG, ERROR_CODES } from '../config.js';
 import { createError } from './utils.js';
 
+/**
+ * @typedef {object} MediaStreamConstraints
+ * @property {MediaTrackConstraints|object|boolean} [audio] - Audio track constraints or flag
+ * @property {MediaTrackConstraints|object|boolean} [video] - Video track constraints or flag
+ */
+/**
+ * @typedef {object} MediaTrackConstraints
+ * @property {string} [deviceId] - Preferred device ID for the track
+ * @property {number} [width] - Target capture width in pixels
+ * @property {number} [height] - Target capture height in pixels
+ * @property {number} [frameRate] - Target frames per second
+ * @property {string} [groupId] - Hardware group identifier
+ */
 /**
  * LocalStorage keys for remembering device selections across sessions
  */

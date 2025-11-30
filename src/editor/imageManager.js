@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Image handling functionality for the editor
+ * @file Image handling functionality for the editor
  * Handles image insertion, drag-and-drop, and dimension management
  *
  * =====================

@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Utility functions for the Note Timestamper application
+ * @file Utility functions for the Note Timestamper application
  * Common helper functions used throughout the application
  *
  * =====================

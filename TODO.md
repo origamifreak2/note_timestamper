@@ -27,9 +27,12 @@
   - ✅ Create `docs/ipc-api.md` detailing exposed preload APIs, arguments/returns, timeout behavior, and which calls must not be wrapped (e.g., file pickers)
 
 ### Tooling & CI
-- [ ] **Lint & format**
-  - Add ESLint with ESM config + `eslint-plugin-jsdoc`
-  - Add Prettier; wire `npm run lint` and `npm run format`
+- [x] **Lint & format**
+  - Added flat ESLint v9 config (`eslint.config.js`) with `eslint-plugin-jsdoc` and Prettier integration
+  - Added `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check` scripts
+  - Added `.prettierrc.json` and `.prettierignore`
+  - Removed legacy `.eslintrc.*` and `.eslintignore` (migrated ignores into flat config)
+  - Relaxed internal JSDoc param/returns noise; preserved public API doc warnings only
 - [ ] **Testing migration to Vitest**
   - Add Vitest for fast ESM-friendly tests
   - Add initial tests: `utils`, `zipUtils/exportSystem`, `errorBoundary`, `editor/customBlots`

@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Camera capture functionality
+ * @file Camera capture functionality
  * Handles capturing photos from device camera while recording
  *
  * =====================

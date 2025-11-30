@@ -10,7 +10,11 @@
     "postinstall": "node scripts/fetch-quill.mjs && node scripts/fetch-fabric.mjs && node scripts/copy-fa.mjs",
     "build:mac": "electron-builder --mac dmg --publish never --x64 && ./scripts/sign-mac-app.sh",
     "build:mac:universal": "electron-builder --mac dmg --publish never --x64 --arm64 && ./scripts/sign-mac-app.sh",
-    "build:win": "electron-builder --win nsis --publish never"
+    "build:win": "electron-builder --win nsis --publish never",
+    "lint": "eslint . --ext .js,.cjs,.mjs",
+    "lint:fix": "eslint . --ext .js,.cjs,.mjs --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "build": {
     "icon": "build/icon.ico",
@@ -66,7 +70,12 @@
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3",
-    "quill": "^2.0.2"
+    "quill": "^2.0.2",
+    "eslint": "^9.0.0",
+    "eslint-plugin-jsdoc": "^48.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "globals": "^15.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

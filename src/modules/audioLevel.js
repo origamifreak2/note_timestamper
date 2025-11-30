@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Audio level monitoring for microphone input
+ * @file Audio level monitoring for microphone input
  * Provides visual feedback of audio levels during recording
  *
  * =====================

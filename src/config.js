@@ -1,5 +1,5 @@
 /**
- * @fileoverview Application configuration and constants
+ * @file Application configuration and constants
  * Centralized configuration for the Note Timestamper application
  *
  * =====================

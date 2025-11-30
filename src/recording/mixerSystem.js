@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Audio/Video mixer system for combining multiple media sources
+ * @file Audio/Video mixer system for combining multiple media sources
  * Creates a combined MediaStream from separate audio and video sources
  *
  * =====================

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @fileoverview Zip/session utility helpers with standardized coded errors
+ * @file Zip/session utility helpers with standardized coded errors
  * Provides lightweight wrappers for save/load IPC operations that surface
  * ERROR_CODES for consistent errorBoundary handling.
  *

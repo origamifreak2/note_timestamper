@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Interactive image resizing functionality
+ * @file Interactive image resizing functionality
  * Provides drag handles for resizing images directly in the Quill editor
  *
  * =====================

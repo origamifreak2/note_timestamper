@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @fileoverview Export functionality for sessions
+ * @file Export functionality for sessions
  * Handles exporting sessions as HTML files with embedded or separate media
  *
  * =====================

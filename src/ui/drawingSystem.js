@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Drawing system using Fabric.js canvas
+ * @file Drawing system using Fabric.js canvas
  * Provides a drawing interface for creating and inserting drawings
  *
  * =====================
