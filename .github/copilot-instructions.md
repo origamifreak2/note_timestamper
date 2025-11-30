@@ -417,6 +417,36 @@ async myMethod(param) { ... }
 - **Side effects**: Document what state/DOM changes occur
 - **Invariants**: Describe pre/post-conditions and safety guarantees
 - **Internal helpers**: Clearly mark internal methods as 'Internal' in API surface docs
+- **Module Contract Block**: Immediately after the Public API Surface add a high-level contract block listing Inputs, Outputs, Side-effects, Invariants, Failure Modes (coded `ERROR_CODES` where applicable). Keep it concise and implementation-agnostic.
+
+### Module Contract Blocks
+Each key module must include a "Module Contract" block (after its Public API Surface) with the following ordered sections:
+
+```
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs: DOM refs, dependencies, user interactions, external data sources
+ * Outputs: Return values, emitted callbacks, state objects
+ * Side-effects: DOM mutation, resource allocation, timers, media streams, IPC
+ * Invariants: Guarantees (single active mixer, blob URL revocation, bounded history, etc.)
+ * Failure Modes: Enumerated error scenarios referencing ERROR_CODES or noting silent no-ops
+ */
+```
+
+Guidelines:
+- Use present tense and bullet-style single-line entries.
+- List only externally observable effects; internal algorithm details belong in method JSDoc if needed.
+- When a module is pure (e.g., `utils.js` except for timeout allocation) explicitly state minimal side-effects.
+- Failure Modes must reference exact `ERROR_CODES` constants for consistency and searching.
+- Update the block whenever a public method adds a new side-effect, invariant, or failure mode.
+- For new modules: add both Public API Surface and Module Contract blocks prior to first commit.
+
+Quality Checks:
+- No duplicated information (avoid repeating entire Public API list).
+- Failure Modes should not invent codes; use existing or add new to `config.js` then update docs.
+- Review contracts in PRs as part of documentation completeness.
 
 ### Module Initialization
 All modules follow this pattern:

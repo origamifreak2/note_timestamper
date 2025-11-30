@@ -41,6 +41,30 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - recordingSystem.recordedBlob + mediaExt
+ *   - Quill editor (notes HTML via quill.root.innerHTML)
+ *   - Internal template/style/script builders
+ * Outputs:
+ *   - HTML export strings (embedded or separate media variants)
+ *   - Result objects containing Blob or base64 embedded media
+ *   - Cleaned HTML (stripFabricData)
+ * Side-effects:
+ *   - Creates temporary DOM for HTML manipulation
+ *   - Base64 encodes binary data (size proportional to media length)
+ * Invariants:
+ *   - stripFabricData only removes internal drawing metadata (fabricJSON) and related attributes
+ *   - Export functions do not mutate editor content
+ *   - Media MIME derived from blob; consistent fallback applied
+ * Failure Modes (coded errors when integrated with IPC):
+ *   - FILE_SYSTEM_ERROR (underlying save failures)
+ *   - UNKNOWN (unexpected generation errors)
+ */
+
 import { arrayBufferToBase64, createError } from '../modules/utils.js';
 import { ERROR_CODES } from '../config.js';
 import { errorBoundary } from '../modules/errorBoundary.js';

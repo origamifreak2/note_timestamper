@@ -34,6 +34,27 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - DOM elements: timeDisplay, player
+ *   - mediaRecorder reference for state (recording/paused)
+ *   - setInterval ticks (CONFIG.TIMER.UPDATE_INTERVAL)
+ * Outputs:
+ *   - Formatted time string shown in DOM
+ *   - recordingElapsed numeric state used by timestamp features
+ * Side-effects:
+ *   - Creates & clears interval timers for recording and playback
+ *   - Writes to DOM each interval
+ * Invariants:
+ *   - Paused periods excluded from recordingElapsed
+ *   - All intervals cleared on stop/reset
+ * Failure Modes:
+ *   - None (guards prevent operations without initialized elements)
+ */
+
 import { formatTime } from './utils.js';
 
 /**

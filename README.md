@@ -103,6 +103,7 @@ Notes for Windows builds
 - **Type Safety**: JSDoc + TypeScript type checking without transpilation
 - **Public API Documentation**: Every module includes comprehensive API surface documentation
 - **Comprehensive Documentation**: All modules include side effects and invariants
+- **Module Contract Blocks**: Each module also includes a high-level contract (Inputs, Outputs, Side-effects, Invariants, Failure Modes) complementing the Public API for faster reasoning and error mapping
 - **Standardized Errors**: `ERROR_CODES` + `createError()` with mapping in `errorBoundary`; persistence via `zipUtils.saveSessionWithCodes()` / `loadSessionWithCodes()`
 - **Test Suite**: Vitest with 39 tests covering utils, zip operations, error boundary, custom blots, persistence, and export system
 

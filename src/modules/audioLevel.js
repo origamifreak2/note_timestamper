@@ -27,6 +27,26 @@
  */
 
 /**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - DOM elements: levelMeter, levelFill, levelText
+ *   - AnalyserNode (set via setAnalyser)
+ *   - Update interval CONFIG.AUDIO.LEVEL_UPDATE_INTERVAL
+ * Outputs:
+ *   - Visual meter fill & percentage text
+ * Side-effects:
+ *   - Reads analyser frequency data; updates DOM styles/text
+ *   - Allocates Uint8Array matching analyser.frequencyBinCount
+ * Invariants:
+ *   - Monitoring loop runs only when analyser present & start() called
+ *   - stop()/cleanup always clears interval
+ * Failure Modes:
+ *   - None (early returns when analyser absent)
+ */
+
+/**
  * Audio level monitoring system
  * Provides real-time visual feedback of microphone input levels
  */

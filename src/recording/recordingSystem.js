@@ -36,6 +36,36 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - DOM references via init(options): player, status element, control buttons
+ *   - Dependencies: timerSystem, audioLevelMonitor, mixerSystem, errorBoundary, CONFIG constants
+ *   - User interactions: start/stop/pause buttons, device switching (through mixerSystem)
+ *   - Media device streams created by mixerSystem.createMixerStream()
+ * Outputs:
+ *   - Recorded media blob (recordedBlob) & preview URL (currentBlobUrl)
+ *   - Recording state transitions via onStateChange callback
+ *   - Media extension (mediaExt) informing export/save logic
+ * Side-effects:
+ *   - Requests mic/cam permissions
+ *   - Allocates & manages MediaRecorder and underlying MediaStream tracks
+ *   - Starts/stops timerSystem & audio level monitoring intervals
+ *   - Creates/revokes object URLs for preview playback
+ *   - Updates DOM control state & status text
+ * Invariants:
+ *   - Only one active recording; startRecording() is no-op if already recording
+ *   - Existing preview URL revoked before creating a new one
+ *   - stop/reset always stops tracks & destroys mixer resources
+ *   - Paused time excluded from elapsed recording time
+ * Failure Modes (coded errors):
+ *   - DEVICE_PERMISSION_DENIED / DEVICE_NOT_FOUND / DEVICE_IN_USE
+ *   - RECORDING_START_FAILED, CODEC_UNSUPPORTED
+ *   - UNKNOWN (unexpected conditions)
+ */
+
 import { sleep, createError } from '../modules/utils.js';
 import { ERROR_CODES } from '../config.js';
 import { timerSystem } from '../modules/timer.js';

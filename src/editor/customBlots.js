@@ -23,6 +23,24 @@
  * Internal helpers are marked 'Internal'.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - TimestampValue objects / partials, ImageValue (string or object), Quill global registry
+ * Outputs:
+ *   - DOM elements (<button.ts>, <img>) with embedded metadata
+ *   - Value extraction objects for Delta serialization
+ * Side-effects:
+ *   - registerCustomBlots mutates Quill's blot registry
+ * Invariants:
+ *   - Timestamp button contenteditable=false; data-ts numeric
+ *   - Image blot preserves fabricJSON when provided; dimensions encoded consistently
+ * Failure Modes:
+ *   - Invalid values coerced to safe defaults; no throws
+ */
+
 import { formatTime } from '../modules/utils.js';
 
 const Delta = Quill.import('delta');

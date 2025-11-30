@@ -22,6 +22,19 @@
  */
 
 /**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs: None (static definitions)
+ * Outputs: Exported immutable configuration & constant objects
+ * Side-effects: None (pure data module)
+ * Invariants:
+ *   - Objects treated as read-only by consumers
+ *   - Error codes stable across runtime; STATES values consistent
+ * Failure Modes: None
+ */
+
+/**
  * Application configuration object
  */
 export const CONFIG = {

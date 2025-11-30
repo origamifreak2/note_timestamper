@@ -23,6 +23,27 @@ import { ERROR_CODES } from '../config.js';
 import { createError } from './utils.js';
 
 /**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - IPC handlers: window.api.loadSession(), window.api.saveSession(payload)
+ *   - Payload object containing noteHtml, mediaFilePath, sessionId, etc.
+ * Outputs:
+ *   - Successful result objects from IPC calls
+ *   - undefined on user cancellation (non-error path)
+ *   - Thrown coded errors for internal failures
+ * Side-effects:
+ *   - None (pure wrapping layer)
+ * Invariants:
+ *   - Cancellation (ok:false & no error) never throws; returns undefined
+ *   - All failure throws use ERROR_CODES.FILE_SYSTEM_ERROR
+ * Failure Modes:
+ *   - FILE_SYSTEM_ERROR (no response / IPC error)
+ *   - User cancellation (graceful, non-throw)
+ */
+
+/**
  * Wrap load-session IPC result and throw coded errors when appropriate.
  * User cancellation (ok:false with no error) is not treated as failure.
  * @returns {Promise<any>} Resolved successful session payload

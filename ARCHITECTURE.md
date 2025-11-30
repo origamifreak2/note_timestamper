@@ -101,6 +101,37 @@ All 17 core modules include Public API documentation:
 ✅ **Documentation at Source**: No need to maintain separate API docs
 ✅ **Consistency**: Standardized format across all modules
 
+## 📘 Module Contract Blocks
+
+In addition to the Public API Surface, each key module now begins with a concise **Module Contract** block summarizing its runtime role and boundaries.
+
+**Structure (ordered):**
+1. Inputs – Data sources, dependencies, DOM references, user interactions
+2. Outputs – Objects, return values, emitted callbacks/events, state mutations externally observable
+3. Side-effects – DOM writes, media allocation, network/IPC access, timers
+4. Invariants – Conditions that must always hold (single active recorder, blob URL revocation, bounded history arrays, etc.)
+5. Failure Modes – Enumerated error scenarios mapped to `ERROR_CODES` (or noted as silent no-op) for consistent recovery handling
+
+**Purpose & Differences vs Public API:**
+- Public API lists callable methods/functions; Module Contract gives holistic behavioral context.
+- Contracts accelerate AI / human reasoning during refactors (quick scan clarifies impact surface without reading implementation).
+- Failure modes section standardizes which coded errors may be thrown (searchable across codebase).
+
+**Authoring Guidelines:**
+- Keep each list terse and implementation-agnostic (avoid line-by-line detail).
+- Include all externally visible side-effects (media permission prompts, object URL creation, DOM mutations).
+- Invariants should be phrased as guarantees ("Only one active mixer", "Blob URL revoked before new one").
+- Failure Modes must use exact `ERROR_CODES` symbols when applicable; group misc unexpected cases under `UNKNOWN`.
+- Pure/utility modules explicitly state "None" for side-effects/failure modes where appropriate.
+- Update both Public API Surface and Module Contract when adding/removing public methods or changing error behavior.
+
+**When to Update:**
+- Adding a new public method that introduces new inputs/outputs or side-effects.
+- Introducing a new error code or altering failure semantics.
+- Changing resource lifecycle (e.g., adding a new interval, stream, or global listener).
+
+These blocks complement JSDoc method-level docs, enabling layered understanding: (1) Contract overview → (2) Public API listing → (3) Individual method details.
+
 ## 🔒 Type Safety Architecture
 
 The application implements **type safety without full TypeScript migration** using JSDoc annotations and TypeScript type checking:

@@ -23,6 +23,25 @@
  */
 
 /**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - Primitive values, ArrayBuffer, promises, error codes
+ * Outputs:
+ *   - Formatted time strings, base64 strings, delayed promises, timeout-wrapped promises, coded Error objects
+ * Side-effects:
+ *   - withTimeout allocates & clears a timer; others are pure
+ * Invariants:
+ *   - formatTime always returns zero-padded mm:ss.cc
+ *   - createError always sets .code and preserves optional .cause
+ *   - withTimeout clears timer on resolve/reject
+ * Failure Modes:
+ *   - withTimeout rejects with provided errorMsg after ms
+ *   - Other utilities only fail via standard JS exceptions (e.g., btoa invalid input)
+ */
+
+/**
  * Formats seconds as MM:SS.CC (minutes:seconds.centiseconds)
  * Used for timestamp display and timestamp button labels
  * @param {number} s - Time in seconds (can include fractional part)

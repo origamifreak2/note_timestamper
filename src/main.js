@@ -63,6 +63,35 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract (Main Coordinator)
+ * =====================
+ * Inputs:
+ *   - DOM structure (queried in getDOMReferences)
+ *   - Module singletons: recordingSystem, mixerSystem, deviceManager, timerSystem, audioLevelMonitor,
+ *     exportSystem, errorBoundary, imageManager, imageResizer, cameraSystem, drawingSystem
+ *   - window.api & window.menu IPC/event surfaces (save-progress events, session load/save)
+ *   - User interactions (keyboard shortcuts, toolbar buttons, recording controls)
+ * Outputs:
+ *   - Initialized application state; wired event handlers
+ *   - UI updates reflecting recording/editor/session status
+ *   - Session save/load operations triggered with success/error feedback
+ *   - Exported HTML artifacts via exportSystem
+ * Side-effects:
+ *   - Attaches numerous DOM event listeners & keyboard bindings
+ *   - Coordinates creation/destruction of media streams & blob URLs indirectly via subsystems
+ *   - Writes status messages via errorBoundary.updateStatus
+ * Invariants:
+ *   - init() executes module initialization exactly once per page load
+ *   - UI state methods avoid direct mutation of recordingSystem internal state (delegated calls)
+ *   - Timestamp insertion uses current player time; handles no recording gracefully
+ * Failure Modes:
+ *   - Underlying subsystem coded errors surfaced via errorBoundary dialogs/status
+ *   - IPC/file picker cancellations handled without throwing
+ *   - Unknown exceptions caught and routed to errorBoundary for user guidance
+ */
+
 // Import all modules
 import { formatTime, isMac } from './modules/utils.js';
 import { timerSystem } from './modules/timer.js';

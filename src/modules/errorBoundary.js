@@ -30,6 +30,31 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - Functions to wrap (async operations, IPC, device access)
+ *   - Options: { operationName, timeout, maxRetries, context }
+ *   - Status DOM element + localStorage preferences
+ * Outputs:
+ *   - Wrapped operation result or thrown coded error
+ *   - Structured errorLog entries
+ *   - Updated status bar content & user dialog decisions
+ * Side-effects:
+ *   - Mutates DOM status element
+ *   - Persists/reads recovery preferences
+ *   - Tracks retry attempts per operation in memory
+ * Invariants:
+ *   - File picker IPC calls excluded from timeout wrapping
+ *   - errorLog capped at maxLogSize with FIFO removal
+ *   - mapErrorToMessage maps known ERROR_CODES consistently
+ * Failure Modes (surfaced coded errors):
+ *   - IPC_TIMEOUT, DEVICE_PERMISSION_DENIED, DEVICE_NOT_FOUND, DEVICE_IN_USE
+ *   - FILE_SYSTEM_ERROR, SESSION_VALIDATION_FAILED (future surface), UNKNOWN
+ */
+
 import { CONFIG, ERRORS, ERROR_CODES } from '../config.js';
 import { sleep, withTimeout } from './utils.js';
 

@@ -27,6 +27,25 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - Quill instance (init)
+ *   - Data URLs & Fabric JSON (drawings) / FileList for paste & drag
+ *   - Dimension calculation utility (calculateDefaultImageDimensions)
+ * Outputs:
+ *   - Inserted/updated CustomImage blot embeds with metadata
+ * Side-effects:
+ *   - Mutates editor contents; attaches drag & paste handlers
+ * Invariants:
+ *   - Drawing images stored with object format preserving fabricJSON
+ *   - Fallback insertion used on dimension calc errors
+ * Failure Modes:
+ *   - Oversized/invalid files produce silent no-op or reduced insertion; no throws
+ */
+
 import { calculateDefaultImageDimensions } from '../modules/utils.js';
 
 /**

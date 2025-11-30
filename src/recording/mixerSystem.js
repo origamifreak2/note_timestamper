@@ -32,6 +32,33 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - deviceManager (selected mic/cam IDs, audio-only flag)
+ *   - CONFIG constants (AUDIO analyser, DEVICE init timeout, RECORDING framerate)
+ *   - User requests for live device switching
+ * Outputs:
+ *   - Mixer object: { stream, audioContext, analyser, sourceNode, destinationNode, videoEl, canvas }
+ *   - Active mixed MediaStream consumed by recordingSystem
+ * Side-effects:
+ *   - Requests mic/cam via getUserMedia
+ *   - Allocates Web Audio context & nodes; runs requestAnimationFrame loop for canvas frames
+ *   - Creates transient <video> & <canvas> elements
+ *   - Reconnects audio graph / swaps video source on live switching
+ * Invariants:
+ *   - At most one active mixer; previous is cleaned before replacement
+ *   - Partial setup cleaned if any stage fails (tracks stopped, context closed)
+ *   - Live switching preserves recording continuity
+ * Failure Modes (coded errors):
+ *   - DEVICE_PERMISSION_DENIED / DEVICE_NOT_FOUND / DEVICE_IN_USE
+ *   - MIC_SWITCH_FAILED (live mic replacement failure)
+ *   - CAMERA_INIT_TIMEOUT (video element start timeout)
+ *   - UNKNOWN (unclassified errors)
+ */
+
 import { audioLevelMonitor } from '../modules/audioLevel.js';
 import { CONFIG, ERROR_CODES } from '../config.js';
 import { withTimeout, createError } from '../modules/utils.js';

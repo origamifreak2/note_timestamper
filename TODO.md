@@ -49,7 +49,7 @@
   - GitHub Actions: run `postinstall`, `lint`, `test` on push/PR
 
 ### Documentation Additions
-- [ ] **Module contracts**: Inputs / Outputs / Side-effects / Invariants / Failure modes blocks at top of key modules
+- [x] **Module contracts**: Inputs / Outputs / Side-effects / Invariants / Failure modes blocks at top of key modules
 - [ ] **Decision records**: Add `docs/adr/` for major choices (Canvas capture, streaming save pipeline, file picker timeout policy)
 - [ ] **AI Guide**: `docs/AI_GUIDE.md` covering safe-to-edit zones, do-not-alter areas, extension patterns, and PR checklists
 

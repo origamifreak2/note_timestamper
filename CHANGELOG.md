@@ -2,6 +2,25 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.4] - 2025-11-30
+### Added
+- **Module Contract blocks** across all key modules: explicit Inputs / Outputs / Side-effects / Invariants / Failure Modes documentation added to:
+  - Recording: `recordingSystem.js`, `mixerSystem.js`
+  - Core Modules: `deviceManager.js`, `exportSystem.js`, `timer.js`, `audioLevel.js`, `utils.js`, `zipUtils.js`, `errorBoundary.js`
+  - Editor: `customBlots.js`, `imageManager.js`, `imageResizer.js`
+  - UI: `cameraSystem.js`, `drawingSystem.js`
+  - Config & Coordinator: `config.js`, `main.js`
+
+### Enhanced
+- **AI & Developer Clarity**: Each module now begins with a concise operational contract summarizing runtime expectations and failure surfaces; complements existing Public API Surface.
+- **Error Transparency**: Failure Modes sections enumerate relevant `ERROR_CODES`, improving guided recovery and searchability.
+- **Non-invasive change**: Comment-only additions; no runtime logic altered.
+- **Test Confidence**: Existing 39-test Vitest suite passes unchanged after documentation update.
+
+### Notes
+- Serves as foundation for upcoming ADRs and AI guide; TODO item "Module contracts" marked complete.
+- No versioned API changes; semantic bump for documentation improvements.
+
 ## [0.12.3] - 2025-11-29
 ### Added
 - **Comprehensive test suite with Vitest**

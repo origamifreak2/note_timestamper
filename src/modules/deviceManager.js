@@ -40,6 +40,31 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - DOM select elements (mic, cam, res, fps, audio bitrate) & audio-only checkbox
+ *   - LocalStorage persisted keys (LS_KEYS)
+ *   - navigator.mediaDevices (enumerateDevices, getUserMedia for permission probing)
+ *   - CONFIG defaults (resolution, framerate, audio bitrate)
+ * Outputs:
+ *   - MediaStreamConstraints for mixerSystem
+ *   - Selected IDs & parameters for other modules
+ *   - Persisted selections in localStorage
+ * Side-effects:
+ *   - Populates dropdowns; writes to localStorage
+ *   - Updates UI enable/disable state for controls
+ * Invariants:
+ *   - Previously persisted selections restored when still available
+ *   - Audio-only flag forces video constraint to false
+ *   - buildConstraints always returns audio constraint even if video disabled
+ * Failure Modes (coded errors via ensurePermissions):
+ *   - DEVICE_PERMISSION_DENIED / DEVICE_NOT_FOUND / DEVICE_IN_USE
+ *   - UNKNOWN for unexpected enumeration failures
+ */
+
 import { CONFIG, ERROR_CODES } from '../config.js';
 import { createError } from './utils.js';
 

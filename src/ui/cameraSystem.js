@@ -24,6 +24,28 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - deviceManager selected camera ID & available devices
+ *   - User modal interactions (capture, cancel, select)
+ *   - MediaDevices.getUserMedia streams
+ * Outputs:
+ *   - Captured photo dataUrl inserted via imageManager
+ *   - Modal DOM elements (video preview, canvas) during capture
+ * Side-effects:
+ *   - Opens modal; acquires separate camera stream; draws frame to canvas
+ *   - Stops tracks & removes modal on cleanup
+ * Invariants:
+ *   - Single active modal enforced by isModalOpen
+ *   - All streams stopped on success, cancel, or error
+ * Failure Modes:
+ *   - Permission denied / device not found / in use (native errors)
+ *   - Unexpected errors trigger cleanup before propagation
+ */
+
 import { imageManager } from '../editor/imageManager.js';
 import { deviceManager } from '../modules/deviceManager.js';
 

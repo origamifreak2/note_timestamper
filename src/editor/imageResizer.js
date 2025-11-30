@@ -42,6 +42,24 @@
  */
 
 /**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - Quill instance, wrapper element, ImageManager
+ *   - User events: mouse, keyboard, scroll, resize, text-change
+ * Outputs:
+ *   - Updated image dimensions & overlay UI state
+ * Side-effects:
+ *   - Adds many DOM listeners & ResizeObserver; creates/removes overlay elements
+ * Invariants:
+ *   - Only one overlay active; deselection cleans up
+ *   - Drag operations constrained by image aspect logic (if implemented)
+ * Failure Modes:
+ *   - None (ignored events if target not current image)
+ */
+
+/**
  * Interactive image resizer for Quill editor
  * Provides drag handles for resizing images with aspect ratio preservation
  */

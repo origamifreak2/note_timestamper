@@ -17,6 +17,28 @@
  * Invariants and side effects are documented per method.
  */
 
+/**
+ * =====================
+ * Module Contract
+ * =====================
+ * Inputs:
+ *   - Optional fabricJSON for edit mode; user drawing interactions
+ *   - Global fabric Canvas API
+ * Outputs:
+ *   - { dataUrl, fabricJSON } on save; null on cancel
+ *   - Updated canvas & bounded history arrays
+ * Side-effects:
+ *   - Creates modal & Fabric canvas; attaches extensive event listeners & keyboard handlers
+ *   - Mutates history arrays for undo/redo
+ * Invariants:
+ *   - Single modal open at a time
+ *   - History bounded by maxHistorySteps (older steps dropped or capped)
+ *   - Cleanup removes modal & handlers even on error
+ * Failure Modes:
+ *   - Missing Fabric.js throws immediately
+ *   - Unexpected errors cleaned then rethrown (classified upstream)
+ */
+
 import { imageManager } from '../editor/imageManager.js';
 
 /**
