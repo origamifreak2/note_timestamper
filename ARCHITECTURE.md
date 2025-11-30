@@ -29,6 +29,14 @@ src/
 
 types/
 └── global.d.ts            # TypeScript type definitions for all modules
+
+tests/
+├── utils.test.mjs         # Core utility function tests
+├── notepack.test.mjs      # Zip archive creation/reading tests
+├── errorBoundary.test.mjs # Error handling and retry logic tests
+├── customBlots.test.mjs   # Quill.js blot tests (jsdom)
+├── zipUtils.test.mjs      # IPC persistence wrapper tests
+└── exportSystem.test.mjs  # HTML export and template tests
 ```
 
 ## 📚 Public API Surface Documentation
@@ -152,6 +160,111 @@ Every public method includes comprehensive documentation:
 ✅ **Self-Documenting**: JSDoc comments provide inline documentation
 ✅ **No Build Step**: Runs directly without TypeScript compilation
 ✅ **Gradual Adoption**: Can migrate to full TypeScript incrementally
+
+## 🧪 Test Architecture
+
+The application uses **Vitest** for fast, ESM-friendly testing with comprehensive coverage:
+
+### Test Suite Overview
+```javascript
+// Run all tests
+npm test
+
+// Test files: 6 files, 39 tests, all passing
+// Execution time: ~3 seconds for full suite
+```
+
+### Test Categories
+
+**1. Core Utilities** (`tests/utils.test.mjs`)
+- Time formatting: `formatTime()` with various timestamp values
+- Timeout handling: `withTimeout()` success and rejection paths
+- Error creation: `createError()` with coded errors
+
+**2. Zip Archive Operations** (`tests/notepack.test.mjs`)
+- yazl/yauzl integration for .notepack file format
+- Complete roundtrip: write → read → validate
+- Session metadata preservation
+
+**3. Error Boundary System** (`tests/errorBoundary.test.mjs`)
+- Error code mapping (device, IPC, recording failures)
+- `wrapAsync()` retry logic with exponential backoff
+- Success paths and failure exhaustion scenarios
+- User-friendly message generation
+
+**4. Custom Quill Blots** (`tests/customBlots.test.mjs`)
+- jsdom environment for DOM testing
+- TimestampBlot: create/value methods with timestamp data
+- CustomImage: string format (`url|widthxheight`) and object format
+- FabricJSON preservation for editable drawings
+- Global Quill bootstrap pattern for module imports
+
+**5. Persistence Wrappers** (`tests/zipUtils.test.mjs`)
+- `loadSessionWithCodes()`: success, cancellation, error flows
+- `saveSessionWithCodes()`: write operations with coded errors
+- Mocked window.api for isolated IPC testing
+- Validates ERROR_CODES.FILE_SYSTEM_ERROR propagation
+
+**6. Export System** (`tests/exportSystem.test.mjs`)
+- `stripFabricData()`: removes editing metadata from HTML
+- `extractAndReplaceImages()`: base64 extraction with MIME handling
+- Template generation: embedded and separate file modes
+- Shared components: styles, utilities, event handlers
+- Script tag escaping in user content
+
+### Test Configuration
+
+**vitest.config.mjs**:
+```javascript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.{js,mjs}']
+  }
+});
+```
+
+### Testing Patterns
+
+**Mocking IPC Operations**:
+```javascript
+const mockApi = {
+  loadSession: vi.fn(),
+  saveSession: vi.fn()
+};
+globalThis.window = { api: mockApi };
+```
+
+**jsdom for DOM Tests**:
+```javascript
+// @vitest-environment jsdom
+import { describe, it, expect } from 'vitest';
+
+// Set global before importing modules that need it
+globalThis.Quill = Quill;
+const { registerCustomBlots } = await import('../src/editor/customBlots.js');
+```
+
+**Async Error Testing**:
+```javascript
+await expect(someAsyncOperation())
+  .rejects.toMatchObject({
+    code: ERROR_CODES.DEVICE_NOT_FOUND,
+    message: expect.stringContaining('not found')
+  });
+```
+
+### Benefits
+
+✅ **Fast Execution**: Full suite runs in ~3 seconds
+✅ **ESM Native**: No transpilation needed for ES6 modules
+✅ **Type Safe**: Works seamlessly with @ts-check modules
+✅ **Isolated Testing**: Mocking prevents external dependencies
+✅ **DOM Testing**: jsdom enables testing of editor and UI components
+✅ **CI Ready**: Easy integration with GitHub Actions
+✅ **Coverage Ready**: Can enable coverage reporting when needed
 
 ## 🎯 Innovation: Web Audio + Canvas Mixing
 

@@ -2,6 +2,49 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.3] - 2025-11-29
+### Added
+- **Comprehensive test suite with Vitest**
+  - Added Vitest framework for fast ESM-friendly testing
+  - Created `vitest.config.mjs` with Node environment configuration
+  - Added `jsdom` dev dependency for DOM-dependent tests
+  - All 39 tests passing across 6 test files
+- **Unit tests for core utilities** (`tests/utils.test.mjs`)
+  - `formatTime()`: timestamp formatting validation
+  - `withTimeout()`: timeout rejection and success paths
+  - `createError()`: coded error object creation
+- **Zip/session persistence tests** (`tests/notepack.test.mjs`)
+  - yazl/yauzl integration for .notepack file creation and reading
+  - Validates complete zip roundtrip with session metadata
+- **Error boundary tests** (`tests/errorBoundary.test.mjs`)
+  - Error code mapping for device/IPC/recording failures
+  - `wrapAsync()` retry logic with success and exhaustion paths
+  - User-friendly message generation from error codes
+- **Custom Quill blots tests** (`tests/customBlots.test.mjs`)
+  - TimestampBlot create/value methods with jsdom environment
+  - CustomImage blot with string format (`url|widthxheight`)
+  - CustomImage with object format including fabricJSON
+  - Global Quill bootstrap for module-level imports
+- **Zip utilities tests** (`tests/zipUtils.test.mjs`)
+  - `loadSessionWithCodes()`: success, user cancellation, IPC failure paths
+  - `saveSessionWithCodes()`: success, user cancellation, write error handling
+  - Mocked window.api for IPC operation testing
+  - Validates coded error propagation (ERROR_CODES.FILE_SYSTEM_ERROR)
+- **Export system tests** (`tests/exportSystem.test.mjs`)
+  - `stripFabricData()`: removes editing metadata from exported HTML
+  - `extractAndReplaceImages()`: base64 extraction with sequential naming
+  - MIME type handling: jpeg→jpg, svg+xml→svg conversions
+  - `generateEmbeddedHTML()`: single-file exports with base64 media
+  - `generateSeparateHTML()`: external file references with placeholders
+  - Template generation: shared styles, utilities, event handlers
+  - Script tag escaping in user content
+
+### Enhanced
+- **NPM scripts**: Added `npm test` to run Vitest suite
+- **Development workflow**: Fast test execution (< 3 seconds for full suite)
+- **Code quality**: Test coverage for critical data transformation paths
+- **CI readiness**: Foundation for GitHub Actions integration
+
 ## [0.12.2] - 2025-11-28
 ### Added
 - **Public API Surface Documentation** across all modules

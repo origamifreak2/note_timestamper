@@ -58,6 +58,12 @@ npm install
 
 # Start development server
 npm start
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
 ```
 
 ### Building
@@ -96,6 +102,7 @@ Notes for Windows builds
 - **Public API Documentation**: Every module includes comprehensive API surface documentation
 - **Comprehensive Documentation**: All modules include side effects and invariants
 - **Standardized Errors**: `ERROR_CODES` + `createError()` with mapping in `errorBoundary`; persistence via `zipUtils.saveSessionWithCodes()` / `loadSessionWithCodes()`
+- **Test Suite**: Vitest with 39 tests covering utils, zip operations, error boundary, custom blots, persistence, and export system
 
 ## 📄 File Formats
 

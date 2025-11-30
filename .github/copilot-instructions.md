@@ -537,7 +537,8 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 4. Add UI state handling in main app's `updateRecordingControlsState()`
 5. **Update Public API docs**: Add new methods to the "Public API Surface" section at top of file
 6. **Document with JSDoc**: Include @param, @returns, @throws, side effects, and invariants
-7. **Update IPC contract documentation**: If preload APIs change, update `docs/ipc-api.md` to reflect new arguments, return types, timeout/error handling, and non-wrapped calls.
+7. **Write tests**: Add corresponding test cases in `tests/` directory
+8. **Update IPC contract documentation**: If preload APIs change, update `docs/ipc-api.md` to reflect new arguments, return types, timeout/error handling, and non-wrapped calls.
 
 ### Editor Customizations
 1. **Add types** to `types/global.d.ts` for new Quill embed formats
@@ -547,6 +548,16 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 5. Consider whether new blots need special export handling (like fabric data stripping)
 6. **Update Public API docs**: Add new blots/methods to the "Public API Surface" section
 7. **Document with JSDoc**: Include side effects and invariants
+8. **Write tests**: Add jsdom-based tests for DOM-dependent blot behavior
+
+### Adding New Tests
+1. Create test file in `tests/` directory with `.test.mjs` extension
+2. Use `// @vitest-environment jsdom` comment for DOM-dependent tests
+3. Mock external dependencies (window.api, device APIs) as needed
+4. Test both success and error paths
+5. Validate error codes for coded error functions
+6. Run `npm test` to verify all tests pass
+7. Update test count in documentation if adding significant coverage
 
 **Clipboard Handler (`src/main.js`):**
 - `setupClipboardHandlers()` includes matcher for `img` elements
@@ -712,7 +723,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Video Processing**: Add filter system (likely in `mixerSystem.js` or new module)
 - **Image Interaction**: Enhanced image viewing in both editor and exported HTML
 
-## 🚫 Common Pitfalls
+## ⚠️ Critical Pitfalls
 
 ### Code Patterns
 - **Don't** modify recording controls directly - use `updateRecordingControlsState()`
@@ -724,6 +735,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** leave errors unhandled - catch and display in UI with actionable messages
 - **Don't** wrap file picker IPC calls with timeout - user needs unlimited time to choose location
 - **Don't** bypass error boundary for new IPC background operations - wrap with `errorBoundary.wrapIPC()`
+- **Don't** add new features without corresponding tests - maintain test coverage
 
 ### Type Safety & Documentation
 - **Don't** add new modules without `// @ts-check` directive
@@ -749,8 +761,11 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)
 - **Do** use `errorBoundary.wrapDeviceAccess()` for device operations that might need retry
 - **Do** distinguish between user-facing operations (no timeout) and background operations (with timeout)
-- **Do** track and revoke blob URLs in constructor, cleanup methods, and before creating new URLs
-- **Do** detect specific error types (NotAllowedError, NotFoundError, NotReadableError) and provide targeted guidance
-- **Do** clean up partial device setup when errors occur (stop tracks, disconnect nodes)
-- **Do** use `errorBoundary.wrapDeviceAccess()` for device operations that might need retry
-- **Do** distinguish between user-facing operations (no timeout) and background operations (with timeout)
+- **Do** write tests for new utility functions and data transformations
+- **Do** mock external dependencies in tests (IPC, device APIs)
+- **Do** test both success and error paths for robustness
+- **Do** run `npm test` before committing changes
+- **Do** write tests for new utility functions and data transformations
+- **Do** mock external dependencies in tests (IPC, device APIs)
+- **Do** test both success and error paths for robustness
+- **Do** run `npm test` before committing changes
