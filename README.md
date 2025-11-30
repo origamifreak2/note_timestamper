@@ -1,5 +1,7 @@
 # Note Timestamper
 
+![CI](https://github.com/origamifreak2/note_timestamper/actions/workflows/ci.yml/badge.svg)
+
 A desktop application for recording audio/video with synchronized timestamped notes, built with Electron and Quill.js.
 
 ## ✨ Features
