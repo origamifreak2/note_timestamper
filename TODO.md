@@ -45,7 +45,7 @@
     - `tests/exportSystem.test.mjs`: stripFabricData, extractAndReplaceImages, HTML template generation
   - ✅ All 39 tests passing across 6 test files
   - 🚧 Future: add integration tests for recording flows and main process IPC handlers
-- [ ] **CI workflow**
+- [x] **CI workflow**
   - GitHub Actions: run `postinstall`, `lint`, `test` on push/PR
 
 ### Documentation Additions
