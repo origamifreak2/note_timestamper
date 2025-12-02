@@ -72,6 +72,15 @@ npm test
 
 # Lint code
 npm run lint
+
+# Check types (JSDoc + TypeScript, no emit)
+npm run typecheck
+
+# Verify formatting
+npm run format:check
+
+# Apply formatting
+npm run format
 ```
 
 ### Building
@@ -129,6 +138,13 @@ npm run build:win
 **Change History**: `CHANGELOG.md`
 **IPC Contract Documentation**: `docs/ipc-api.md` (preload API contracts, arguments/returns, timeout/error handling)
 **AI Coding Guidelines**: `.github/copilot-instructions.md` (development standards, types, module patterns, JSON schemas, and validation approach)
+
+## 🛠️ Tooling & Type Checking
+
+- The project uses JSDoc + TypeScript for type safety without transpilation.
+- `npm run typecheck` runs `tsc --noEmit` against JavaScript files annotated with `// @ts-check` and shared types in `types/global.d.ts`.
+- `tsconfig.json` is configured for gradual adoption: `allowJs`, `checkJs: false` (only checks files that opt in), modern libs, and bundler module resolution.
+- ESLint v9 + Prettier handle linting and formatting; use `npm run lint`, `npm run format:check`, and `npm run format`.
 
 ## 🤝 Contributing
 

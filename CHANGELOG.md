@@ -2,6 +2,51 @@
 
 All notable changes to **Note Timestamper** will be documented here.
 
+## [0.12.5] - 2025-12-01
+
+### Added
+
+- **TypeScript type checking** without transpilation
+  - Added `typescript ^5.0.0` as dev dependency
+  - Created `tsconfig.json` with `checkJs: false` configuration (only checks files with `// @ts-check`)
+  - Configured for ES2022 with DOM and Node types, excludes vendor/test files
+  - New `npm run typecheck` script runs `tsc --noEmit` to validate JSDoc types
+- **Global type declarations** for vendor libraries in `types/global.d.ts`
+  - Added global declarations for `Quill` and `fabric` (loaded via script tags)
+  - Enables type checking in modules that reference these libraries
+
+### Fixed
+
+- **TypeScript validation errors** in files with `// @ts-check` directive
+  - `deviceManager.js`: Replaced spread operator with `Array.from()` for HTMLOptionsCollection iteration
+  - `imageManager.js`: Added `Array.from()` for FileList iteration, cast FileReader.result to string
+  - `imageResizer.js`: Added type assertions for EventTarget to access `dataset` and `closest()` properties
+  - `customBlots.test.mjs`: Removed unnecessary eslint-disable comment
+- **Code formatting**: Ran Prettier on all files for consistent formatting across codebase
+
+### Enhanced
+
+- **Developer tooling**: Complete npm script suite now includes:
+  - `npm run lint` - ESLint validation
+  - `npm run lint:fix` - Auto-fix linting errors
+  - `npm run format` - Format code with Prettier
+  - `npm run format:check` - Verify code formatting
+  - `npm test` - Run Vitest test suite (39 tests)
+  - `npm run typecheck` - TypeScript type checking
+- **Type safety workflow**: Gradual TypeScript adoption path without build overhead
+  - Zero transpilation required - pure JSDoc validation
+  - IDE IntelliSense and autocomplete for all custom types
+  - Type errors caught at development time via VS Code
+- **TODO completion**: Marked "NPM scripts" task as complete in TODO.md
+
+### Quality Assurance
+
+- All verification scripts pass:
+  - ✅ ESLint (0 errors, 0 warnings)
+  - ✅ Prettier (all files formatted)
+  - ✅ Vitest (39/39 tests passing)
+  - ✅ TypeScript (0 type errors)
+
 ## [0.12.4] - 2025-11-30
 
 ### Added

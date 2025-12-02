@@ -30,6 +30,7 @@ types/global.d.ts           # TypeScript type definitions for all modules
 - The main `NoteTimestamperApp` class acts as a coordinator that wires modules together
 - Centralized configuration through `CONFIG` object in `src/config.js`
 - **Type safety via JSDoc + @ts-check** without TypeScript transpilation
+ - **Type checking enforced via `npm run typecheck`** (tsc `--noEmit` against files opting into `@ts-check`; shared types in `types/global.d.ts`)
 - **IPC contract documentation**: See `docs/ipc-api.md` for preload API contracts, arguments/returns, timeout policy, and non-wrapped calls (file pickers)
 
 ## 🎯 Web Audio + Canvas Mixing Architecture
@@ -114,6 +115,7 @@ if (validate) {
 - Ajv instance is lazy-loaded and schema compiled once per app run for performance
 - `types/global.d.ts` `SessionMeta` mirrors schema fields for type consistency
 - Validation runs after zip extraction in `load-session` handler
+ - TypeScript config (`tsconfig.json`) uses gradual JS checking: `allowJs`, `checkJs: false`, modern libs, bundler resolution
 
 ## ⚙️ Configuration System
 
@@ -381,6 +383,7 @@ function cleanupOrphanedTempFiles() {
 - **npm scripts**: `postinstall` automatically copies vendor assets from node_modules
 - **Scripts**: `scripts/fetch-*.mjs` copy Quill.js, Fabric.js, FontAwesome to `/vendor/`
 - **Electron**: `npm start` for dev, `npm run build:mac/build:win` for packaging
+ - **Type & Lint**: `npm run typecheck` (no emit), `npm run lint`, `npm run format:check`, `npm run format`
 
 ### Key Files to Modify
 
@@ -454,6 +457,7 @@ async myMethod(param) { ... }
 - **Invariants**: Describe pre/post-conditions and safety guarantees
 - **Internal helpers**: Clearly mark internal methods as 'Internal' in API surface docs
 - **Module Contract Block**: Immediately after the Public API Surface add a high-level contract block listing Inputs, Outputs, Side-effects, Invariants, Failure Modes (coded `ERROR_CODES` where applicable). Keep it concise and implementation-agnostic.
+ - Pull requests must pass `npm run typecheck` and `npm run lint` prior to review.
 
 ### Module Contract Blocks
 
@@ -878,6 +882,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Do** mock external dependencies in tests (IPC, device APIs)
 - **Do** test both success and error paths for robustness
 - **Do** run `npm test` before committing changes
+ - **Do** run `npm run typecheck` to validate JSDoc types across `@ts-check` files
 - **Do** write tests for new utility functions and data transformations
 - **Do** mock external dependencies in tests (IPC, device APIs)
 - **Do** test both success and error paths for robustness

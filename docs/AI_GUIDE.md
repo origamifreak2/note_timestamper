@@ -9,6 +9,7 @@ This guide helps AI and human contributors make safe, high‑quality changes to 
 - Prefer module‑local changes and clear dependency injection; keep singletons consistent with existing patterns.
 - When adding or changing IPC/public APIs, update docs and types in the same PR.
 - Handle errors with coded errors and the error boundary patterns; avoid silent failures.
+ - Ensure `npm run typecheck` passes (TypeScript no‑emit validation against `@ts-check` files).
 
 ## Safe‑to‑Edit Zones
 
@@ -29,6 +30,7 @@ These areas are intended for feature work, bug fixes, and enhancements. Keep cha
 - `types/global.d.ts`: Add or refine types to mirror new data structures or schema changes.
 - `schemas/*.json`: Update only with corresponding code + type updates and validation rules.
 - `tests/*.test.mjs`: Add tests for new behavior (Vitest; use jsdom where DOM is involved).
+  - Keep tests compatible with type checking by importing modules after setting required globals (e.g., `globalThis.Quill`).
 
 ## Do‑Not‑Alter (without explicit need)
 
@@ -48,12 +50,14 @@ Follow these patterns to add features safely and consistently.
 
 - Add/extend types in `types/global.d.ts` (e.g., new options, payloads, state types).
 - Reference types via JSDoc: `@param {import('../types/global').TypeName}`.
+ - If introducing global library usage (e.g., Quill, Fabric), ensure global declarations exist in `types/global.d.ts`.
 
 2. Public API Surface + Module Contract
 
 - For any edited or new module, include at the top:
   - Public API Surface: list public methods with brief descriptions.
   - Module Contract: Inputs, Outputs, Side‑effects, Invariants, Failure Modes (reference `ERROR_CODES`).
+ - Validate with `npm run typecheck` and `npm run lint` before opening a PR.
 
 3. Recording & Mixing changes
 
@@ -78,6 +82,7 @@ Follow these patterns to add features safely and consistently.
 
 - `schemas/session.schema.json` and `schemas/notes-embed.schema.json`: adjust only with corresponding code and type updates.
 - Session validation remains non‑blocking: log warnings; never block file pickers.
+ - Keep `tsconfig.json` aligned with gradual type checking; do not enable global `checkJs` without plan.
 
 ## Error Handling Rules
 
@@ -121,6 +126,7 @@ Use this as a gate before opening a PR.
   - [ ] New/changed logic covered by tests in `tests/*.test.mjs` (use `// @vitest-environment jsdom` where needed).
   - [ ] `npm test` passes locally.
   - [ ] Lint/format pass (project eslint settings).
+  - [ ] `npm run typecheck` passes (no TypeScript errors in `@ts-check` files).
 
 - Boundaries & Assets
   - [ ] No manual edits to `vendor/` or `static/fa/`; scripts handle updates.
