@@ -10,7 +10,11 @@ describe('utils', () => {
   });
 
   it('withTimeout resolves before timeout', async () => {
-    const result = await withTimeout(sleep(10).then(()=> 'done'), 100, 'timeout');
+    const result = await withTimeout(
+      sleep(10).then(() => 'done'),
+      100,
+      'timeout'
+    );
     expect(result).toBe('done');
   });
 

@@ -110,7 +110,7 @@ class ErrorBoundary {
         this.preferences = {
           deviceRetryEnabled: true,
           ipcRetryEnabled: true,
-          showRecoveryDialogs: true
+          showRecoveryDialogs: true,
         };
       }
     } catch (e) {
@@ -118,7 +118,7 @@ class ErrorBoundary {
       this.preferences = {
         deviceRetryEnabled: true,
         ipcRetryEnabled: true,
-        showRecoveryDialogs: true
+        showRecoveryDialogs: true,
       };
     }
   }
@@ -129,10 +129,7 @@ class ErrorBoundary {
    */
   saveErrorPreferences() {
     try {
-      localStorage.setItem(
-        CONFIG.ERROR_BOUNDARY.STORAGE_KEY,
-        JSON.stringify(this.preferences)
-      );
+      localStorage.setItem(CONFIG.ERROR_BOUNDARY.STORAGE_KEY, JSON.stringify(this.preferences));
     } catch (e) {
       console.error('Failed to save error preferences:', e);
     }
@@ -155,7 +152,7 @@ class ErrorBoundary {
       message: error.message || String(error),
       attemptNumber,
       recoveryAction,
-      context
+      context,
     };
 
     this.errorLog.push(entry);
@@ -168,7 +165,7 @@ class ErrorBoundary {
     // Console log for development
     console.error(`[ErrorBoundary] ${operation}:`, {
       ...entry,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 
@@ -182,8 +179,8 @@ class ErrorBoundary {
     const msg = error.message || '';
 
     // Prefer explicit error codes when available
-    if (error && /** @type {any} */(error).code) {
-      return /** @type {any} */(error).code;
+    if (error && /** @type {any} */ (error).code) {
+      return /** @type {any} */ (error).code;
     }
 
     // IPC errors
@@ -219,7 +216,7 @@ class ErrorBoundary {
    * @private
    */
   mapErrorToMessage(error) {
-    const code = /** @type {any} */(error).code || this.classifyError(error);
+    const code = /** @type {any} */ (error).code || this.classifyError(error);
 
     switch (code) {
       case ERROR_CODES.DEVICE_PERMISSION_DENIED:
@@ -288,11 +285,7 @@ class ErrorBoundary {
    * @private
    */
   async showErrorDialog(message, title = 'Error', options = {}) {
-    const {
-      showRetry = true,
-      showDontAskAgain = false,
-      preferenceKey = null
-    } = options;
+    const { showRetry = true, showDontAskAgain = false, preferenceKey = null } = options;
 
     // Check if user has disabled this dialog
     if (preferenceKey && !this.preferences.showRecoveryDialogs) {
@@ -331,7 +324,7 @@ class ErrorBoundary {
       maxRetries = 0,
       retryDelay = CONFIG.ERROR_BOUNDARY.RETRY_DELAY,
       onError = null,
-      context = {}
+      context = {},
     } = options;
 
     let lastError = null;
@@ -340,11 +333,7 @@ class ErrorBoundary {
       try {
         // Add timeout wrapper if specified
         if (timeout > 0) {
-          return await withTimeout(
-            fn(),
-            timeout,
-            `${operationName} timed out after ${timeout}ms`
-          );
+          return await withTimeout(fn(), timeout, `${operationName} timed out after ${timeout}ms`);
         } else {
           return await fn();
         }
@@ -389,10 +378,7 @@ class ErrorBoundary {
    * @returns {Promise<any>} Result from IPC call
    */
   async wrapIPC(ipcFn, options = {}) {
-    const {
-      operationName = 'IPC operation',
-      context = {}
-    } = options;
+    const { operationName = 'IPC operation', context = {} } = options;
 
     return this.wrapAsync(ipcFn, {
       operationName,
@@ -408,7 +394,7 @@ class ErrorBoundary {
           'Operation Failed',
           { showRetry: false }
         );
-      }
+      },
     });
   }
 
@@ -419,11 +405,7 @@ class ErrorBoundary {
    * @returns {Promise<any>} Result from device access
    */
   async wrapDeviceAccess(deviceFn, options = {}) {
-    const {
-      operationName = 'device access',
-      deviceManager = null,
-      context = {}
-    } = options;
+    const { operationName = 'device access', deviceManager = null, context = {} } = options;
 
     let lastError = null;
 
@@ -446,7 +428,7 @@ class ErrorBoundary {
         'Device Access Failed',
         {
           showRetry: true,
-          preferenceKey: 'deviceRetryEnabled'
+          preferenceKey: 'deviceRetryEnabled',
         }
       );
 
@@ -475,7 +457,10 @@ class ErrorBoundary {
         return result;
       } catch (retryError) {
         this.logError(operationName, retryError, 2, 'retry_failed', context);
-        this.updateStatus(`${operationName} failed after retry: ${this.mapErrorToMessage(retryError)}`, true);
+        this.updateStatus(
+          `${operationName} failed after retry: ${this.mapErrorToMessage(retryError)}`,
+          true
+        );
         throw retryError;
       }
     }

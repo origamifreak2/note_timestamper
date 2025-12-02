@@ -52,9 +52,9 @@ const BlockEmbed = Quill.import('blots/block/embed');
  * Creates <button> elements that store timestamp data and jump to that time when clicked
  */
 export class TimestampBlot extends Embed {
-  static blotName = 'timestamp';    // Internal Quill name for this blot type
-  static tagName = 'BUTTON';        // HTML tag to create
-  static className = 'ts';          // CSS class name
+  static blotName = 'timestamp'; // Internal Quill name for this blot type
+  static tagName = 'BUTTON'; // HTML tag to create
+  static className = 'ts'; // CSS class name
 
   /**
    * Creates a new timestamp button element
@@ -75,9 +75,9 @@ export class TimestampBlot extends Embed {
 
     // Configure button attributes
     node.setAttribute('type', 'button');
-    node.setAttribute('contenteditable', 'false');  // Prevent editing the button text
-    node.dataset.ts = String(ts);                   // Store timestamp data
-    node.textContent = label;                       // Display formatted time
+    node.setAttribute('contenteditable', 'false'); // Prevent editing the button text
+    node.dataset.ts = String(ts); // Store timestamp data
+    node.textContent = label; // Display formatted time
     return node;
   }
 
@@ -93,7 +93,7 @@ export class TimestampBlot extends Embed {
   static value(node) {
     return {
       ts: Number(node.dataset.ts || 0),
-      label: node.textContent || formatTime(Number(node.dataset.ts || 0))
+      label: node.textContent || formatTime(Number(node.dataset.ts || 0)),
     };
   }
 }
@@ -175,7 +175,8 @@ export class CustomImage extends BlockEmbed {
   static value(node) {
     const src = node.getAttribute('src');
     const width = node.style.width ? parseInt(node.style.width) : null;
-    const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+    const height =
+      node.style.height && node.style.height !== 'auto' ? parseInt(node.style.height) : null;
     const fabricJSON = node.getAttribute('data-fabric-json');
 
     // If has fabric data, return object format to preserve it
@@ -184,7 +185,7 @@ export class CustomImage extends BlockEmbed {
         src: src,
         width: width,
         height: height,
-        fabricJSON: fabricJSON
+        fabricJSON: fabricJSON,
       };
     }
 

@@ -89,7 +89,7 @@ const LS_KEYS = {
   cam: 'nt_selected_cam',
   res: 'nt_selected_res',
   fps: 'nt_selected_fps',
-  audioBitrate: 'nt_selected_audio_bitrate'
+  audioBitrate: 'nt_selected_audio_bitrate',
 };
 
 /**
@@ -139,7 +139,7 @@ export class DeviceManager {
    */
   getSelectedDeviceId(selectEl) {
     const v = selectEl && selectEl.value;
-    return (v && v !== 'default' && v !== 'none') ? v : undefined;
+    return v && v !== 'default' && v !== 'none' ? v : undefined;
   }
 
   /**
@@ -163,7 +163,8 @@ export class DeviceManager {
    * - Always returns valid number, defaults to CONFIG.RECORDING.DEFAULT_FRAMERATE if parsing fails
    */
   getSelectedFramerate() {
-    const fpsValue = (this.fpsSelect && this.fpsSelect.value) || CONFIG.RECORDING.DEFAULT_FRAMERATE.toString();
+    const fpsValue =
+      (this.fpsSelect && this.fpsSelect.value) || CONFIG.RECORDING.DEFAULT_FRAMERATE.toString();
     const fps = parseInt(fpsValue, 10) || CONFIG.RECORDING.DEFAULT_FRAMERATE;
     return fps;
   }
@@ -176,7 +177,9 @@ export class DeviceManager {
    * - Always returns valid number, defaults to CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE if parsing fails
    */
   getSelectedAudioBitrate() {
-    const bitrateValue = (this.audioBitrateSelect && this.audioBitrateSelect.value) || CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE.toString();
+    const bitrateValue =
+      (this.audioBitrateSelect && this.audioBitrateSelect.value) ||
+      CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE.toString();
     const bitrate = parseInt(bitrateValue, 10) || CONFIG.RECORDING.DEFAULT_AUDIO_BITRATE;
     return bitrate;
   }
@@ -204,10 +207,15 @@ export class DeviceManager {
     const audio = audioId ? { deviceId: { exact: audioId } } : true;
 
     // Video constraints: disabled for audio-only, specific device or default with resolution
-    const video = isAudioOnly ? false
-      : (videoId ?
-          { deviceId: { exact: videoId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
-          : { width: { ideal: resolution.width }, height: { ideal: resolution.height } });
+    const video = isAudioOnly
+      ? false
+      : videoId
+        ? {
+            deviceId: { exact: videoId },
+            width: { ideal: resolution.width },
+            height: { ideal: resolution.height },
+          }
+        : { width: { ideal: resolution.width }, height: { ideal: resolution.height } };
 
     return { audio, video };
   }
@@ -261,17 +269,21 @@ export class DeviceManager {
     try {
       // Try to get both audio and video permissions
       const tmp = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      tmp.getTracks().forEach(t => t.stop());  // Stop immediately, just needed for permissions
+      tmp.getTracks().forEach((t) => t.stop()); // Stop immediately, just needed for permissions
     } catch (e) {
       try {
         // Fallback: audio-only permissions
         const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
-        tmp.getTracks().forEach(t => t.stop());
+        tmp.getTracks().forEach((t) => t.stop());
       } catch (err2) {
         // If both fail, continue anyway - devices will show generic names
         // Surface a coded error for boundary logging (non-blocking)
         console.warn('Permissions denied for media devices');
-        throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Media permissions denied. Device labels may be unavailable.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_PERMISSION_DENIED,
+          'Media permissions denied. Device labels may be unavailable.',
+          e
+        );
       }
     }
   }
@@ -298,8 +310,8 @@ export class DeviceManager {
     } catch (e) {
       throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Failed to enumerate media devices.', e);
     }
-    const audios = devices.filter(d => d.kind === 'audioinput');
-    const videos = devices.filter(d => d.kind === 'videoinput');
+    const audios = devices.filter((d) => d.kind === 'audioinput');
+    const videos = devices.filter((d) => d.kind === 'videoinput');
 
     // Build microphone dropdown
     if (this.micSelect) {
@@ -309,7 +321,7 @@ export class DeviceManager {
       optA.textContent = 'System default';
       this.micSelect.appendChild(optA);
 
-      audios.forEach(d => {
+      audios.forEach((d) => {
         const o = document.createElement('option');
         o.value = d.deviceId;
         // Use device label if available, otherwise show truncated ID
@@ -326,7 +338,7 @@ export class DeviceManager {
       optV.textContent = 'System default';
       this.camSelect.appendChild(optV);
 
-      videos.forEach(d => {
+      videos.forEach((d) => {
         const o = document.createElement('option');
         o.value = d.deviceId;
         o.textContent = d.label || `Camera (${d.deviceId.slice(0, 6)}…)`;
@@ -341,19 +353,39 @@ export class DeviceManager {
     const savedFps = localStorage.getItem(LS_KEYS.fps);
     const savedBitrate = localStorage.getItem(LS_KEYS.audioBitrate);
 
-    if (savedMic && this.micSelect && [...this.micSelect.options].some(o => o.value === savedMic)) {
+    if (
+      savedMic &&
+      this.micSelect &&
+      Array.from(this.micSelect.options).some((o) => o.value === savedMic)
+    ) {
       this.micSelect.value = savedMic;
     }
-    if (savedCam && this.camSelect && [...this.camSelect.options].some(o => o.value === savedCam)) {
+    if (
+      savedCam &&
+      this.camSelect &&
+      Array.from(this.camSelect.options).some((o) => o.value === savedCam)
+    ) {
       this.camSelect.value = savedCam;
     }
-    if (savedRes && this.resSelect && [...this.resSelect.options].some(o => o.value === savedRes)) {
+    if (
+      savedRes &&
+      this.resSelect &&
+      Array.from(this.resSelect.options).some((o) => o.value === savedRes)
+    ) {
       this.resSelect.value = savedRes;
     }
-    if (savedFps && this.fpsSelect && [...this.fpsSelect.options].some(o => o.value === savedFps)) {
+    if (
+      savedFps &&
+      this.fpsSelect &&
+      Array.from(this.fpsSelect.options).some((o) => o.value === savedFps)
+    ) {
       this.fpsSelect.value = savedFps;
     }
-    if (savedBitrate && this.audioBitrateSelect && [...this.audioBitrateSelect.options].some(o => o.value === savedBitrate)) {
+    if (
+      savedBitrate &&
+      this.audioBitrateSelect &&
+      Array.from(this.audioBitrateSelect.options).some((o) => o.value === savedBitrate)
+    ) {
       this.audioBitrateSelect.value = savedBitrate;
     }
 
@@ -383,7 +415,7 @@ export class DeviceManager {
       this.resSelect.disabled = this.audioOnlyCheckbox.checked || noCameras || isRecording;
       this.fpsSelect.disabled = this.audioOnlyCheckbox.checked || noCameras || isRecording;
 
-  // Device UI state updated (debug log removed)
+      // Device UI state updated (debug log removed)
     }
 
     // Audio bitrate should be disabled during recording to prevent mid-recording changes

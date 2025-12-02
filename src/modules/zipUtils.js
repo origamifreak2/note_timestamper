@@ -50,16 +50,16 @@ import { createError } from './utils.js';
  * @throws {Error & { code: string }} On load failure
  */
 export async function loadSessionWithCodes() {
-	const result = await window.api.loadSession();
-	if (!result) {
-		throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'No response from session load');
-	}
-	if (!result.ok) {
-		// Canceled selection → silent return undefined
-		if (!result.error) return undefined;
-		throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, result.error || 'Failed to load session');
-	}
-	return result;
+  const result = await window.api.loadSession();
+  if (!result) {
+    throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'No response from session load');
+  }
+  if (!result.ok) {
+    // Canceled selection → silent return undefined
+    if (!result.error) return undefined;
+    throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, result.error || 'Failed to load session');
+  }
+  return result;
 }
 
 /**
@@ -71,15 +71,14 @@ export async function loadSessionWithCodes() {
  * @throws {Error & { code: string }} On write failure
  */
 export async function saveSessionWithCodes(payload) {
-	const result = await window.api.saveSession(payload);
-	if (!result) {
-		throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'No response from session save');
-	}
-	if (!result.ok) {
-		// User cancelled → do not throw
-		if (!result.error) return undefined;
-		throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, result.error || 'Failed to save session');
-	}
-	return result;
+  const result = await window.api.saveSession(payload);
+  if (!result) {
+    throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'No response from session save');
+  }
+  if (!result.ok) {
+    // User cancelled → do not throw
+    if (!result.error) return undefined;
+    throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, result.error || 'Failed to save session');
+  }
+  return result;
 }
-

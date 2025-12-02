@@ -123,28 +123,45 @@ export class MixerSystem {
     try {
       // Get microphone stream with specific device or default
       micStream = await navigator.mediaDevices.getUserMedia({
-        audio: audioId ? { deviceId: { exact: audioId } } : true
+        audio: audioId ? { deviceId: { exact: audioId } } : true,
       });
     } catch (e) {
       console.error('Microphone access failed:', e);
       // Provide user-facing error message based on error type
-      const en = /** @type {any} */(e).name;
+      const en = /** @type {any} */ (e).name;
       if (en === 'NotAllowedError' || en === 'PermissionDeniedError') {
-        throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Microphone access denied. Please allow microphone permissions in your system settings and reload the app.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_PERMISSION_DENIED,
+          'Microphone access denied. Please allow microphone permissions in your system settings and reload the app.',
+          e
+        );
       } else if (en === 'NotFoundError' || en === 'DevicesNotFoundError') {
-        throw createError(ERROR_CODES.DEVICE_NOT_FOUND, 'No microphone device found. Please connect a microphone and reload the app.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_NOT_FOUND,
+          'No microphone device found. Please connect a microphone and reload the app.',
+          e
+        );
       } else if (en === 'NotReadableError' || en === 'TrackStartError') {
-        throw createError(ERROR_CODES.DEVICE_IN_USE, 'Microphone is already in use by another application. Please close other apps using the microphone and try again.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_IN_USE,
+          'Microphone is already in use by another application. Please close other apps using the microphone and try again.',
+          e
+        );
       } else {
-        throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Failed to access microphone. Please check that your microphone is connected and not in use by another application.', e);
+        throw createError(
+          ERROR_CODES.FILE_SYSTEM_ERROR,
+          'Failed to access microphone. Please check that your microphone is connected and not in use by another application.',
+          e
+        );
       }
     }
 
     // Create Web Audio context for mixing
-    const audioCtx = new (window.AudioContext)();
-    const dest = audioCtx.createMediaStreamDestination();  // Output destination
+    const audioCtx = new window.AudioContext();
+    const dest = audioCtx.createMediaStreamDestination(); // Output destination
 
-    let micSrc = null, analyser = null;
+    let micSrc = null,
+      analyser = null;
     if (micStream) {
       try {
         // Connect microphone to audio context destination
@@ -164,8 +181,16 @@ export class MixerSystem {
       } catch (e) {
         console.error('Failed to connect microphone to audio system:', e);
         // Clean up partial audio context setup
-        try { if (micStream) { micStream.getTracks().forEach(t => t.stop()); } } catch {}
-        throw createError(ERROR_CODES.MIC_CONNECT_FAILED, 'Failed to connect microphone to audio system. Please reload the app and try again.', e);
+        try {
+          if (micStream) {
+            micStream.getTracks().forEach((t) => t.stop());
+          }
+        } catch {}
+        throw createError(
+          ERROR_CODES.MIC_CONNECT_FAILED,
+          'Failed to connect microphone to audio system. Please reload the app and try again.',
+          e
+        );
       }
     }
 
@@ -186,15 +211,19 @@ export class MixerSystem {
         // Get camera stream with specific device or default + resolution preferences
         const resolution = this.deviceManager.getSelectedResolution();
         camStream = await navigator.mediaDevices.getUserMedia({
-          video: camId ?
-            { deviceId: { exact: camId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
-            : { width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+          video: camId
+            ? {
+                deviceId: { exact: camId },
+                width: { ideal: resolution.width },
+                height: { ideal: resolution.height },
+              }
+            : { width: { ideal: resolution.width }, height: { ideal: resolution.height } },
         });
 
         // Create hidden video element to display camera feed
         camVideo = document.createElement('video');
         camVideo.playsInline = true;
-        camVideo.muted = true;           // Prevent audio feedback
+        camVideo.muted = true; // Prevent audio feedback
         camVideo.srcObject = camStream;
 
         // Add timeout to prevent hanging on broken webcams
@@ -228,27 +257,50 @@ export class MixerSystem {
             return;
           }
 
-          rafId = setTimeout(draw, Math.round(1000 / fps));  // Maintain consistent frame rate
+          rafId = setTimeout(draw, Math.round(1000 / fps)); // Maintain consistent frame rate
         };
-        draw();  // Start the drawing loop
+        draw(); // Start the drawing loop
       } catch (e) {
         console.error('Camera access failed:', e);
         // Clean up any partial camera setup
-        try { if (camStream) { camStream.getTracks().forEach(t => t.stop()); } } catch {}
+        try {
+          if (camStream) {
+            camStream.getTracks().forEach((t) => t.stop());
+          }
+        } catch {}
 
         // Provide user-facing error message based on error type
-        const en = /** @type {any} */(e).name;
+        const en = /** @type {any} */ (e).name;
         if (en === 'NotAllowedError' || en === 'PermissionDeniedError') {
-          throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Camera access denied. Please allow camera permissions in your system settings and reload the app.', e);
+          throw createError(
+            ERROR_CODES.DEVICE_PERMISSION_DENIED,
+            'Camera access denied. Please allow camera permissions in your system settings and reload the app.',
+            e
+          );
         } else if (en === 'NotFoundError' || en === 'DevicesNotFoundError') {
-          throw createError(ERROR_CODES.DEVICE_NOT_FOUND, 'No camera device found. Please connect a camera and reload the app.', e);
+          throw createError(
+            ERROR_CODES.DEVICE_NOT_FOUND,
+            'No camera device found. Please connect a camera and reload the app.',
+            e
+          );
         } else if (en === 'NotReadableError' || en === 'TrackStartError') {
-          throw createError(ERROR_CODES.DEVICE_IN_USE, 'Camera is already in use by another application. Please close other apps using the camera and try again.', e);
-        } else if ((/** @type {any} */(e)).message && (/** @type {any} */(e)).message.includes('timed out')) {
+          throw createError(
+            ERROR_CODES.DEVICE_IN_USE,
+            'Camera is already in use by another application. Please close other apps using the camera and try again.',
+            e
+          );
+        } else if (
+          /** @type {any} */ (e).message &&
+          /** @type {any} */ (e).message.includes('timed out')
+        ) {
           // This is from our withTimeout wrapper
           throw e; // Re-throw the timeout error with its original message
         } else {
-          throw createError(ERROR_CODES.FILE_SYSTEM_ERROR, 'Failed to access camera. Please check that your camera is connected and not in use by another application.', e);
+          throw createError(
+            ERROR_CODES.FILE_SYSTEM_ERROR,
+            'Failed to access camera. Please check that your camera is connected and not in use by another application.',
+            e
+          );
         }
       }
     }
@@ -281,7 +333,7 @@ export class MixerSystem {
       micSrc,
       micStream,
       camStream,
-      analyser
+      analyser,
     };
 
     return this.mixer;
@@ -311,12 +363,20 @@ export class MixerSystem {
     try {
       // Get stream from new microphone device
       const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } }
+        audio: { deviceId: { exact: deviceId } },
       });
 
       // Disconnect and stop old microphone
-      try { if (this.mixer.micSrc) { this.mixer.micSrc.disconnect(); } } catch { }
-      try { if (this.mixer.micStream) { this.mixer.micStream.getTracks().forEach(t => t.stop()); } } catch { }
+      try {
+        if (this.mixer.micSrc) {
+          this.mixer.micSrc.disconnect();
+        }
+      } catch {}
+      try {
+        if (this.mixer.micStream) {
+          this.mixer.micStream.getTracks().forEach((t) => t.stop());
+        }
+      } catch {}
 
       // Connect new microphone to audio pipeline
       this.mixer.micStream = newStream;
@@ -334,15 +394,31 @@ export class MixerSystem {
     } catch (e) {
       console.error('Failed to switch microphone during recording:', e);
       // Provide user-facing error message
-      const en = /** @type {any} */(e).name;
+      const en = /** @type {any} */ (e).name;
       if (en === 'NotAllowedError' || en === 'PermissionDeniedError') {
-        throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Microphone access denied. Please allow microphone permissions in your system settings.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_PERMISSION_DENIED,
+          'Microphone access denied. Please allow microphone permissions in your system settings.',
+          e
+        );
       } else if (en === 'NotFoundError' || en === 'DevicesNotFoundError') {
-        throw createError(ERROR_CODES.DEVICE_NOT_FOUND, 'Selected microphone device not found. It may have been disconnected.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_NOT_FOUND,
+          'Selected microphone device not found. It may have been disconnected.',
+          e
+        );
       } else if (en === 'NotReadableError' || en === 'TrackStartError') {
-        throw createError(ERROR_CODES.DEVICE_IN_USE, 'Microphone is already in use by another application.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_IN_USE,
+          'Microphone is already in use by another application.',
+          e
+        );
       } else {
-        throw createError(ERROR_CODES.MIC_SWITCH_FAILED, 'Unable to switch microphone during recording. Please stop recording, change the microphone, and start a new recording.', e);
+        throw createError(
+          ERROR_CODES.MIC_SWITCH_FAILED,
+          'Unable to switch microphone during recording. Please stop recording, change the microphone, and start a new recording.',
+          e
+        );
       }
     }
   }
@@ -370,11 +446,19 @@ export class MixerSystem {
       // Get stream from new camera device
       const resolution = this.deviceManager.getSelectedResolution();
       const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId }, width: { ideal: resolution.width }, height: { ideal: resolution.height } }
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: resolution.width },
+          height: { ideal: resolution.height },
+        },
       });
 
       // Stop old camera stream
-      try { if (this.mixer.camStream) { this.mixer.camStream.getTracks().forEach(t => t.stop()); } } catch { }
+      try {
+        if (this.mixer.camStream) {
+          this.mixer.camStream.getTracks().forEach((t) => t.stop());
+        }
+      } catch {}
 
       // Update video element with new stream (canvas drawing loop continues automatically)
       this.mixer.camStream = newStream;
@@ -391,23 +475,42 @@ export class MixerSystem {
     } catch (e) {
       console.error('Failed to switch camera during recording:', e);
       // Provide user-facing error message
-      const en = /** @type {any} */(e).name;
+      const en = /** @type {any} */ (e).name;
       if (en === 'NotAllowedError' || en === 'PermissionDeniedError') {
-        throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, 'Camera access denied. Please allow camera permissions in your system settings.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_PERMISSION_DENIED,
+          'Camera access denied. Please allow camera permissions in your system settings.',
+          e
+        );
       } else if (en === 'NotFoundError' || en === 'DevicesNotFoundError') {
-        throw createError(ERROR_CODES.DEVICE_NOT_FOUND, 'Selected camera device not found. It may have been disconnected.', e);
+        throw createError(
+          ERROR_CODES.DEVICE_NOT_FOUND,
+          'Selected camera device not found. It may have been disconnected.',
+          e
+        );
       } else if (en === 'NotReadableError' || en === 'TrackStartError') {
-        throw createError(ERROR_CODES.DEVICE_IN_USE, 'Camera is already in use by another application.', e);
-      } else if ((/** @type {any} */(e)).message && (/** @type {any} */(e)).message.includes('timed out')) {
+        throw createError(
+          ERROR_CODES.DEVICE_IN_USE,
+          'Camera is already in use by another application.',
+          e
+        );
+      } else if (
+        /** @type {any} */ (e).message &&
+        /** @type {any} */ (e).message.includes('timed out')
+      ) {
         // This is from our withTimeout wrapper
         // Attach code for timeout classification
-        const t = createError(ERROR_CODES.CAMERA_INIT_TIMEOUT, (/** @type {any} */(e)).message, e);
+        const t = createError(ERROR_CODES.CAMERA_INIT_TIMEOUT, /** @type {any} */ (e).message, e);
         // Preserve stack/message if present
         // @ts-ignore
-        t.stack = (/** @type {any} */(e)).stack;
+        t.stack = /** @type {any} */ (e).stack;
         throw t;
       } else {
-        throw createError(ERROR_CODES.CAMERA_SWITCH_FAILED, 'Unable to switch camera during recording. Please stop recording, change the camera, and start a new recording.', e);
+        throw createError(
+          ERROR_CODES.CAMERA_SWITCH_FAILED,
+          'Unable to switch camera during recording. Please stop recording, change the camera, and start a new recording.',
+          e
+        );
       }
     }
   }
@@ -433,7 +536,9 @@ export class MixerSystem {
     if (!this.mixer) return;
 
     // Stop canvas drawing loop first to prevent further draws
-    try { if (this.mixer.rafId) clearTimeout(this.mixer.rafId); } catch { }
+    try {
+      if (this.mixer.rafId) clearTimeout(this.mixer.rafId);
+    } catch {}
     this.mixer.rafId = null;
 
     // Pause and clear video element
@@ -442,14 +547,26 @@ export class MixerSystem {
         this.mixer.camVideo.pause();
         this.mixer.camVideo.srcObject = null; // Clear source to trigger lifecycle checks
       }
-    } catch { }
+    } catch {}
 
     // Stop all media tracks
-    try { if (this.mixer.camStream) { this.mixer.camStream.getTracks().forEach(t => t.stop()); } } catch { }
-    try { if (this.mixer.micStream) { this.mixer.micStream.getTracks().forEach(t => t.stop()); } } catch { }
+    try {
+      if (this.mixer.camStream) {
+        this.mixer.camStream.getTracks().forEach((t) => t.stop());
+      }
+    } catch {}
+    try {
+      if (this.mixer.micStream) {
+        this.mixer.micStream.getTracks().forEach((t) => t.stop());
+      }
+    } catch {}
 
     // Close Web Audio context
-    try { if (this.mixer.audioCtx) { this.mixer.audioCtx.close(); } } catch { }
+    try {
+      if (this.mixer.audioCtx) {
+        this.mixer.audioCtx.close();
+      }
+    } catch {}
 
     // Clean up audio level monitoring
     audioLevelMonitor.cleanup();

@@ -1,514 +1,588 @@
 <!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Note + Timestamp</title>
+    <style>
+      :root {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Note + Timestamp</title>
-  <style>
-    :root {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    body {
-      margin: 0;
-      height: 100vh;
-      display: grid;
-      grid-template-rows: auto 1fr;
-    }
-
-    header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      padding: .5rem .75rem;
-      border-bottom: 1px solid #ddd;
-      background: white;
-      display: flex;
-      gap: .5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    main {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      height: 100vh;
-      box-sizing: border-box;
-    }
-
-    @media (max-width: 900px) {
       body {
-        height: auto;
-        min-height: 100vh;
-        grid-template-rows: auto auto;
+        margin: 0;
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #ddd;
+        background: white;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
       }
 
       main {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
-        height: auto;
-        min-height: calc(100vh - 60px);
-        /* Account for header height */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+
+      @media (max-width: 900px) {
+        body {
+          height: auto;
+          min-height: 100vh;
+          grid-template-rows: auto auto;
+        }
+
+        main {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          height: auto;
+          min-height: calc(100vh - 60px);
+          /* Account for header height */
+        }
+
+        section:last-child {
+          /* Ensure notes section still expands on mobile */
+          min-height: 300px;
+        }
+      }
+
+      section {
+        padding: 0.75rem;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
       }
 
       section:last-child {
-        /* Ensure notes section still expands on mobile */
-        min-height: 300px;
+        /* Notes section should expand to fill available height */
+        min-height: 0;
+        /* Allow flex item to shrink below content size */
       }
-    }
 
-    section {
-      padding: .75rem;
-      overflow: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    section:last-child {
-      /* Notes section should expand to fill available height */
-      min-height: 0;
-      /* Allow flex item to shrink below content size */
-    }
-
-    .row {
-      display: flex;
-      gap: .5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    small.mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-
-    .ts {
-      padding: .1rem .35rem;
-      border-radius: 6px;
-      border: 1px solid #999;
-      background: #f7f7f7;
-      cursor: pointer;
-    }
-
-    .ts:focus {
-      outline: 2px solid #a3d3ff;
-    }
-
-    .img-resize-overlay {
-      position: absolute;
-      border: 1px dashed rgba(0, 0, 0, .4);
-      box-sizing: border-box;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    .img-resize-handle {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      border: 1px solid #333;
-      background: #fff;
-      box-sizing: border-box;
-      pointer-events: auto;
-    }
-
-    .img-h-nw {
-      left: -5px;
-      top: -5px;
-      cursor: nwse-resize;
-    }
-
-    .img-h-ne {
-      right: -5px;
-      top: -5px;
-      cursor: nesw-resize;
-    }
-
-    .img-h-sw {
-      left: -5px;
-      bottom: -5px;
-      cursor: nesw-resize;
-    }
-
-    .img-h-se {
-      right: -5px;
-      bottom: -5px;
-      cursor: nwse-resize;
-    }
-
-    button i {
-      margin-right: .4rem;
-    }
-
-    label i {
-      margin: 0 .3rem 0 .4rem;
-    }
-
-    button:disabled i {
-      opacity: .5;
-    }
-
-    /* Export dropdown styles */
-    .export-dropdown-content button:hover {
-      background-color: #f1f1f1;
-    }
-
-    .export-dropdown-content button:first-child {
-      border-top-left-radius: 4px;
-      border-top-right-radius: 4px;
-    }
-
-    .export-dropdown-content button:last-child {
-      border-bottom-left-radius: 4px;
-      border-bottom-right-radius: 4px;
-    }
-
-    #tNow {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-
-    /* Camera modal button styling */
-    .camera-modal button:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-
-    .camera-modal button:active {
-      transform: translateY(0);
-    }
-
-    /* Dynamic editor height styles */
-    #editorWrap {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 200px;
-      /* Minimum height to prevent editor from becoming too small */
-      overflow: hidden;
-      /* Prevent double scrollbars */
-    }
-
-    #editor {
-      flex: 1;
-      min-height: 0;
-      /* Allow content to scroll when it exceeds container height */
-      height: 100%;
-    }
-
-    .ql-container {
-      height: 100% !important;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .ql-editor {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 12px 15px;
-      box-sizing: border-box;
-    }
-
-    /* Ensure proper scrolling behavior */
-    .ql-editor::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .ql-editor::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
-    }
-
-    .ql-editor::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 4px;
-    }
-
-    .ql-editor::-webkit-scrollbar-thumb:hover {
-      background: #a1a1a1;
-    }
-
-    /* Progress modal styles */
-    .save-progress-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .save-progress-modal.visible {
-      display: flex;
-    }
-
-    .save-progress-content {
-      background: white;
-      border-radius: 8px;
-      padding: 2rem;
-      min-width: 350px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .save-progress-content h3 {
-      margin: 0 0 1rem 0;
-      font-size: 1.1rem;
-    }
-
-    .save-progress-text {
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    .save-progress-bar {
-      width: 100%;
-      height: 6px;
-      background: #e0e0e0;
-      border-radius: 3px;
-      overflow: hidden;
-      margin-bottom: 0.5rem;
-    }
-
-    .save-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #4caf50, #81c784);
-      width: 0%;
-      transition: width 0.2s ease;
-    }
-
-    .save-progress-percent {
-      text-align: right;
-      font-size: 0.85rem;
-      color: #999;
-      margin-bottom: 1rem;
-    }
-
-    /* Spinner animation for indefinite loading */
-    @keyframes spin {
-      from {
-        transform: rotate(0deg);
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
       }
-      to {
-        transform: rotate(360deg);
-      }
-    }
 
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #e0e0e0;
-      border-top-color: #4caf50;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-right: 0.5rem;
-      vertical-align: middle;
-    }
+      small.mono {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+          monospace;
+      }
 
-    /* Indefinite progress bar (pulsing animation) */
-    @keyframes pulse-progress {
-      0% {
-        width: 30%;
-        opacity: 0.6;
+      .ts {
+        padding: 0.1rem 0.35rem;
+        border-radius: 6px;
+        border: 1px solid #999;
+        background: #f7f7f7;
+        cursor: pointer;
       }
-      50% {
-        width: 70%;
-        opacity: 1;
-      }
-      100% {
-        width: 30%;
-        opacity: 0.6;
-      }
-    }
 
-    .save-progress-fill.indefinite {
-      animation: pulse-progress 2s ease-in-out infinite;
-      width: 30%;
-    }
-  </style>
-  <!-- Quill (local, vendored by postinstall) -->
-  <link rel="stylesheet" href="./vendor/quill.core.css">
-  <link rel="stylesheet" href="./vendor/quill.snow.css">
-  <link rel="stylesheet" href="./static/fa/css/all.min.css" />
-  <script src="./vendor/quill.js"></script>
-  <!-- Fabric.js for drawing functionality -->
-  <script src="./vendor/fabric.js"></script>
-  <script>
-    // /* quill & fabric fallback */
-    (function () {
-      function injectJS(src) { var s = document.createElement('script'); s.src = src; s.defer = false; document.head.appendChild(s); }
-      function injectCSS(href) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
-      // If vendor quill failed to load, add CDN fallback
-      window.addEventListener('error', function (e) {
-        if (e.target && e.target.tagName === 'SCRIPT' && /vendor\/quill\.js$/.test(e.target.src || '')) {
-          injectCSS('https://unpkg.com/quill@2.0.2/dist/quill.snow.css');
-          injectJS('https://unpkg.com/quill@2.0.2/dist/quill.js');
+      .ts:focus {
+        outline: 2px solid #a3d3ff;
+      }
+
+      .img-resize-overlay {
+        position: absolute;
+        border: 1px dashed rgba(0, 0, 0, 0.4);
+        box-sizing: border-box;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .img-resize-handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border: 1px solid #333;
+        background: #fff;
+        box-sizing: border-box;
+        pointer-events: auto;
+      }
+
+      .img-h-nw {
+        left: -5px;
+        top: -5px;
+        cursor: nwse-resize;
+      }
+
+      .img-h-ne {
+        right: -5px;
+        top: -5px;
+        cursor: nesw-resize;
+      }
+
+      .img-h-sw {
+        left: -5px;
+        bottom: -5px;
+        cursor: nesw-resize;
+      }
+
+      .img-h-se {
+        right: -5px;
+        bottom: -5px;
+        cursor: nwse-resize;
+      }
+
+      button i {
+        margin-right: 0.4rem;
+      }
+
+      label i {
+        margin: 0 0.3rem 0 0.4rem;
+      }
+
+      button:disabled i {
+        opacity: 0.5;
+      }
+
+      /* Export dropdown styles */
+      .export-dropdown-content button:hover {
+        background-color: #f1f1f1;
+      }
+
+      .export-dropdown-content button:first-child {
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+      }
+
+      .export-dropdown-content button:last-child {
+        border-bottom-left-radius: 4px;
+        border-bottom-right-radius: 4px;
+      }
+
+      #tNow {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+          monospace;
+      }
+
+      /* Camera modal button styling */
+      .camera-modal button:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .camera-modal button:active {
+        transform: translateY(0);
+      }
+
+      /* Dynamic editor height styles */
+      #editorWrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 200px;
+        /* Minimum height to prevent editor from becoming too small */
+        overflow: hidden;
+        /* Prevent double scrollbars */
+      }
+
+      #editor {
+        flex: 1;
+        min-height: 0;
+        /* Allow content to scroll when it exceeds container height */
+        height: 100%;
+      }
+
+      .ql-container {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ql-editor {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 12px 15px;
+        box-sizing: border-box;
+      }
+
+      /* Ensure proper scrolling behavior */
+      .ql-editor::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .ql-editor::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      .ql-editor::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      .ql-editor::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+      }
+
+      /* Progress modal styles */
+      .save-progress-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .save-progress-modal.visible {
+        display: flex;
+      }
+
+      .save-progress-content {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        min-width: 350px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .save-progress-content h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+      }
+
+      .save-progress-text {
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .save-progress-bar {
+        width: 100%;
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+      }
+
+      .save-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4caf50, #81c784);
+        width: 0%;
+        transition: width 0.2s ease;
+      }
+
+      .save-progress-percent {
+        text-align: right;
+        font-size: 0.85rem;
+        color: #999;
+        margin-bottom: 1rem;
+      }
+
+      /* Spinner animation for indefinite loading */
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
         }
-        // If vendor fabric failed to load, add CDN fallback
-        if (e.target && e.target.tagName === 'SCRIPT' && /vendor\/fabric\.js$/.test(e.target.src || '')) {
-          injectJS('https://unpkg.com/fabric@6.7.1/dist/index.min.js');
+        to {
+          transform: rotate(360deg);
         }
-      }, true);
-    })();
-  </script>
-</head>
-
-<body>
-  <header>
-    <button id="btnStart"><i class="fa-solid fa-circle-dot"></i> Start Rec</button>
-    <button id="btnPause" disabled><i class="fa-solid fa-pause"></i> Pause</button>
-  <button id="btnStop" disabled><i class="fa-solid fa-stop"></i> Stop Rec</button>
-    <label><input type="checkbox" id="audioOnly" /> Audio only</label>
-    <label>Mic: <select id="micSelect"></select>
-    </label>
-    <label>Camera: <select id="camSelect"></select>
-    </label>
-    <label>Resolution: <select id="resSelect">
-        <option value="1920x1080">1080p (1920×1080)</option>
-        <option value="1280x720" selected>720p (1280×720)</option>
-        <option value="854x480">480p (854×480)</option>
-        <option value="640x360">360p (640×360)</option>
-      </select>
-    </label>
-    <label>Framerate: <select id="fpsSelect">
-        <option value="15">15 FPS</option>
-        <option value="24">24 FPS</option>
-        <option value="30" selected>30 FPS</option>
-        <option value="60">60 FPS</option>
-      </select>
-    </label>
-    <label>Audio Bitrate: <select id="audioBitrateSelect">
-        <option value="32000">32 kbps (Minimal)</option>
-        <option value="48000">48 kbps (Voice)</option>
-        <option value="64000" selected>64 kbps (Good)</option>
-        <option value="96000">96 kbps (Clear)</option>
-        <option value="128000">128 kbps (High)</option>
-      </select>
-    </label>
-    <button id="btnRefreshDevs" title="Refresh devices"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
-  </header>
-  <main>
-    <section>
-      <h3>Preview / Playback</h3>
-      <video id="player" controls playsinline style="max-width:100%; background:#000; border-radius:8px"></video>
-      <div id="audioLevelMeter" style="display:none; margin-top:10px;">
-        <div style="margin-bottom:8px; font-weight:bold;">
-          <i class="fa-solid fa-microphone"></i> Audio Level
-        </div>
-        <div id="audioLevelBar" style="width:100%; height:30px; background:#333; border-radius:4px; overflow:hidden; position:relative;">
-          <div id="audioLevelFill" style="height:100%; background:linear-gradient(to right, #4ade80, #eab308, #ef4444); width:0%; transition:width 0.1s ease-out;"></div>
-        </div>
-        <div style="margin-top:4px; font-size:0.8em; color:#666;"> Recording audio only - <span id="audioLevelText">0%</span>
-        </div>
-      </div>
-      <div class="row">
-        <div>Current: <span id="tNow">00:00.00</span></div>
-      </div>
-      <div id="status" class="small mono"></div>
-    </section>
-    <section>
-      <h3>Notes</h3>
-      <div id="toolbar">
-        <span class="ql-formats">
-          <select class="ql-header">
-            <option selected></option>
-            <option value="1">H1</option>
-            <option value="2">H2</option>
-            <option value="3">H3</option>
-          </select>
-          <button class="ql-bold"></button>
-          <button class="ql-italic"></button>
-          <button class="ql-underline"></button>
-          <button class="ql-strike"></button>
-        </span>
-        <span class="ql-formats">
-          <button class="ql-list" value="ordered"></button>
-          <button class="ql-list" value="bullet"></button>
-          <select class="ql-align"></select>
-        </span>
-        <span class="ql-formats">
-          <select class="ql-color"></select>
-          <select class="ql-background"></select>
-        </span>
-        <span class="ql-formats">
-          <button class="ql-link"></button>
-          <button class="ql-blockquote"></button>
-          <button class="ql-code-block"></button>
-          <button class="ql-clean" title="Clear formatting"></button>
-        </span>
-        <span class="ql-formats">
-          <button class="ql-image" title="Insert image"><i class="fa-solid fa-image"></i></button>
-          <button class="ql-camera" title="Take photo"><i class="fa-solid fa-camera"></i></button>
-          <button class="ql-drawing" title="Draw"><i class="fa-solid fa-pencil"></i></button>
-          <button class="ql-timestamp" title="Insert Timestamp"><i class="fa-solid fa-stopwatch"></i></button>
-          <button class="ql-undo" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
-          <button class="ql-redo" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
-        </span>
-      </div>
-      <div id="editorWrap" style="position:relative;">
-        <div id="editor"></div>
-      </div>
-      <p>Type notes here. Use the <strong><i class="fa-solid fa-stopwatch"></i> Timestamp</strong> button or <strong>Cmd+Alt+T</strong> to drop jump points. Click <strong><i class="fa-solid fa-camera"></i> Camera</strong> to take photos while recording.</p>
-    </section>
-  </main>
-
-  <!-- Save progress modal -->
-  <div id="saveProgressModal" class="save-progress-modal">
-    <div class="save-progress-content">
-      <h3 id="saveProgressTitle">Saving...</h3>
-      <div class="save-progress-text" id="saveProgressStatus">Initializing...</div>
-      <div class="save-progress-bar">
-        <div class="save-progress-fill" id="saveProgressFill"></div>
-      </div>
-      <div class="save-progress-percent"><span id="saveProgressPercent">0</span>%</div>
-    </div>
-  </div>
-
-  <!-- File loading modal (reuses progress modal structure) -->
-  <div id="fileLoadingModal" class="save-progress-modal">
-    <div class="save-progress-content">
-      <h3 id="fileLoadingTitle"><span class="spinner"></span>Opening file...</h3>
-      <div class="save-progress-text" id="fileLoadingStatus">Reading notepack...</div>
-      <div class="save-progress-bar">
-        <div class="save-progress-fill indefinite" id="fileLoadingFill"></div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module" src="src/main.js"></script>
-  <script>
-    // Dynamically adjust main section padding based on header height
-    function adjustMainPadding() {
-      const header = document.querySelector('header');
-      const main = document.querySelector('main');
-      if (header && main) {
-        const headerHeight = header.offsetHeight;
-        main.style.paddingTop = `${headerHeight + 10}px`; // Add 10px buffer
       }
-    }
 
-    // Adjust on load and resize
-    window.addEventListener('load', adjustMainPadding);
-    window.addEventListener('resize', adjustMainPadding);
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e0e0e0;
+        border-top-color: #4caf50;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+      }
 
-    // Use ResizeObserver for more responsive updates (if supported)
-    if (window.ResizeObserver) {
-      const headerObserver = new ResizeObserver(adjustMainPadding);
-      document.addEventListener('DOMContentLoaded', () => {
+      /* Indefinite progress bar (pulsing animation) */
+      @keyframes pulse-progress {
+        0% {
+          width: 30%;
+          opacity: 0.6;
+        }
+        50% {
+          width: 70%;
+          opacity: 1;
+        }
+        100% {
+          width: 30%;
+          opacity: 0.6;
+        }
+      }
+
+      .save-progress-fill.indefinite {
+        animation: pulse-progress 2s ease-in-out infinite;
+        width: 30%;
+      }
+    </style>
+    <!-- Quill (local, vendored by postinstall) -->
+    <link rel="stylesheet" href="./vendor/quill.core.css" />
+    <link rel="stylesheet" href="./vendor/quill.snow.css" />
+    <link rel="stylesheet" href="./static/fa/css/all.min.css" />
+    <script src="./vendor/quill.js"></script>
+    <!-- Fabric.js for drawing functionality -->
+    <script src="./vendor/fabric.js"></script>
+    <script>
+      // /* quill & fabric fallback */
+      (function () {
+        function injectJS(src) {
+          var s = document.createElement('script');
+          s.src = src;
+          s.defer = false;
+          document.head.appendChild(s);
+        }
+        function injectCSS(href) {
+          var l = document.createElement('link');
+          l.rel = 'stylesheet';
+          l.href = href;
+          document.head.appendChild(l);
+        }
+        // If vendor quill failed to load, add CDN fallback
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (
+              e.target &&
+              e.target.tagName === 'SCRIPT' &&
+              /vendor\/quill\.js$/.test(e.target.src || '')
+            ) {
+              injectCSS('https://unpkg.com/quill@2.0.2/dist/quill.snow.css');
+              injectJS('https://unpkg.com/quill@2.0.2/dist/quill.js');
+            }
+            // If vendor fabric failed to load, add CDN fallback
+            if (
+              e.target &&
+              e.target.tagName === 'SCRIPT' &&
+              /vendor\/fabric\.js$/.test(e.target.src || '')
+            ) {
+              injectJS('https://unpkg.com/fabric@6.7.1/dist/index.min.js');
+            }
+          },
+          true
+        );
+      })();
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <button id="btnStart"><i class="fa-solid fa-circle-dot"></i> Start Rec</button>
+      <button id="btnPause" disabled><i class="fa-solid fa-pause"></i> Pause</button>
+      <button id="btnStop" disabled><i class="fa-solid fa-stop"></i> Stop Rec</button>
+      <label><input type="checkbox" id="audioOnly" /> Audio only</label>
+      <label
+        >Mic:
+        <select id="micSelect"></select>
+      </label>
+      <label
+        >Camera:
+        <select id="camSelect"></select>
+      </label>
+      <label
+        >Resolution:
+        <select id="resSelect">
+          <option value="1920x1080">1080p (1920×1080)</option>
+          <option value="1280x720" selected>720p (1280×720)</option>
+          <option value="854x480">480p (854×480)</option>
+          <option value="640x360">360p (640×360)</option>
+        </select>
+      </label>
+      <label
+        >Framerate:
+        <select id="fpsSelect">
+          <option value="15">15 FPS</option>
+          <option value="24">24 FPS</option>
+          <option value="30" selected>30 FPS</option>
+          <option value="60">60 FPS</option>
+        </select>
+      </label>
+      <label
+        >Audio Bitrate:
+        <select id="audioBitrateSelect">
+          <option value="32000">32 kbps (Minimal)</option>
+          <option value="48000">48 kbps (Voice)</option>
+          <option value="64000" selected>64 kbps (Good)</option>
+          <option value="96000">96 kbps (Clear)</option>
+          <option value="128000">128 kbps (High)</option>
+        </select>
+      </label>
+      <button id="btnRefreshDevs" title="Refresh devices">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      </button>
+    </header>
+    <main>
+      <section>
+        <h3>Preview / Playback</h3>
+        <video
+          id="player"
+          controls
+          playsinline
+          style="max-width: 100%; background: #000; border-radius: 8px"
+        ></video>
+        <div id="audioLevelMeter" style="display: none; margin-top: 10px">
+          <div style="margin-bottom: 8px; font-weight: bold">
+            <i class="fa-solid fa-microphone"></i> Audio Level
+          </div>
+          <div
+            id="audioLevelBar"
+            style="
+              width: 100%;
+              height: 30px;
+              background: #333;
+              border-radius: 4px;
+              overflow: hidden;
+              position: relative;
+            "
+          >
+            <div
+              id="audioLevelFill"
+              style="
+                height: 100%;
+                background: linear-gradient(to right, #4ade80, #eab308, #ef4444);
+                width: 0%;
+                transition: width 0.1s ease-out;
+              "
+            ></div>
+          </div>
+          <div style="margin-top: 4px; font-size: 0.8em; color: #666">
+            Recording audio only - <span id="audioLevelText">0%</span>
+          </div>
+        </div>
+        <div class="row">
+          <div>Current: <span id="tNow">00:00.00</span></div>
+        </div>
+        <div id="status" class="small mono"></div>
+      </section>
+      <section>
+        <h3>Notes</h3>
+        <div id="toolbar">
+          <span class="ql-formats">
+            <select class="ql-header">
+              <option selected></option>
+              <option value="1">H1</option>
+              <option value="2">H2</option>
+              <option value="3">H3</option>
+            </select>
+            <button class="ql-bold"></button>
+            <button class="ql-italic"></button>
+            <button class="ql-underline"></button>
+            <button class="ql-strike"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-list" value="ordered"></button>
+            <button class="ql-list" value="bullet"></button>
+            <select class="ql-align"></select>
+          </span>
+          <span class="ql-formats">
+            <select class="ql-color"></select>
+            <select class="ql-background"></select>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-link"></button>
+            <button class="ql-blockquote"></button>
+            <button class="ql-code-block"></button>
+            <button class="ql-clean" title="Clear formatting"></button>
+          </span>
+          <span class="ql-formats">
+            <button class="ql-image" title="Insert image"><i class="fa-solid fa-image"></i></button>
+            <button class="ql-camera" title="Take photo"><i class="fa-solid fa-camera"></i></button>
+            <button class="ql-drawing" title="Draw"><i class="fa-solid fa-pencil"></i></button>
+            <button class="ql-timestamp" title="Insert Timestamp">
+              <i class="fa-solid fa-stopwatch"></i>
+            </button>
+            <button class="ql-undo" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+            <button class="ql-redo" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+          </span>
+        </div>
+        <div id="editorWrap" style="position: relative">
+          <div id="editor"></div>
+        </div>
+        <p>
+          Type notes here. Use the
+          <strong><i class="fa-solid fa-stopwatch"></i> Timestamp</strong> button or
+          <strong>Cmd+Alt+T</strong> to drop jump points. Click
+          <strong><i class="fa-solid fa-camera"></i> Camera</strong> to take photos while recording.
+        </p>
+      </section>
+    </main>
+
+    <!-- Save progress modal -->
+    <div id="saveProgressModal" class="save-progress-modal">
+      <div class="save-progress-content">
+        <h3 id="saveProgressTitle">Saving...</h3>
+        <div class="save-progress-text" id="saveProgressStatus">Initializing...</div>
+        <div class="save-progress-bar">
+          <div class="save-progress-fill" id="saveProgressFill"></div>
+        </div>
+        <div class="save-progress-percent"><span id="saveProgressPercent">0</span>%</div>
+      </div>
+    </div>
+
+    <!-- File loading modal (reuses progress modal structure) -->
+    <div id="fileLoadingModal" class="save-progress-modal">
+      <div class="save-progress-content">
+        <h3 id="fileLoadingTitle"><span class="spinner"></span>Opening file...</h3>
+        <div class="save-progress-text" id="fileLoadingStatus">Reading notepack...</div>
+        <div class="save-progress-bar">
+          <div class="save-progress-fill indefinite" id="fileLoadingFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+    <script>
+      // Dynamically adjust main section padding based on header height
+      function adjustMainPadding() {
         const header = document.querySelector('header');
-        if (header) {
-          headerObserver.observe(header);
+        const main = document.querySelector('main');
+        if (header && main) {
+          const headerHeight = header.offsetHeight;
+          main.style.paddingTop = `${headerHeight + 10}px`; // Add 10px buffer
         }
-      });
-    }
-  </script>
-</body>
+      }
 
+      // Adjust on load and resize
+      window.addEventListener('load', adjustMainPadding);
+      window.addEventListener('resize', adjustMainPadding);
+
+      // Use ResizeObserver for more responsive updates (if supported)
+      if (window.ResizeObserver) {
+        const headerObserver = new ResizeObserver(adjustMainPadding);
+        document.addEventListener('DOMContentLoaded', () => {
+          const header = document.querySelector('header');
+          if (header) {
+            headerObserver.observe(header);
+          }
+        });
+      }
+    </script>
+  </body>
 </html>

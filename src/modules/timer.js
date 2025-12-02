@@ -1,4 +1,3 @@
-
 /**
  * @file Timer system for tracking recording and playback time
  * Handles timing during recording (excluding paused periods) and during playback
@@ -64,12 +63,12 @@ import { formatTime } from './utils.js';
 export class TimerSystem {
   constructor() {
     // Recording state
-    this.recordingStartTime = 0;      // When recording actually started
-    this.recordingElapsed = 0;        // Total recorded time (excluding paused periods)
-    this.recordingPauseStart = 0;     // When current pause began
-    this.recordingTimer = null;       // Timer interval for updating display during recording
-    this.playbackTimer = null;        // Timer interval for tracking video playback position
-    this.isRecordingPaused = false;   // Flag to track if recording is paused
+    this.recordingStartTime = 0; // When recording actually started
+    this.recordingElapsed = 0; // Total recorded time (excluding paused periods)
+    this.recordingPauseStart = 0; // When current pause began
+    this.recordingTimer = null; // Timer interval for updating display during recording
+    this.playbackTimer = null; // Timer interval for tracking video playback position
+    this.isRecordingPaused = false; // Flag to track if recording is paused
 
     // DOM references
     this.timeDisplay = null;
@@ -106,8 +105,12 @@ export class TimerSystem {
    */
   getCurrentRecordingTime() {
     // If we have a loaded media file and we're not actively recording, use playback time
-    if (this.player && this.player.src && !this.player.srcObject &&
-        (!this.mediaRecorder || this.mediaRecorder.state === 'inactive')) {
+    if (
+      this.player &&
+      this.player.src &&
+      !this.player.srcObject &&
+      (!this.mediaRecorder || this.mediaRecorder.state === 'inactive')
+    ) {
       return this.player.currentTime || 0;
     }
 

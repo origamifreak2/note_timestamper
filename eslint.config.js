@@ -23,9 +23,9 @@ export default [
     settings: {
       jsdoc: {
         tagNamePreference: {
-          fileoverview: 'file'
-        }
-      }
+          fileoverview: 'file',
+        },
+      },
     },
     plugins: { jsdoc },
     rules: {
@@ -54,7 +54,7 @@ export default [
       'jsdoc/check-types': 'off',
       'jsdoc/no-defaults': 'off',
       'jsdoc/require-returns-description': 'off',
-      'jsdoc/check-alignment': 'off'
+      'jsdoc/check-alignment': 'off',
     },
   },
 ];

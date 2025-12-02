@@ -1,4 +1,3 @@
-
 /**
  * @file Drawing system using Fabric.js canvas
  * Provides a drawing interface for creating and inserting drawings
@@ -82,7 +81,7 @@ export class DrawingSystem {
       document.body.appendChild(drawingModal);
 
       // Wait for DOM to be ready
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Set canvas size
       const maxWidth = Math.min(window.innerWidth * 0.7, 800);
@@ -99,7 +98,7 @@ export class DrawingSystem {
       canvas = new fabric.Canvas(canvasElement, {
         backgroundColor: 'white',
         selection: true,
-        preserveObjectStacking: true
+        preserveObjectStacking: true,
       });
 
       canvas.setDimensions({ width: maxWidth, height: maxHeight });
@@ -117,8 +116,8 @@ export class DrawingSystem {
         canvas.upperCanvasEl.style.background = 'transparent';
       }
 
-  // CRITICAL: Recalculate canvas offset to fix mouse position
-  canvas.calcOffset();
+      // CRITICAL: Recalculate canvas offset to fix mouse position
+      canvas.calcOffset();
 
       // Set up UI handlers
       this.setupDrawingUI(drawingModal, canvas);
@@ -129,31 +128,35 @@ export class DrawingSystem {
           const jsonData = typeof fabricJSON === 'string' ? JSON.parse(fabricJSON) : fabricJSON;
 
           await new Promise((resolve, reject) => {
-            canvas.loadFromJSON(jsonData, () => {
-              // CRITICAL: Set canvas mode INSIDE the callback after JSON is fully loaded
-              canvas.backgroundColor = 'white';
-              canvas.isDrawingMode = this.currentTool === 'freedraw';
-              canvas.selection = this.currentTool !== 'freedraw';
-              canvas.calcOffset();
+            canvas.loadFromJSON(
+              jsonData,
+              () => {
+                // CRITICAL: Set canvas mode INSIDE the callback after JSON is fully loaded
+                canvas.backgroundColor = 'white';
+                canvas.isDrawingMode = this.currentTool === 'freedraw';
+                canvas.selection = this.currentTool !== 'freedraw';
+                canvas.calcOffset();
 
-              // Force all objects to be visible and trigger multiple renders
-              canvas.getObjects().forEach(obj => {
-                obj.setCoords();
-                obj.visible = true;
-              });
+                // Force all objects to be visible and trigger multiple renders
+                canvas.getObjects().forEach((obj) => {
+                  obj.setCoords();
+                  obj.visible = true;
+                });
 
-              canvas.renderAll(); // Force complete render after loading
+                canvas.renderAll(); // Force complete render after loading
 
-              // Additional render after a short delay to ensure visibility
-              setTimeout(() => {
-                canvas.renderAll();
-              }, 50);
+                // Additional render after a short delay to ensure visibility
+                setTimeout(() => {
+                  canvas.renderAll();
+                }, 50);
 
-              resolve();
-            }, (o, object) => {
-              // Error handler for individual objects
-              console.warn('Error loading object:', o, object);
-            });
+                resolve();
+              },
+              (o, object) => {
+                // Error handler for individual objects
+                console.warn('Error loading object:', o, object);
+              }
+            );
           });
 
           // Save initial state after loading
@@ -187,7 +190,7 @@ export class DrawingSystem {
             const dataUrl = canvas.toDataURL({
               format: 'png',
               quality: 1.0,
-              multiplier: 2
+              multiplier: 2,
             });
             // Export canvas JSON without isDrawingMode property to avoid conflicts on reload
             const canvasData = canvas.toJSON();
@@ -206,7 +209,6 @@ export class DrawingSystem {
           resolve(null);
         });
       });
-
     } catch (error) {
       console.error('Drawing modal error:', error);
       throw error; // Cleanup handled in finally
@@ -258,10 +260,10 @@ export class DrawingSystem {
     }, 100);
 
     // Tool button handlers
-    toolButtons.forEach(btn => {
+    toolButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         // Update button styles
-        toolButtons.forEach(b => {
+        toolButtons.forEach((b) => {
           b.style.border = '2px solid #d1d5db';
           b.style.background = 'white';
           b.style.color = '#374151';
@@ -276,7 +278,7 @@ export class DrawingSystem {
         this.currentTool = btn.dataset.tool;
 
         // Configure canvas for selected tool
-        switch(this.currentTool) {
+        switch (this.currentTool) {
           case 'freedraw':
             canvas.isDrawingMode = true;
             canvas.selection = false;
@@ -300,7 +302,7 @@ export class DrawingSystem {
       // Update color for selected objects
       const activeObjects = canvas.getActiveObjects();
       if (activeObjects.length > 0) {
-        activeObjects.forEach(obj => {
+        activeObjects.forEach((obj) => {
           if (obj.type === 'path') {
             obj.set('stroke', color);
           } else if (obj.type === 'i-text') {
@@ -327,7 +329,7 @@ export class DrawingSystem {
       // Update fill for selected objects
       const activeObjects = canvas.getActiveObjects();
       if (activeObjects.length > 0) {
-        activeObjects.forEach(obj => {
+        activeObjects.forEach((obj) => {
           if (obj.type !== 'path' && obj.type !== 'i-text') {
             obj.set('fill', fillColor);
           }
@@ -345,7 +347,7 @@ export class DrawingSystem {
       // Update fill for selected objects
       const activeObjects = canvas.getActiveObjects();
       if (activeObjects.length > 0) {
-        activeObjects.forEach(obj => {
+        activeObjects.forEach((obj) => {
           if (obj.type !== 'path' && obj.type !== 'i-text') {
             obj.set('fill', isNoFill ? 'transparent' : fillColorPicker.value);
           }
@@ -363,7 +365,7 @@ export class DrawingSystem {
       // Update stroke width for selected objects
       const activeObjects = canvas.getActiveObjects();
       if (activeObjects.length > 0) {
-        activeObjects.forEach(obj => {
+        activeObjects.forEach((obj) => {
           if (obj.type !== 'i-text') {
             obj.set('strokeWidth', size);
           }
@@ -755,7 +757,11 @@ export class DrawingSystem {
 
     // Mouse events for shape drawing
     canvas.on('mouse:down', (options) => {
-      if (this.currentTool === 'rect' || this.currentTool === 'circle' || this.currentTool === 'line') {
+      if (
+        this.currentTool === 'rect' ||
+        this.currentTool === 'circle' ||
+        this.currentTool === 'line'
+      ) {
         // Don't start drawing if clicking on an existing object
         if (options.target) {
           this.isDrawing = false;
@@ -769,11 +775,18 @@ export class DrawingSystem {
     });
 
     canvas.on('mouse:up', (options) => {
-      if (this.isDrawing && (this.currentTool === 'rect' || this.currentTool === 'circle' || this.currentTool === 'line')) {
+      if (
+        this.isDrawing &&
+        (this.currentTool === 'rect' ||
+          this.currentTool === 'circle' ||
+          this.currentTool === 'line')
+      ) {
         const pointer = canvas.getPointer(options.e);
 
         // Only create shape if we have a valid start point and moved the mouse
-        const distance = Math.sqrt(Math.pow(pointer.x - this.startPoint.x, 2) + Math.pow(pointer.y - this.startPoint.y, 2));
+        const distance = Math.sqrt(
+          Math.pow(pointer.x - this.startPoint.x, 2) + Math.pow(pointer.y - this.startPoint.y, 2)
+        );
         if (distance < 5) {
           // Too small movement, don't create shape
           this.isDrawing = false;
@@ -794,7 +807,7 @@ export class DrawingSystem {
             height: Math.abs(pointer.y - this.startPoint.y),
             fill: noFillCheckbox.checked ? 'transparent' : fillColorPicker.value,
             stroke: colorPicker.value,
-            strokeWidth: parseInt(brushSizeSlider.value)
+            strokeWidth: parseInt(brushSizeSlider.value),
           });
           canvas.add(rect);
           // Force render to make shape visible immediately
@@ -814,24 +827,22 @@ export class DrawingSystem {
             radius: radius,
             fill: noFillCheckbox.checked ? 'transparent' : fillColorPicker.value,
             stroke: colorPicker.value,
-            strokeWidth: parseInt(brushSizeSlider.value)
+            strokeWidth: parseInt(brushSizeSlider.value),
           });
           canvas.add(circle);
           // Force render to make shape visible immediately
           canvas.renderAll();
           this.saveCanvasState(canvas);
         } else if (this.currentTool === 'line') {
-          const line = new fabric.Line([
-            this.startPoint.x,
-            this.startPoint.y,
-            pointer.x,
-            pointer.y
-          ], {
-            stroke: colorPicker.value,
-            strokeWidth: parseInt(brushSizeSlider.value),
-            originX: 'center',
-            originY: 'center'
-          });
+          const line = new fabric.Line(
+            [this.startPoint.x, this.startPoint.y, pointer.x, pointer.y],
+            {
+              stroke: colorPicker.value,
+              strokeWidth: parseInt(brushSizeSlider.value),
+              originX: 'center',
+              originY: 'center',
+            }
+          );
           canvas.add(line);
           // Force render to make line visible immediately
           canvas.renderAll();
@@ -856,7 +867,7 @@ export class DrawingSystem {
           top: pointer.y,
           fill: colorPicker.value,
           fontSize: parseInt(brushSizeSlider.value) * 4 + 12,
-          fontFamily: 'Arial'
+          fontFamily: 'Arial',
         });
         canvas.add(text);
         // Force render to make text visible immediately
@@ -886,7 +897,7 @@ export class DrawingSystem {
       this.historyStep = this.maxHistorySteps - 1;
     }
 
-  // Canvas state saved (debug log removed)
+    // Canvas state saved (debug log removed)
 
     // Update button states after saving state
     if (this.undoBtn && this.redoBtn) {
@@ -910,18 +921,18 @@ export class DrawingSystem {
     redoBtn.style.opacity = canRedo ? '1' : '0.5';
     redoBtn.style.cursor = canRedo ? 'pointer' : 'not-allowed';
 
-  // Button state update (debug log removed)
+    // Button state update (debug log removed)
   }
 
   /**
    * Undo last action
    */
   undo(canvas, undoBtn, redoBtn) {
-  // Undo called
+    // Undo called
     if (this.historyStep > 0) {
       this.historyStep--;
       const previousState = this.canvasHistory[this.historyStep];
-  // Undoing to step
+      // Undoing to step
       canvas.loadFromJSON(previousState, () => {
         canvas.requestRenderAll();
         canvas.calcOffset();
@@ -933,7 +944,7 @@ export class DrawingSystem {
       // Update button states after the undo operation
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     } else {
-  // Cannot undo - at beginning of history
+      // Cannot undo - at beginning of history
       // Still update button states to disable undo button
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     }
@@ -943,11 +954,11 @@ export class DrawingSystem {
    * Redo last undone action
    */
   redo(canvas, undoBtn, redoBtn) {
-  // Redo called
+    // Redo called
     if (this.historyStep < this.canvasHistory.length - 1) {
       this.historyStep++;
       const nextState = this.canvasHistory[this.historyStep];
-  // Redoing to step
+      // Redoing to step
       canvas.loadFromJSON(nextState, () => {
         canvas.requestRenderAll();
         canvas.calcOffset();
@@ -959,7 +970,7 @@ export class DrawingSystem {
       // Update button states after the redo operation
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     } else {
-  // Cannot redo - at end of history
+      // Cannot redo - at end of history
       // Still update button states to disable redo button
       this.updateUndoRedoButtons(undoBtn, redoBtn);
     }
@@ -971,7 +982,7 @@ export class DrawingSystem {
   deleteSelectedObjects(canvas) {
     const activeObjects = canvas.getActiveObjects();
     if (activeObjects.length > 0) {
-      activeObjects.forEach(obj => {
+      activeObjects.forEach((obj) => {
         canvas.remove(obj);
       });
       canvas.discardActiveObject();
@@ -984,22 +995,22 @@ export class DrawingSystem {
    */
   async importImage(canvas) {
     try {
-  // starting image import
+      // starting image import
 
       // Use the existing image picker from the main process
       const result = await window.api.pickImage();
-  // image picker returned
+      // image picker returned
 
       if (!result || !result.ok || !result.dataUrl) {
-  // image import cancelled or failed
+        // image import cancelled or failed
         return;
       }
 
-  // creating fabric image from data URL
+      // creating fabric image from data URL
 
       // Check if this is an SVG file
       if (result.dataUrl.startsWith('data:image/svg+xml')) {
-  // detected SVG, using SVG-specific handling
+        // detected SVG, using SVG-specific handling
         this.importSVG(canvas, result.dataUrl);
         return;
       }
@@ -1008,13 +1019,16 @@ export class DrawingSystem {
       const htmlImg = new Image();
 
       htmlImg.onload = () => {
-  // HTML image loaded
+        // HTML image loaded
 
         const fabricImg = new fabric.Image(htmlImg);
-  // fabric image created
+        // fabric image created
 
         if (!fabricImg || fabricImg.width === 0 || fabricImg.height === 0) {
-          console.error('Invalid image dimensions:', { width: fabricImg.width, height: fabricImg.height });
+          console.error('Invalid image dimensions:', {
+            width: fabricImg.width,
+            height: fabricImg.height,
+          });
           alert('Failed to load image. Invalid image dimensions.');
           return;
         }
@@ -1022,7 +1036,7 @@ export class DrawingSystem {
         // Calculate appropriate scaling to fit canvas while maintaining aspect ratio
         const canvasWidth = canvas.getWidth();
         const canvasHeight = canvas.getHeight();
-  // canvas dimensions computed
+        // canvas dimensions computed
 
         const maxWidth = canvasWidth * 0.6; // Use 60% of canvas width for better visibility
         const maxHeight = canvasHeight * 0.6; // Use 60% of canvas height
@@ -1031,11 +1045,11 @@ export class DrawingSystem {
         const scaleX = maxWidth / fabricImg.width;
         const scaleY = maxHeight / fabricImg.height;
         const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-  // scale calculated
+        // scale calculated
 
         // Set image properties
-        const leftPos = (canvasWidth - (fabricImg.width * scale)) / 2;
-        const topPos = (canvasHeight - (fabricImg.height * scale)) / 2;
+        const leftPos = (canvasWidth - fabricImg.width * scale) / 2;
+        const topPos = (canvasHeight - fabricImg.height * scale) / 2;
 
         fabricImg.set({
           scaleX: scale,
@@ -1043,20 +1057,20 @@ export class DrawingSystem {
           left: leftPos,
           top: topPos,
           selectable: true,
-          evented: true
+          evented: true,
         });
 
-  // image positioned
+        // image positioned
 
         // Add to canvas
-  canvas.add(fabricImg);
+        canvas.add(fabricImg);
 
         // Set as active object
         canvas.setActiveObject(fabricImg);
 
         // Force render
         canvas.requestRenderAll();
-  // canvas render requested
+        // canvas render requested
 
         // Save state for undo/redo
         this.saveCanvasState(canvas);
@@ -1071,7 +1085,6 @@ export class DrawingSystem {
 
       // Set the data URL to start loading
       htmlImg.src = result.dataUrl;
-
     } catch (error) {
       console.error('Failed to import image:', error);
       alert('Failed to import image: ' + error.message);
@@ -1083,16 +1096,16 @@ export class DrawingSystem {
    */
   importSVG(canvas, dataUrl) {
     try {
-  // processing SVG import
+      // processing SVG import
 
       // Extract SVG content from data URL
       const base64Content = dataUrl.split(',')[1];
       const svgContent = decodeURIComponent(escape(atob(base64Content)));
-  // SVG content extracted
+      // SVG content extracted
 
       // Use Fabric.js loadSVGFromString method
       fabric.loadSVGFromString(svgContent, (objects, options) => {
-  // SVG loaded
+        // SVG loaded
 
         if (!objects || objects.length === 0) {
           console.error('No objects found in SVG');
@@ -1102,12 +1115,12 @@ export class DrawingSystem {
 
         // Create a group from all SVG objects
         const svgGroup = fabric.util.groupSVGElements(objects, options);
-  // SVG group created
+        // SVG group created
 
         // Calculate appropriate scaling to fit canvas
         const canvasWidth = canvas.getWidth();
         const canvasHeight = canvas.getHeight();
-  // canvas dimensions for SVG
+        // canvas dimensions for SVG
 
         const maxWidth = canvasWidth * 0.6;
         const maxHeight = canvasHeight * 0.6;
@@ -1116,11 +1129,11 @@ export class DrawingSystem {
         const scaleX = maxWidth / svgGroup.width;
         const scaleY = maxHeight / svgGroup.height;
         const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-  // calculated SVG scale
+        // calculated SVG scale
 
         // Position and scale the SVG group
-        const leftPos = (canvasWidth - (svgGroup.width * scale)) / 2;
-        const topPos = (canvasHeight - (svgGroup.height * scale)) / 2;
+        const leftPos = (canvasWidth - svgGroup.width * scale) / 2;
+        const topPos = (canvasHeight - svgGroup.height * scale) / 2;
 
         svgGroup.set({
           scaleX: scale,
@@ -1128,34 +1141,33 @@ export class DrawingSystem {
           left: leftPos,
           top: topPos,
           selectable: true,
-          evented: true
+          evented: true,
         });
 
-  // SVG positioned
+        // SVG positioned
 
         // Add to canvas
-  canvas.add(svgGroup);
+        canvas.add(svgGroup);
 
         // Set as active object
         canvas.setActiveObject(svgGroup);
 
         // Force render
         canvas.requestRenderAll();
-  // canvas render requested for SVG
+        // canvas render requested for SVG
 
         // Save state for undo/redo
         this.saveCanvasState(canvas);
 
         // SVG import completed
       });
-
     } catch (error) {
       console.error('Failed to import SVG:', error);
       alert('Failed to import SVG: ' + error.message);
     }
   }
 
-    /**
+  /**
    * Clean up drawing resources
    */
   cleanup(modal, canvas) {

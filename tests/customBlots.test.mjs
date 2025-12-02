@@ -7,7 +7,6 @@ import { formatTime } from '../src/modules/utils.js';
 // so that its top-level references to Quill succeed.
 // Vitest supports top-level await.
 // Provide minimal global to satisfy module.
-// eslint-disable-next-line no-undef
 globalThis.Quill = Quill;
 const { registerCustomBlots } = await import('../src/editor/customBlots.js');
 
@@ -40,7 +39,12 @@ describe('CustomImage blot', () => {
 
   it('creates image from object with fabricJSON', () => {
     const ImageBlot = Quill.import('formats/image');
-    const node = ImageBlot.create({ src: 'data:image/png;base64,AAA', width: 250, height: 180, fabricJSON: '{"objects":[]}' });
+    const node = ImageBlot.create({
+      src: 'data:image/png;base64,AAA',
+      width: 250,
+      height: 180,
+      fabricJSON: '{"objects":[]}',
+    });
     expect(node.getAttribute('data-fabric-json')).toBe('{"objects":[]}');
     expect(node.classList.contains('editable-drawing')).toBe(true);
     const val = ImageBlot.value(node);

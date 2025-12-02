@@ -19,7 +19,8 @@ describe('exportSystem', () => {
     });
 
     it('removes title and pointer cursor', () => {
-      const html = '<img src="test.png" title="Double-click to edit" style="cursor: pointer;" data-fabric-json="{}" />';
+      const html =
+        '<img src="test.png" title="Double-click to edit" style="cursor: pointer;" data-fabric-json="{}" />';
       const cleaned = exportSys.stripFabricData(html);
       expect(cleaned).not.toContain('title=');
       expect(cleaned).not.toContain('cursor: pointer');
@@ -46,7 +47,8 @@ describe('exportSystem', () => {
     });
 
     it('handles multiple images with sequential numbering', () => {
-      const html = '<img src="data:image/jpeg;base64,AAA" /><img src="data:image/png;base64,BBB" />';
+      const html =
+        '<img src="data:image/jpeg;base64,AAA" /><img src="data:image/png;base64,BBB" />';
       const { html: updated, images } = exportSys.extractAndReplaceImages(html);
 
       expect(updated).toContain('src="images/image_001.jpg"');
@@ -82,7 +84,8 @@ describe('exportSystem', () => {
 
   describe('generateEmbeddedHTML', () => {
     it('includes base64 media and notes content', () => {
-      const notesHtml = '<p>Test notes with <button class="ts" data-ts="12.34">00:12.34</button></p>';
+      const notesHtml =
+        '<p>Test notes with <button class="ts" data-ts="12.34">00:12.34</button></p>';
       const mediaB64 = 'FAKE_BASE64_DATA';
       const mediaMime = 'video/webm';
 
@@ -174,8 +177,8 @@ describe('exportSystem', () => {
     it('includes image modal click handler', () => {
       const html = exportSys.buildHTMLTemplate('<p>x</p>', '');
 
-      expect(html).toContain('const img = e.target.closest(\'img\')');
-      expect(html).toContain('modal.style.display = \'block\'');
+      expect(html).toContain("const img = e.target.closest('img')");
+      expect(html).toContain("modal.style.display = 'block'");
     });
   });
 });

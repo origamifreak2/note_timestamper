@@ -150,33 +150,32 @@ class NoteTimestamperApp {
       // Initialize error boundary
       errorBoundary.init(this.elements.status);
 
-    // Initialize all modules
-    this.initializeModules();
+      // Initialize all modules
+      this.initializeModules();
 
-    // Set up event handlers
-    this.setupEventHandlers();
+      // Set up event handlers
+      this.setupEventHandlers();
 
-    // Initialize devices
-    await this.initializeDevices();
+      // Initialize devices
+      await this.initializeDevices();
 
-    // Note: Removed periodic monitor - no longer needed with proper state management
+      // Note: Removed periodic monitor - no longer needed with proper state management
 
-    // Set up menu action listener
-    this.setupMenuListener();
+      // Set up menu action listener
+      this.setupMenuListener();
 
-    // Listen for save progress events from main process
-    if (window.menu && window.menu.onAction) {
-      // We need a way to listen to IPC messages; add it to the menu channel if available
-      // For now, we'll handle this in the IPC listener setup below
-    }
+      // Listen for save progress events from main process
+      if (window.menu && window.menu.onAction) {
+        // We need a way to listen to IPC messages; add it to the menu channel if available
+        // For now, we'll handle this in the IPC listener setup below
+      }
 
-    // Update initial UI state
-    this.updateUIState();
-    this.isInitialized = true;
+      // Update initial UI state
+      this.updateUIState();
+      this.isInitialized = true;
 
       // Set up global unhandled rejection handler
       this.setupUnhandledRejectionHandler();
-
     } catch (error) {
       console.error('Failed to initialize Note Timestamper:', error);
       if (this.elements.status) {
@@ -196,7 +195,7 @@ class NoteTimestamperApp {
     this.elements.btnStop = document.getElementById('btnStop');
 
     // File operations
-  // File operations moved to menu
+    // File operations moved to menu
 
     // UI elements
     this.elements.audioOnly = document.getElementById('audioOnly');
@@ -251,21 +250,32 @@ class NoteTimestamperApp {
             redo: () => this.quill.history.redo(),
             image: () => this.handleImageUpload(),
             camera: () => this.handleCameraCapture(),
-            drawing: () => this.handleDrawing()
-          }
+            drawing: () => this.handleDrawing(),
+          },
         },
         history: {
           delay: 500,
           maxStack: 200,
-          userOnly: true
-        }
+          userOnly: true,
+        },
       },
       formats: [
-        'header', 'bold', 'italic', 'underline', 'strike',
-        'list', 'indent', 'align', 'color', 'background',
-        'link', 'blockquote', 'code-block',
-        'image', 'timestamp'
-      ]
+        'header',
+        'bold',
+        'italic',
+        'underline',
+        'strike',
+        'list',
+        'indent',
+        'align',
+        'color',
+        'background',
+        'link',
+        'blockquote',
+        'code-block',
+        'image',
+        'timestamp',
+      ],
     });
 
     // Set up clipboard handling for custom blots
@@ -310,9 +320,9 @@ class NoteTimestamperApp {
       buttons: {
         btnStart: this.elements.btnStart,
         btnPause: this.elements.btnPause,
-        btnStop: this.elements.btnStop
+        btnStop: this.elements.btnStop,
       },
-      onStateChange: this.onStateChange
+      onStateChange: this.onStateChange,
     });
 
     // Initialize image manager
@@ -360,7 +370,9 @@ class NoteTimestamperApp {
       this.elements.fpsSelect.addEventListener('change', () => deviceManager.persistSelection());
     }
     if (this.elements.audioBitrateSelect) {
-      this.elements.audioBitrateSelect.addEventListener('change', () => deviceManager.persistSelection());
+      this.elements.audioBitrateSelect.addEventListener('change', () =>
+        deviceManager.persistSelection()
+      );
     }
     if (this.elements.btnRefreshDevs) {
       this.elements.btnRefreshDevs.addEventListener('click', () => this.refreshDevices());
@@ -377,7 +389,9 @@ class NoteTimestamperApp {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', this.onKeyboardShortcut, true);
-    this.quill.keyboard.addBinding({ key: 'T', shortKey: true, altKey: true }, () => this.insertTimestamp());
+    this.quill.keyboard.addBinding({ key: 'T', shortKey: true, altKey: true }, () =>
+      this.insertTimestamp()
+    );
 
     // Custom toolbar buttons
     this.setupCustomToolbarButtons();
@@ -498,7 +512,8 @@ class NoteTimestamperApp {
       if (!src) return delta;
 
       const width = node.style.width ? parseInt(node.style.width) : null;
-      const height = (node.style.height && node.style.height !== 'auto') ? parseInt(node.style.height) : null;
+      const height =
+        node.style.height && node.style.height !== 'auto' ? parseInt(node.style.height) : null;
       const fabricJSON = node.getAttribute('data-fabric-json');
 
       // If image has fabric data, use object format to preserve it
@@ -508,7 +523,7 @@ class NoteTimestamperApp {
           src: src,
           width: width,
           height: height,
-          fabricJSON: fabricJSON
+          fabricJSON: fabricJSON,
         };
       } else {
         // Use string format for regular images
@@ -595,7 +610,7 @@ class NoteTimestamperApp {
       canSaveAs: (hasNotes && !isCurrentlyRecording) || hasCompletedRecording,
       canLoad: !isCurrentlyRecording,
       canExport: hasRecording,
-      canReset: this.hasContent()
+      canReset: this.hasContent(),
     };
 
     window.menu.sendState(menuState);
@@ -718,7 +733,8 @@ class NoteTimestamperApp {
 
           // Calculate dimensions from current image
           const width = parseInt(img.style.width) || img.width;
-          const height = img.style.height === 'auto' ? null : (parseInt(img.style.height) || img.height);
+          const height =
+            img.style.height === 'auto' ? null : parseInt(img.style.height) || img.height;
 
           // Delete old image and insert updated one
           this.quill.deleteText(index, 1, 'user');
@@ -727,7 +743,7 @@ class NoteTimestamperApp {
             src: result.dataUrl,
             width: width,
             height: height,
-            fabricJSON: result.fabricJSON
+            fabricJSON: result.fabricJSON,
           };
 
           this.quill.insertEmbed(index, 'image', imageValue, 'user');
@@ -748,8 +764,10 @@ class NoteTimestamperApp {
    * Handle keyboard shortcuts
    */
   onKeyboardShortcut(e) {
-    const want = (isMac() ? e.metaKey : e.ctrlKey) && e.altKey &&
-                 (e.code === 'KeyT' || e.key === 't' || e.key === 'T');
+    const want =
+      (isMac() ? e.metaKey : e.ctrlKey) &&
+      e.altKey &&
+      (e.code === 'KeyT' || e.key === 't' || e.key === 'T');
     if (!want) return;
 
     e.preventDefault();
@@ -763,7 +781,11 @@ class NoteTimestamperApp {
    */
   handlePlayerPlay() {
     // Only start playback timer if we have loaded media (not live recording)
-    if (this.elements.player.src && !this.elements.player.srcObject && !recordingSystem.isRecording()) {
+    if (
+      this.elements.player.src &&
+      !this.elements.player.srcObject &&
+      !recordingSystem.isRecording()
+    ) {
       timerSystem.startPlaybackTimer();
     }
   }
@@ -773,7 +795,11 @@ class NoteTimestamperApp {
    */
   handlePlayerPause() {
     // Pause the playback timer when video is paused
-    if (this.elements.player.src && !this.elements.player.srcObject && !recordingSystem.isRecording()) {
+    if (
+      this.elements.player.src &&
+      !this.elements.player.srcObject &&
+      !recordingSystem.isRecording()
+    ) {
       timerSystem.stopPlaybackTimer();
       // Update display one final time with current position
       timerSystem.updateRecordingTimer();
@@ -789,7 +815,9 @@ class NoteTimestamperApp {
    */
   async handleStartRecording() {
     if (recordingSystem.getRecordedBlob()) {
-      const sure = window.confirm("Starting a new recording will overwrite the existing one.\n\nContinue?");
+      const sure = window.confirm(
+        'Starting a new recording will overwrite the existing one.\n\nContinue?'
+      );
       if (!sure) return;
 
       // Clear existing recording
@@ -801,8 +829,8 @@ class NoteTimestamperApp {
       timerSystem.stopPlaybackTimer();
     }
 
-  // Immediately disable resolution dropdown and update recording controls
-  this.updateRecordingControlsStateForRecording(true);
+    // Immediately disable resolution dropdown and update recording controls
+    this.updateRecordingControlsStateForRecording(true);
 
     try {
       await recordingSystem.startRecording();
@@ -812,14 +840,16 @@ class NoteTimestamperApp {
       this.updateRecordingControlsStateForRecording(false);
 
       // Display user-facing error message
-      this.elements.status.textContent = error.message || 'Recording failed to start. Please check device permissions and try again.';
+      this.elements.status.textContent =
+        error.message ||
+        'Recording failed to start. Please check device permissions and try again.';
     }
   }
 
   /**
    * Handle stop recording button click
    */
-    handleStopRecording() {
+  handleStopRecording() {
     const isRecording = recordingSystem.isRecording();
     if (!isRecording) return;
 
@@ -925,7 +955,11 @@ class NoteTimestamperApp {
     if (recordedBlob) {
       // Ask main process to create a temp file for the media
       const tmp = await errorBoundary.wrapIPC(
-        () => window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId }),
+        () =>
+          window.api.createTempMedia({
+            fileName: `media.${recordingSystem.getMediaExtension()}`,
+            sessionId,
+          }),
         { operationName: 'create temp media file', context: { sessionId } }
       );
       if (!tmp || !tmp.ok) {
@@ -945,15 +979,15 @@ class NoteTimestamperApp {
           const { done, value } = await reader.read();
           if (done) break;
           // value is a Uint8Array — send to main
-          await errorBoundary.wrapIPC(
-            () => window.api.appendTempMedia(id, value, sessionId),
-            { operationName: 'append media chunk', context: { sessionId, chunkSize: value.length } }
-          );
+          await errorBoundary.wrapIPC(() => window.api.appendTempMedia(id, value, sessionId), {
+            operationName: 'append media chunk',
+            context: { sessionId, chunkSize: value.length },
+          });
         }
-        const closed = await errorBoundary.wrapIPC(
-          () => window.api.closeTempMedia(id),
-          { operationName: 'finalize temp media file', context: { sessionId } }
-        );
+        const closed = await errorBoundary.wrapIPC(() => window.api.closeTempMedia(id), {
+          operationName: 'finalize temp media file',
+          context: { sessionId },
+        });
         if (!closed || !closed.ok) {
           this.elements.status.textContent = 'Failed to finalize temp media file.';
           if (this.elements.saveProgressModal) {
@@ -978,14 +1012,16 @@ class NoteTimestamperApp {
       noteHtml,
       mediaFilePath,
       mediaSuggestedExt: recordingSystem.getMediaExtension(),
-      sessionId
+      sessionId,
     });
 
     // Hide progress modal (it should already be hidden on completion, but ensure it)
     if (this.elements.saveProgressModal) {
       this.elements.saveProgressModal.classList.remove('visible');
     }
-    this.elements.status.textContent = result.ok ? `Saved → ${result.path || result.dir}` : 'Save canceled';
+    this.elements.status.textContent = result.ok
+      ? `Saved → ${result.path || result.dir}`
+      : 'Save canceled';
   }
 
   /**
@@ -1011,7 +1047,11 @@ class NoteTimestamperApp {
 
     if (recordedBlob) {
       const tmp = await errorBoundary.wrapIPC(
-        () => window.api.createTempMedia({ fileName: `media.${recordingSystem.getMediaExtension()}`, sessionId }),
+        () =>
+          window.api.createTempMedia({
+            fileName: `media.${recordingSystem.getMediaExtension()}`,
+            sessionId,
+          }),
         { operationName: 'create temp media file', context: { sessionId } }
       );
       if (!tmp || !tmp.ok) {
@@ -1029,15 +1069,15 @@ class NoteTimestamperApp {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          await errorBoundary.wrapIPC(
-            () => window.api.appendTempMedia(id, value, sessionId),
-            { operationName: 'append media chunk', context: { sessionId, chunkSize: value.length } }
-          );
+          await errorBoundary.wrapIPC(() => window.api.appendTempMedia(id, value, sessionId), {
+            operationName: 'append media chunk',
+            context: { sessionId, chunkSize: value.length },
+          });
         }
-        const closed = await errorBoundary.wrapIPC(
-          () => window.api.closeTempMedia(id),
-          { operationName: 'finalize temp media file', context: { sessionId } }
-        );
+        const closed = await errorBoundary.wrapIPC(() => window.api.closeTempMedia(id), {
+          operationName: 'finalize temp media file',
+          context: { sessionId },
+        });
         if (!closed || !closed.ok) {
           this.elements.status.textContent = 'Failed to finalize temp media file.';
           if (this.elements.saveProgressModal) {
@@ -1063,24 +1103,25 @@ class NoteTimestamperApp {
       mediaFilePath,
       mediaSuggestedExt: recordingSystem.getMediaExtension(),
       forceSaveAs: true,
-      sessionId
+      sessionId,
     });
 
     // Hide progress modal
     if (this.elements.saveProgressModal) {
       this.elements.saveProgressModal.classList.remove('visible');
     }
-    this.elements.status.textContent = result.ok ? `Saved → ${result.path || result.dir}` : 'Save canceled';
+    this.elements.status.textContent = result.ok
+      ? `Saved → ${result.path || result.dir}`
+      : 'Save canceled';
   }
 
   /**
    * Load existing session
    */
   async handleLoadSession() {
-    const result = await errorBoundary.wrapIPC(
-      () => loadSessionWithCodes(),
-      { operationName: 'load session' }
-    );
+    const result = await errorBoundary.wrapIPC(() => loadSessionWithCodes(), {
+      operationName: 'load session',
+    });
     if (!result || !result.ok) return;
 
     // Load notes
@@ -1104,7 +1145,7 @@ class NoteTimestamperApp {
    */
   async handleResetSession() {
     if (this.hasContent()) {
-      const wantSave = window.confirm('Save before resetting?\n\nOK = Save, Cancel = Don\'t Save');
+      const wantSave = window.confirm("Save before resetting?\n\nOK = Save, Cancel = Don't Save");
       if (wantSave) {
         await this.handleSaveSession();
         // TODO: Check if save was successful before proceeding
@@ -1144,7 +1185,9 @@ class NoteTimestamperApp {
   async exportAsEmbeddedHtml() {
     try {
       const result = await exportSystem.exportAsEmbeddedHtml();
-      this.elements.status.textContent = result.ok ? `Exported → ${result.path}` : 'Export canceled';
+      this.elements.status.textContent = result.ok
+        ? `Exported → ${result.path}`
+        : 'Export canceled';
     } catch (error) {
       console.error('Export failed:', error);
       this.elements.status.textContent = 'Export failed: ' + error.message;
@@ -1201,10 +1244,9 @@ class NoteTimestamperApp {
    * Handle image upload from file picker
    */
   async handleImageUpload() {
-    const result = await errorBoundary.wrapIPC(
-      () => window.api.pickImage(),
-      { operationName: 'pick image' }
-    );
+    const result = await errorBoundary.wrapIPC(() => window.api.pickImage(), {
+      operationName: 'pick image',
+    });
     if (result && result.ok) {
       await imageManager.insertDataUrlImage(result.dataUrl);
     }
@@ -1252,7 +1294,10 @@ class NoteTimestamperApp {
    * Focus editor if not already focused
    */
   focusEditorEndIfNeeded() {
-    const inEditor = document.activeElement && document.activeElement.closest && document.activeElement.closest('.ql-editor');
+    const inEditor =
+      document.activeElement &&
+      document.activeElement.closest &&
+      document.activeElement.closest('.ql-editor');
     if (!inEditor) {
       this.quill.focus();
       this.quill.setSelection(this.quill.getLength(), 0);
@@ -1325,9 +1370,11 @@ class NoteTimestamperApp {
     if (resSelect) {
       const shouldDisable = isRecording || isAudioOnly;
       resSelect.disabled = shouldDisable;
-      resSelect.title = isRecording ?
-        'Stop recording first to change resolution' :
-        (isAudioOnly ? 'Resolution not applicable for audio-only recording' : 'Select recording resolution');
+      resSelect.title = isRecording
+        ? 'Stop recording first to change resolution'
+        : isAudioOnly
+          ? 'Resolution not applicable for audio-only recording'
+          : 'Select recording resolution';
 
       // Update our reference in case it was null before
       this.elements.resSelect = resSelect;
@@ -1338,9 +1385,11 @@ class NoteTimestamperApp {
     if (fpsSelect) {
       const shouldDisable = isRecording || isAudioOnly;
       fpsSelect.disabled = shouldDisable;
-      fpsSelect.title = isRecording ?
-        'Stop recording first to change framerate' :
-        (isAudioOnly ? 'Framerate not applicable for audio-only recording' : 'Select recording framerate');
+      fpsSelect.title = isRecording
+        ? 'Stop recording first to change framerate'
+        : isAudioOnly
+          ? 'Framerate not applicable for audio-only recording'
+          : 'Select recording framerate';
 
       // Update our reference in case it was null before
       this.elements.fpsSelect = fpsSelect;
@@ -1356,9 +1405,9 @@ class NoteTimestamperApp {
 
     if (this.elements.audioOnly) {
       this.elements.audioOnly.disabled = isRecording;
-      this.elements.audioOnly.title = isRecording ?
-        'Stop recording first to change audio-only mode' :
-        'Record audio only (no video)';
+      this.elements.audioOnly.title = isRecording
+        ? 'Stop recording first to change audio-only mode'
+        : 'Record audio only (no video)';
     }
 
     // Update device selection state
@@ -1380,25 +1429,29 @@ class NoteTimestamperApp {
     if (resSelect) {
       const shouldDisable = isRecording || isAudioOnly;
       resSelect.disabled = shouldDisable;
-      resSelect.title = isRecording ?
-        'Stop recording first to change resolution' :
-        (isAudioOnly ? 'Resolution not applicable for audio-only recording' : 'Select recording resolution');
+      resSelect.title = isRecording
+        ? 'Stop recording first to change resolution'
+        : isAudioOnly
+          ? 'Resolution not applicable for audio-only recording'
+          : 'Select recording resolution';
     }
 
     if (fpsSelect) {
       const shouldDisable = isRecording || isAudioOnly;
       fpsSelect.disabled = shouldDisable;
-      fpsSelect.title = isRecording ?
-        'Stop recording first to change framerate' :
-        (isAudioOnly ? 'Framerate not applicable for audio-only recording' : 'Select recording framerate');
+      fpsSelect.title = isRecording
+        ? 'Stop recording first to change framerate'
+        : isAudioOnly
+          ? 'Framerate not applicable for audio-only recording'
+          : 'Select recording framerate';
     }
 
     // Force audio-only checkbox state
     if (this.elements.audioOnly) {
       this.elements.audioOnly.disabled = isRecording;
-      this.elements.audioOnly.title = isRecording ?
-        'Stop recording first to change audio-only mode' :
-        'Record audio only (no video)';
+      this.elements.audioOnly.title = isRecording
+        ? 'Stop recording first to change audio-only mode'
+        : 'Record audio only (no video)';
     }
 
     // Also update device selection state
@@ -1432,7 +1485,8 @@ class NoteTimestamperApp {
 
       // Update status bar with generic error message
       if (this.elements.status) {
-        const message = event.reason?.message || String(event.reason) || 'An unexpected error occurred';
+        const message =
+          event.reason?.message || String(event.reason) || 'An unexpected error occurred';
         this.elements.status.textContent = `Error: ${message}`;
         this.elements.status.style.color = '#d32f2f';
       }
@@ -1448,7 +1502,7 @@ const app = new NoteTimestamperApp();
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  app.init().catch(error => {
+  app.init().catch((error) => {
     console.error('Failed to initialize application:', error);
   });
 });

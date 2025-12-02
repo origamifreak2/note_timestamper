@@ -112,8 +112,8 @@ export class ExportSystem {
 
     // Find all images with fabric data and clean them
     const editableImages = tempDiv.querySelectorAll('img[data-fabric-json]');
-    editableImages.forEach(node => {
-      const img = /** @type {HTMLImageElement} */(node);
+    editableImages.forEach((node) => {
+      const img = /** @type {HTMLImageElement} */ (node);
       img.removeAttribute('data-fabric-json');
       img.classList.remove('editable-drawing');
       img.removeAttribute('title');
@@ -195,7 +195,7 @@ export class ExportSystem {
       html: finalHtml,
       mediaBuffer,
       mediaExt: this.recordingSystem.getMediaExtension(),
-      images
+      images,
     });
   }
 
@@ -219,30 +219,33 @@ export class ExportSystem {
     let imageCounter = 1;
 
     // Replace base64 data URLs with file references
-    const updatedHtml = html.replace(/src="data:image\/([^;]+);base64,([^"]+)"/g, (match, mimeExtension, base64Data) => {
-      // Convert MIME type to file extension
-      // Handle special cases like svg+xml -> svg
-      let fileExtension = mimeExtension;
-      if (mimeExtension === 'jpeg') {
-        fileExtension = 'jpg';
-      } else if (mimeExtension === 'svg+xml') {
-        fileExtension = 'svg';
+    const updatedHtml = html.replace(
+      /src="data:image\/([^;]+);base64,([^"]+)"/g,
+      (match, mimeExtension, base64Data) => {
+        // Convert MIME type to file extension
+        // Handle special cases like svg+xml -> svg
+        let fileExtension = mimeExtension;
+        if (mimeExtension === 'jpeg') {
+          fileExtension = 'jpg';
+        } else if (mimeExtension === 'svg+xml') {
+          fileExtension = 'svg';
+        }
+
+        const imageFileName = `image_${imageCounter.toString().padStart(3, '0')}.${fileExtension}`;
+
+        // Store image data for saving
+        images.push({
+          fileName: imageFileName,
+          base64Data: base64Data,
+          mimeType: `image/${mimeExtension}`,
+        });
+
+        imageCounter++;
+
+        // Replace with relative file reference pointing to images subfolder
+        return `src="${folderPrefix}/${imageFileName}"`;
       }
-
-      const imageFileName = `image_${imageCounter.toString().padStart(3, '0')}.${fileExtension}`;
-
-      // Store image data for saving
-      images.push({
-        fileName: imageFileName,
-        base64Data: base64Data,
-        mimeType: `image/${mimeExtension}`
-      });
-
-      imageCounter++;
-
-      // Replace with relative file reference pointing to images subfolder
-      return `src="${folderPrefix}/${imageFileName}"`;
-    });
+    );
 
     return { html: updatedHtml, images };
   }

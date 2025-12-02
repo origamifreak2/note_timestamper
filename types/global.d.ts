@@ -240,11 +240,23 @@ export interface TempMediaStream {
 export interface WindowAPI {
   // Session operations
   saveSession(payload: SaveSessionPayload): Promise<{ ok: boolean; path?: string; error?: string }>;
-  loadSession(): Promise<{ ok: boolean; notesHtml?: string; mediaArrayBuffer?: ArrayBuffer; mediaFile?: string | null; error?: string }>;
+  loadSession(): Promise<{
+    ok: boolean;
+    notesHtml?: string;
+    mediaArrayBuffer?: ArrayBuffer;
+    mediaFile?: string | null;
+    error?: string;
+  }>;
 
   // Temp media streaming
-  createTempMedia(opts: { fileName: string; sessionId: string }): Promise<{ ok: boolean; id?: string; path?: string; error?: string }>;
-  appendTempMedia(id: string, chunk: Uint8Array): Promise<{ ok: boolean; bytesWritten?: number; error?: string }>;
+  createTempMedia(opts: {
+    fileName: string;
+    sessionId: string;
+  }): Promise<{ ok: boolean; id?: string; path?: string; error?: string }>;
+  appendTempMedia(
+    id: string,
+    chunk: Uint8Array
+  ): Promise<{ ok: boolean; bytesWritten?: number; error?: string }>;
   closeTempMedia(id: string): Promise<{ ok: boolean; path?: string; error?: string }>;
 
   // Export operations
@@ -350,9 +362,7 @@ export interface ErrorLogEntry {
 /**
  * Async operation result wrapper
  */
-export type Result<T, E = Error> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
 /**
  * Callback function type
@@ -363,3 +373,20 @@ export type Callback<T = void> = (data: T) => void;
  * Cleanup function type
  */
 export type CleanupFunction = () => void;
+
+// ============================================================================
+// Global Library Types
+// ============================================================================
+
+/**
+ * Quill.js editor (loaded globally via script tag)
+ */
+declare global {
+  const Quill: any;
+  const fabric: any;
+
+  interface Window {
+    Quill: any;
+    fabric: any;
+  }
+}

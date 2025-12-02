@@ -103,7 +103,7 @@ export class ImageManager {
         src: dataUrl,
         width: dimensions.width,
         height: dimensions.height,
-        fabricJSON: fabricJSON
+        fabricJSON: fabricJSON,
       };
 
       // Insert image at cursor position with fabric data
@@ -116,7 +116,12 @@ export class ImageManager {
 
       // Fallback: insert without dimensions
       const range = this.quill.getSelection(true) || { index: this.quill.getLength(), length: 0 };
-      this.quill.insertEmbed(range.index, 'image', { src: dataUrl, fabricJSON: fabricJSON }, 'user');
+      this.quill.insertEmbed(
+        range.index,
+        'image',
+        { src: dataUrl, fabricJSON: fabricJSON },
+        'user'
+      );
       this.quill.setSelection(range.index + 1, 0, 'silent');
     }
   }
@@ -179,7 +184,7 @@ export class ImageManager {
    */
   async handleFiles(files) {
     // Find first image file in the list
-    const file = [...files].find(f => /^image\//.test(f.type));
+    const file = Array.from(files).find((f) => /^image\//.test(f.type));
     if (!file) return;
 
     // Size limit check (15MB)
@@ -190,7 +195,7 @@ export class ImageManager {
 
     // Convert file to data URL and insert
     const r = new FileReader();
-    r.onload = async () => await this.insertDataUrlImage(r.result);
+    r.onload = async () => await this.insertDataUrlImage(/** @type {string} */ (r.result));
     r.readAsDataURL(file);
   }
 
@@ -214,7 +219,7 @@ export class ImageManager {
     editorRoot.addEventListener('drop', async (e) => {
       // Handle dropped image files
       if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
-      const hasImg = [...e.dataTransfer.files].some(f => /^image\//.test(f.type));
+      const hasImg = [...e.dataTransfer.files].some((f) => /^image\//.test(f.type));
       if (!hasImg) return;
 
       e.preventDefault();
@@ -232,7 +237,7 @@ export class ImageManager {
     editorRoot.addEventListener('dragover', (e) => {
       // Allow dropping if dragging images
       const items = e.dataTransfer && e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-      if (items.some(i => i.type && i.type.startsWith('image/'))) {
+      if (items.some((i) => i.type && i.type.startsWith('image/'))) {
         e.preventDefault();
       }
     });
@@ -255,7 +260,9 @@ export class ImageManager {
     this.quill.root.addEventListener('paste', async (e) => {
       // Handle pasted images from clipboard
       const items = e.clipboardData && e.clipboardData.items ? [...e.clipboardData.items] : [];
-      const file = items.map(i => i.getAsFile && i.getAsFile()).find(f => f && /^image\//.test(f.type));
+      const file = items
+        .map((i) => i.getAsFile && i.getAsFile())
+        .find((f) => f && /^image\//.test(f.type));
       if (file) {
         e.preventDefault();
         await this.handleFiles([file]);
@@ -283,7 +290,7 @@ export class ImageManager {
     try {
       // Get the current dimensions from the image
       const width = parseInt(img.style.width) || img.width;
-      const height = img.style.height === 'auto' ? null : (parseInt(img.style.height) || img.height);
+      const height = img.style.height === 'auto' ? null : parseInt(img.style.height) || img.height;
 
       // Find the image's position in the Quill editor
       const blot = Quill.find(img);
@@ -304,7 +311,7 @@ export class ImageManager {
           src: src,
           width: width,
           height: height,
-          fabricJSON: fabricJSON
+          fabricJSON: fabricJSON,
         };
       } else {
         // Use string format for regular images

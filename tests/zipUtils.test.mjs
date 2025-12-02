@@ -4,7 +4,7 @@ import { ERROR_CODES } from '../src/config.js';
 // Mock window.api before importing zipUtils
 const mockApi = {
   loadSession: vi.fn(),
-  saveSession: vi.fn()
+  saveSession: vi.fn(),
 };
 
 // Set global window.api
@@ -40,7 +40,7 @@ describe('zipUtils', () => {
 
       await expect(loadSessionWithCodes()).rejects.toMatchObject({
         code: ERROR_CODES.FILE_SYSTEM_ERROR,
-        message: 'File not readable'
+        message: 'File not readable',
       });
     });
 
@@ -49,14 +49,18 @@ describe('zipUtils', () => {
 
       await expect(loadSessionWithCodes()).rejects.toMatchObject({
         code: ERROR_CODES.FILE_SYSTEM_ERROR,
-        message: 'No response from session load'
+        message: 'No response from session load',
       });
     });
   });
 
   describe('saveSessionWithCodes', () => {
     it('returns result on successful save', async () => {
-      const payload = { noteHtml: '<p>test</p>', mediaFilePath: '/tmp/recording.webm', sessionId: 'abc' };
+      const payload = {
+        noteHtml: '<p>test</p>',
+        mediaFilePath: '/tmp/recording.webm',
+        sessionId: 'abc',
+      };
       const saveResult = { ok: true, path: '/saved/session.notepack' };
       mockApi.saveSession.mockResolvedValue(saveResult);
 
@@ -77,7 +81,7 @@ describe('zipUtils', () => {
 
       await expect(saveSessionWithCodes({ noteHtml: '<p>x</p>' })).rejects.toMatchObject({
         code: ERROR_CODES.FILE_SYSTEM_ERROR,
-        message: 'Disk full'
+        message: 'Disk full',
       });
     });
 
@@ -86,7 +90,7 @@ describe('zipUtils', () => {
 
       await expect(saveSessionWithCodes({ noteHtml: '<p>x</p>' })).rejects.toMatchObject({
         code: ERROR_CODES.FILE_SYSTEM_ERROR,
-        message: 'No response from session save'
+        message: 'No response from session save',
       });
     });
   });

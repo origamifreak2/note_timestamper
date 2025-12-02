@@ -1,4 +1,3 @@
-
 /**
  * @file Camera capture functionality
  * Handles capturing photos from device camera while recording
@@ -106,12 +105,12 @@ export class CameraSystem {
         cameraSelect.value = initialCameraId;
       }
 
-      const videoConstraints = initialCameraId ?
-        { deviceId: { exact: initialCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } } :
-        { width: { ideal: 1280 }, height: { ideal: 720 } };
+      const videoConstraints = initialCameraId
+        ? { deviceId: { exact: initialCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        : { width: { ideal: 1280 }, height: { ideal: 720 } };
 
       cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints
+        video: videoConstraints,
       });
 
       videoElement.srcObject = cameraStream;
@@ -148,7 +147,6 @@ export class CameraSystem {
           resolve(null);
         });
       });
-
     } catch (error) {
       console.error('Camera access failed:', error);
       this.cleanup(cameraStream, cameraModal);
@@ -199,7 +197,7 @@ export class CameraSystem {
 
     // Build camera options HTML
     let cameraOptionsHtml = '<option value="default">System Default</option>';
-    this.availableCameras.forEach(camera => {
+    this.availableCameras.forEach((camera) => {
       const label = camera.label || `Camera (${camera.deviceId.slice(0, 6)}…)`;
       cameraOptionsHtml += `<option value="${camera.deviceId}">${label}</option>`;
     });
@@ -305,7 +303,7 @@ export class CameraSystem {
   async loadAvailableCameras() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      this.availableCameras = devices.filter(device => device.kind === 'videoinput');
+      this.availableCameras = devices.filter((device) => device.kind === 'videoinput');
     } catch (error) {
       console.error('Failed to enumerate cameras:', error);
       this.availableCameras = [];
@@ -320,13 +318,20 @@ export class CameraSystem {
       // Stop current stream
       if (videoElement.srcObject) {
         const currentStream = videoElement.srcObject;
-        currentStream.getTracks().forEach(track => track.stop());
+        currentStream.getTracks().forEach((track) => track.stop());
       }
 
       // Get new camera stream
-      const constraints = cameraId && cameraId !== 'default' ?
-        { video: { deviceId: { exact: cameraId }, width: { ideal: 1280 }, height: { ideal: 720 } } } :
-        { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+      const constraints =
+        cameraId && cameraId !== 'default'
+          ? {
+              video: {
+                deviceId: { exact: cameraId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+            }
+          : { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
 
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       videoElement.srcObject = newStream;
@@ -346,7 +351,7 @@ export class CameraSystem {
     // Stop all tracks from the current video stream
     if (videoElement && videoElement.srcObject) {
       const stream = videoElement.srcObject;
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
     }
 
     if (cameraModal && cameraModal.parentNode) {
@@ -360,7 +365,7 @@ export class CameraSystem {
    */
   cleanup(cameraStream, cameraModal) {
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream.getTracks().forEach((track) => track.stop());
     }
     if (cameraModal && cameraModal.parentNode) {
       cameraModal.parentNode.removeChild(cameraModal);

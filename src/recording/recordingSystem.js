@@ -141,35 +141,32 @@ export class RecordingSystem {
 
       // Wrap device access with error boundary for retry capability
       // Use mixerSystem.deviceManager to avoid circular dependency
-      await errorBoundary.wrapDeviceAccess(
-        () => mixerSystem.createMixerStream(),
-        {
-          operationName: 'device access for recording',
-          deviceManager: mixerSystem.deviceManager,
-          context: {
-            micId: mixerSystem.deviceManager?.getSelectedMicId(),
-            camId: mixerSystem.deviceManager?.getSelectedCamId(),
-            isAudioOnly: mixerSystem.deviceManager?.isAudioOnly()
-          }
-        }
-      );
+      await errorBoundary.wrapDeviceAccess(() => mixerSystem.createMixerStream(), {
+        operationName: 'device access for recording',
+        deviceManager: mixerSystem.deviceManager,
+        context: {
+          micId: mixerSystem.deviceManager?.getSelectedMicId(),
+          camId: mixerSystem.deviceManager?.getSelectedCamId(),
+          isAudioOnly: mixerSystem.deviceManager?.isAudioOnly(),
+        },
+      });
 
       // Set up preview in the player element
       const mixer = mixerSystem.getMixer();
       this.mediaStream = mixer.stream;
       this.player.srcObject = this.mediaStream;
-      this.player.muted = true;  // Prevent feedback during recording
+      this.player.muted = true; // Prevent feedback during recording
       await this.player.play();
 
       // =============================================================================
       // CODEC SELECTION - Try best quality formats first
       // =============================================================================
       const mimeCandidates = [
-        'video/webm;codecs=vp9,opus',   // Best quality video + audio
-        'video/webm;codecs=vp8,opus',   // Good compatibility video + audio
-        'video/webm',                   // Basic video format
-        'audio/webm;codecs=opus',       // High quality audio-only
-        'audio/webm'                    // Basic audio-only
+        'video/webm;codecs=vp9,opus', // Best quality video + audio
+        'video/webm;codecs=vp8,opus', // Good compatibility video + audio
+        'video/webm', // Basic video format
+        'audio/webm;codecs=opus', // High quality audio-only
+        'audio/webm', // Basic audio-only
       ];
 
       let mime = '';
@@ -198,7 +195,11 @@ export class RecordingSystem {
       try {
         this.mediaRecorder = new MediaRecorder(this.mediaStream, recordingOptions);
       } catch (e) {
-        throw createError(ERROR_CODES.RECORDING_START_FAILED, 'Failed to start recording. Please check codec support and device access.', e);
+        throw createError(
+          ERROR_CODES.RECORDING_START_FAILED,
+          'Failed to start recording. Please check codec support and device access.',
+          e
+        );
       }
 
       // Set up timer system with recorder reference
@@ -227,14 +228,17 @@ export class RecordingSystem {
         console.error('MediaRecorder error:', errObj);
         // If codec error occurs, surface a coded error via status
         const msg = (errObj && errObj.message) || String(errObj);
-        const code = msg && msg.toLowerCase().includes('codec') ? ERROR_CODES.CODEC_UNSUPPORTED : ERROR_CODES.RECORDING_START_FAILED;
+        const code =
+          msg && msg.toLowerCase().includes('codec')
+            ? ERROR_CODES.CODEC_UNSUPPORTED
+            : ERROR_CODES.RECORDING_START_FAILED;
         this.statusEl.textContent = 'Error: ' + (msg || 'Recording error');
         // Avoid throwing from event handler; record code for boundary logs
         // no-op: boundary maps codes on thrown errors elsewhere
       };
 
-  // Update UI state BEFORE starting MediaRecorder to prevent race conditions
-  this.updateUIState('recording');
+      // Update UI state BEFORE starting MediaRecorder to prevent race conditions
+      this.updateUIState('recording');
 
       // Start recording and update UI
       this.mediaRecorder.start(); // No timeslice - get complete blob on stop
@@ -254,10 +258,9 @@ export class RecordingSystem {
       }
 
       this.statusEl.textContent = 'Recording…';
-
     } catch (err) {
       console.error(err);
-      const msg = (/** @type {any} */(err)).message || String(err);
+      const msg = /** @type {any} */ (err).message || String(err);
       this.statusEl.textContent = 'Error: ' + msg;
     }
   }
@@ -320,13 +323,19 @@ export class RecordingSystem {
 
     // If recording is paused, resume it briefly to ensure proper data flushing
     if (this.mediaRecorder.state === 'paused') {
-      try { this.mediaRecorder.requestData(); } catch { }  // Request any buffered data
-      try { this.mediaRecorder.resume(); } catch { }       // Resume for clean stop
+      try {
+        this.mediaRecorder.requestData();
+      } catch {} // Request any buffered data
+      try {
+        this.mediaRecorder.resume();
+      } catch {} // Resume for clean stop
     }
 
     // Request final data chunk before stopping
-    try { this.mediaRecorder.requestData(); } catch { }
-    await sleep(100);  // Give MediaRecorder time to process the request
+    try {
+      this.mediaRecorder.requestData();
+    } catch {}
+    await sleep(100); // Give MediaRecorder time to process the request
 
     // =============================================================================
     // ROBUST STOP WITH TIMEOUT PROTECTION
@@ -337,7 +346,10 @@ export class RecordingSystem {
 
     await new Promise((resolve) => {
       // Failsafe: resolve after 3 seconds regardless of state
-      const hardTimeout = setTimeout(() => { cleanup(); resolve(); }, 3000);
+      const hardTimeout = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, 3000);
 
       // Listen for final data chunks
       dataListener = (e) => {
@@ -364,7 +376,12 @@ export class RecordingSystem {
       };
 
       // Actually stop the recorder (may throw if already stopped)
-      try { this.mediaRecorder.stop(); } catch { cleanup(); resolve(); }
+      try {
+        this.mediaRecorder.stop();
+      } catch {
+        cleanup();
+        resolve();
+      }
     });
 
     // =============================================================================
@@ -372,7 +389,7 @@ export class RecordingSystem {
     // =============================================================================
 
     // Stop all media tracks and clean up mixer
-    if (this.mediaStream) this.mediaStream.getTracks().forEach(t => t.stop());
+    if (this.mediaStream) this.mediaStream.getTracks().forEach((t) => t.stop());
     mixerSystem.destroy();
 
     // Finalize the recording if stop event didn't fire
@@ -405,7 +422,10 @@ export class RecordingSystem {
    */
   finalizePreview() {
     // Ensure the last data chunk is included
-    if (this.lastDataChunk && (!this.chunks.length || this.chunks[this.chunks.length - 1] !== this.lastDataChunk)) {
+    if (
+      this.lastDataChunk &&
+      (!this.chunks.length || this.chunks[this.chunks.length - 1] !== this.lastDataChunk)
+    ) {
       this.chunks.push(this.lastDataChunk);
     }
 
@@ -417,14 +437,16 @@ export class RecordingSystem {
 
     if (this.chunks.length) {
       // Combine all chunks into a single blob
-      this.recordedBlob = new Blob(this.chunks, { type: (this.chunks[0] && this.chunks[0].type) || 'video/webm' });
+      this.recordedBlob = new Blob(this.chunks, {
+        type: (this.chunks[0] && this.chunks[0].type) || 'video/webm',
+      });
       const url = URL.createObjectURL(this.recordedBlob);
       this.currentBlobUrl = url; // Track URL for later cleanup
 
       // Switch player from live preview to recorded playback
-      this.player.srcObject = null;  // Clear live stream
-      this.player.muted = false;     // Enable audio for playback
-      this.player.src = url;         // Set recorded media as source
+      this.player.srcObject = null; // Clear live stream
+      this.player.muted = false; // Enable audio for playback
+      this.player.src = url; // Set recorded media as source
 
       // Start playback timer to track video position for timestamps
       timerSystem.startPlaybackTimer();
@@ -522,11 +544,11 @@ export class RecordingSystem {
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.stop();
       }
-    } catch { }
+    } catch {}
 
     // Stop media stream
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach(t => t.stop());
+      this.mediaStream.getTracks().forEach((t) => t.stop());
       this.mediaStream = null;
     }
 

@@ -105,8 +105,8 @@ async function createWindow() {
       // Disable Node.js integration in renderer for security
       nodeIntegration: false,
       // Enable sandbox mode for additional security
-      sandbox: true
-    }
+      sandbox: true,
+    },
   });
 
   // Load the main HTML file into the window
@@ -139,8 +139,8 @@ function createApplicationMenu() {
         { role: 'hideOthers' },
         { role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' }
-      ]
+        { role: 'quit' },
+      ],
     });
   }
 
@@ -155,7 +155,7 @@ function createApplicationMenu() {
         enabled: false,
         click: () => {
           if (win) win.webContents.send('menu-action', 'save');
-        }
+        },
       },
       {
         label: 'Save As...',
@@ -164,7 +164,7 @@ function createApplicationMenu() {
         enabled: false,
         click: () => {
           if (win) win.webContents.send('menu-action', 'save-as');
-        }
+        },
       },
       { type: 'separator' },
       {
@@ -174,7 +174,7 @@ function createApplicationMenu() {
         enabled: true,
         click: () => {
           if (win) win.webContents.send('menu-action', 'load');
-        }
+        },
       },
       { type: 'separator' },
       {
@@ -188,7 +188,7 @@ function createApplicationMenu() {
             enabled: false,
             click: () => {
               if (win) win.webContents.send('menu-action', 'export-embedded');
-            }
+            },
           },
           {
             label: 'Export as HTML + Video',
@@ -196,9 +196,9 @@ function createApplicationMenu() {
             enabled: false,
             click: () => {
               if (win) win.webContents.send('menu-action', 'export-separate');
-            }
-          }
-        ]
+            },
+          },
+        ],
       },
       { type: 'separator' },
       {
@@ -208,19 +208,21 @@ function createApplicationMenu() {
         enabled: true,
         click: () => {
           if (win) win.webContents.send('menu-action', 'reset');
-        }
+        },
       },
       { type: 'separator' },
-      ...(process.platform === 'darwin' ? [] : [
-        {
-          label: 'Exit',
-          accelerator: 'CmdOrCtrl+Q',
-          click: () => {
-            app.quit();
-          }
-        }
-      ])
-    ]
+      ...(process.platform === 'darwin'
+        ? []
+        : [
+            {
+              label: 'Exit',
+              accelerator: 'CmdOrCtrl+Q',
+              click: () => {
+                app.quit();
+              },
+            },
+          ]),
+    ],
   });
 
   // Edit menu
@@ -235,8 +237,8 @@ function createApplicationMenu() {
       { role: 'paste' },
       ...(process.platform === 'darwin' ? [{ role: 'pasteAndMatchStyle' }] : []),
       { type: 'separator' },
-      { role: 'selectAll' }
-    ]
+      { role: 'selectAll' },
+    ],
   });
 
   // View menu
@@ -251,8 +253,8 @@ function createApplicationMenu() {
       { role: 'zoomIn' },
       { role: 'zoomOut' },
       { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
+      { role: 'togglefullscreen' },
+    ],
   });
 
   // Window menu (macOS only)
@@ -265,8 +267,8 @@ function createApplicationMenu() {
         { type: 'separator' },
         { role: 'front' },
         { type: 'separator' },
-        { role: 'windowMenu' }
-      ]
+        { role: 'windowMenu' },
+      ],
     });
   }
 
@@ -278,9 +280,9 @@ function createApplicationMenu() {
         label: 'About Note Timestamper',
         click: () => {
           // You can open an about dialog or window here if desired
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   appMenu = Menu.buildFromTemplate(template);
@@ -313,25 +315,29 @@ app.whenReady().then(() => {
   // Handle permission requests from renderer (e.g. getUserMedia)
   // SECURITY: Only allow media permissions from our trusted local file origin
   try {
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
-      if (permission === 'media') {
-        // Validate that the request is coming from our app's file:// origin
-        const requestingUrl = details.requestingUrl || '';
-        const isLocalFile = requestingUrl.startsWith('file://');
+    session.defaultSession.setPermissionRequestHandler(
+      (webContents, permission, callback, details) => {
+        if (permission === 'media') {
+          // Validate that the request is coming from our app's file:// origin
+          const requestingUrl = details.requestingUrl || '';
+          const isLocalFile = requestingUrl.startsWith('file://');
 
-        if (isLocalFile) {
-          // Allow camera/microphone access from our app
-          callback(true);
+          if (isLocalFile) {
+            // Allow camera/microphone access from our app
+            callback(true);
+          } else {
+            // Deny media access from untrusted origins
+            console.warn(
+              `Blocked media permission request from untrusted origin: ${requestingUrl}`
+            );
+            callback(false);
+          }
         } else {
-          // Deny media access from untrusted origins
-          console.warn(`Blocked media permission request from untrusted origin: ${requestingUrl}`);
+          // Default deny for other permissions
           callback(false);
         }
-      } else {
-        // Default deny for other permissions
-        callback(false);
       }
-    });
+    );
   } catch (err) {
     console.warn('Could not set permission request handler:', err);
   }
@@ -359,7 +365,14 @@ app.on('window-all-closed', () => {
  */
 ipcMain.handle('save-session', async (evt, payload) => {
   // Extract payload and normalize
-  const { noteHtml, mediaBuffer, mediaFilePath, mediaSuggestedExt = 'webm', forceSaveAs = false, sessionId = null } = payload || {};
+  const {
+    noteHtml,
+    mediaBuffer,
+    mediaFilePath,
+    mediaSuggestedExt = 'webm',
+    forceSaveAs = false,
+    sessionId = null,
+  } = payload || {};
 
   let outPath = null;
 
@@ -372,7 +385,7 @@ ipcMain.handle('save-session', async (evt, payload) => {
       title: 'Save Notes + Recording',
       defaultPath: 'session.notepack',
       buttonLabel: 'Save Session',
-      filters: [{ name: 'Note Pack', extensions: ['notepack'] }]
+      filters: [{ name: 'Note Pack', extensions: ['notepack'] }],
     });
 
     // Return early if user canceled
@@ -389,7 +402,7 @@ ipcMain.handle('save-session', async (evt, payload) => {
     reportSaveProgress(win, sessionId, {
       phase: 'creating-zip',
       percent: 5,
-      statusText: 'Creating zip file...'
+      statusText: 'Creating zip file...',
     });
   }
 
@@ -425,7 +438,7 @@ ipcMain.handle('save-session', async (evt, payload) => {
     createdAt: new Date().toISOString(),
     mediaFile: mediaEntryName,
     notesFile: 'notes.html',
-    version: 1
+    version: 1,
   };
   zipfile.addBuffer(Buffer.from(JSON.stringify(meta, null, 2), 'utf-8'), 'session.json');
 
@@ -443,28 +456,29 @@ ipcMain.handle('save-session', async (evt, payload) => {
           phase: 'writing-zip',
           percent: progressPercent,
           bytesWritten,
-          statusText: `Writing zip (${(bytesWritten / 1024 / 1024).toFixed(1)}MB)`
+          statusText: `Writing zip (${(bytesWritten / 1024 / 1024).toFixed(1)}MB)`,
         });
       }
     });
 
     // Track all data written to output stream
     const originalWrite = outStream.write.bind(outStream);
-    outStream.write = function(chunk, ...args) {
+    outStream.write = function (chunk, ...args) {
       if (chunk && chunk.length) {
         bytesWritten += chunk.length;
       }
       return originalWrite(chunk, ...args);
     };
 
-    zipfile.outputStream.pipe(outStream)
+    zipfile.outputStream
+      .pipe(outStream)
       .on('close', async () => {
         // Report completion before cleanup
         if (sessionId && win) {
           reportSaveProgress(win, sessionId, {
             phase: 'completed',
             percent: 100,
-            statusText: 'Save complete'
+            statusText: 'Save complete',
           });
         }
 
@@ -493,7 +507,7 @@ ipcMain.handle('create-temp-media', async (evt, { fileName = null, sessionId = n
   try {
     const os = await import('os');
     const tmpdir = os.tmpdir();
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const safeName = fileName ? path.basename(fileName) : `media-${id}`;
     const tmpPath = path.join(tmpdir, `${id}-${safeName}`);
     const ws = fsSync.createWriteStream(tmpPath);
@@ -503,7 +517,7 @@ ipcMain.handle('create-temp-media', async (evt, { fileName = null, sessionId = n
       ws,
       path: tmpPath,
       bytesWritten: 0,
-      sessionId: sessionId || id
+      sessionId: sessionId || id,
     };
     tempMediaStreams.set(id, streamData);
 
@@ -540,7 +554,7 @@ ipcMain.handle('append-temp-media', async (evt, id, chunk, sessionId = null) => 
               phase: 'streaming-media',
               percent: Math.min(95, Math.round((entry.bytesWritten / 100000000) * 100)),
               bytesWritten: entry.bytesWritten,
-              statusText: `Streaming media (${(entry.bytesWritten / 1024 / 1024).toFixed(1)}MB)`
+              statusText: `Streaming media (${(entry.bytesWritten / 1024 / 1024).toFixed(1)}MB)`,
             });
           }
         }
@@ -586,7 +600,7 @@ ipcMain.handle('load-session', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
       title: 'Open Session',
       properties: ['openFile'],
-      filters: [{ name: 'Note Pack', extensions: ['notepack'] }]
+      filters: [{ name: 'Note Pack', extensions: ['notepack'] }],
     });
 
     if (canceled || !filePaths?.[0]) {
@@ -707,7 +721,7 @@ ipcMain.handle('save-html', async (evt, { html }) => {
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     title: 'Export Single HTML',
     defaultPath: 'session.html',
-    filters: [{ name: 'HTML', extensions: ['html'] }]
+    filters: [{ name: 'HTML', extensions: ['html'] }],
   });
 
   // Return early if user canceled
@@ -724,65 +738,68 @@ ipcMain.handle('save-html', async (evt, { html }) => {
  * The HTML references the video file relatively for playback
  * Also saves any images as separate files if provided
  */
-ipcMain.handle('save-html-video', async (evt, { html, mediaBuffer, mediaExt = 'webm', images = [] }) => {
-  // Show save dialog for HTML export
-  const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: 'Export HTML + Video',
-    defaultPath: 'session.html',
-    filters: [{ name: 'HTML', extensions: ['html'] }]
-  });
+ipcMain.handle(
+  'save-html-video',
+  async (evt, { html, mediaBuffer, mediaExt = 'webm', images = [] }) => {
+    // Show save dialog for HTML export
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Export HTML + Video',
+      defaultPath: 'session.html',
+      filters: [{ name: 'HTML', extensions: ['html'] }],
+    });
 
-  // Return early if user canceled
-  if (canceled || !filePath) return { ok: false };
+    // Return early if user canceled
+    if (canceled || !filePath) return { ok: false };
 
-  // Determine paths for HTML and video files
-  const baseName = path.basename(filePath, '.html');
-  const baseDir = path.dirname(filePath);
-  const htmlPath = filePath.endsWith('.html') ? filePath : filePath + '.html';
+    // Determine paths for HTML and video files
+    const baseName = path.basename(filePath, '.html');
+    const baseDir = path.dirname(filePath);
+    const htmlPath = filePath.endsWith('.html') ? filePath : filePath + '.html';
 
-  // Create subfolders named after the HTML file for organization
-  const mediaDir = path.join(baseDir, `${baseName}_media`);
-  const imagesDir = path.join(baseDir, `${baseName}_images`);
+    // Create subfolders named after the HTML file for organization
+    const mediaDir = path.join(baseDir, `${baseName}_media`);
+    const imagesDir = path.join(baseDir, `${baseName}_images`);
 
-  // Create directories if they don't exist
-  await fs.mkdir(mediaDir, { recursive: true });
-  if (images.length > 0) {
-    await fs.mkdir(imagesDir, { recursive: true });
+    // Create directories if they don't exist
+    await fs.mkdir(mediaDir, { recursive: true });
+    if (images.length > 0) {
+      await fs.mkdir(imagesDir, { recursive: true });
+    }
+
+    const videoFileName = `${baseName}.${mediaExt}`;
+    const videoPath = path.join(mediaDir, videoFileName);
+    const videoRelativePath = `${baseName}_media/${videoFileName}`;
+
+    // Replace placeholders in HTML with actual paths
+    let finalHtml = html.replace('__VIDEO_FILE__', videoRelativePath || '');
+    finalHtml = finalHtml.replace(/__BASENAME___images/g, `${baseName}_images`);
+
+    // Write the HTML content to file
+    await fs.writeFile(htmlPath, finalHtml ?? '', 'utf-8');
+
+    // Write the video file if media exists
+    if (mediaBuffer) {
+      await fs.writeFile(videoPath, Buffer.from(mediaBuffer));
+    }
+
+    // Write image files if any exist
+    const savedImages = [];
+    for (const image of images) {
+      const imagePath = path.join(imagesDir, image.fileName);
+      const imageBuffer = Buffer.from(image.base64Data, 'base64');
+      await fs.writeFile(imagePath, imageBuffer);
+      savedImages.push({ fileName: image.fileName, path: imagePath });
+    }
+
+    return {
+      ok: true,
+      htmlPath,
+      videoPath: mediaBuffer ? videoPath : null,
+      videoFileName: videoRelativePath,
+      images: savedImages,
+    };
   }
-
-  const videoFileName = `${baseName}.${mediaExt}`;
-  const videoPath = path.join(mediaDir, videoFileName);
-  const videoRelativePath = `${baseName}_media/${videoFileName}`;
-
-  // Replace placeholders in HTML with actual paths
-  let finalHtml = html.replace('__VIDEO_FILE__', videoRelativePath || '');
-  finalHtml = finalHtml.replace(/__BASENAME___images/g, `${baseName}_images`);
-
-  // Write the HTML content to file
-  await fs.writeFile(htmlPath, finalHtml ?? '', 'utf-8');
-
-  // Write the video file if media exists
-  if (mediaBuffer) {
-    await fs.writeFile(videoPath, Buffer.from(mediaBuffer));
-  }
-
-  // Write image files if any exist
-  const savedImages = [];
-  for (const image of images) {
-    const imagePath = path.join(imagesDir, image.fileName);
-    const imageBuffer = Buffer.from(image.base64Data, 'base64');
-    await fs.writeFile(imagePath, imageBuffer);
-    savedImages.push({ fileName: image.fileName, path: imagePath });
-  }
-
-  return {
-    ok: true,
-    htmlPath,
-    videoPath: mediaBuffer ? videoPath : null,
-    videoFileName: videoRelativePath,
-    images: savedImages
-  };
-});
+);
 
 /**
  * IPC Handler: Pick an image file and convert it to a data URL
@@ -794,7 +811,7 @@ ipcMain.handle('pick-image', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
     title: 'Choose image',
     properties: ['openFile'],
-    filters: [{ name: 'Images', extensions: ['png','jpg','jpeg','gif','webp','svg'] }]
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }],
   });
 
   // Return early if user canceled or no file selected
@@ -813,7 +830,7 @@ ipcMain.handle('pick-image', async () => {
     jpeg: 'image/jpeg',
     svg: 'image/svg+xml',
     gif: 'image/gif',
-    webp: 'image/webp'
+    webp: 'image/webp',
   };
   const mimeType = mimeTypeMap[extension] || 'application/octet-stream';
 

@@ -24,6 +24,7 @@ types/global.d.ts           # TypeScript type definitions for all modules
 ```
 
 **Key Patterns**:
+
 - Each module exports a singleton instance (e.g., `timerSystem`, `deviceManager`)
 - All singletons are initialized in `src/main.js` with proper dependency injection
 - The main `NoteTimestamperApp` class acts as a coordinator that wires modules together
@@ -36,30 +37,35 @@ types/global.d.ts           # TypeScript type definitions for all modules
 A core innovation is a sophisticated mixing system that combines separate audio and video sources:
 
 ### Audio Path: Web Audio API
+
 ```javascript
 // Audio flow: Microphone → Web Audio Context → MediaStreamDestination
 micStream → createMediaStreamSource() → analyser → destination.stream
 ```
 
 **Key Components:**
+
 - **AudioContext**: Creates isolated audio processing environment
 - **MediaStreamSource**: Converts microphone input to Web Audio nodes
 - **AnalyserNode**: Provides real-time audio level monitoring
 - **MediaStreamDestination**: Outputs processed audio as MediaStream
 
 ### Video Path: Canvas Capture
+
 ```javascript
 // Video flow: Camera → HTMLVideoElement → Canvas → captureStream()
 cameraStream → videoElement → canvas.drawImage() → canvas.captureStream(fps)
 ```
 
 **Key Components:**
+
 - **HTMLVideoElement**: Plays camera stream for canvas drawing
 - **Canvas 2D Context**: Draws video frames at controlled framerate
 - **RequestAnimationFrame Loop**: Maintains consistent video rendering
 - **Canvas.captureStream()**: Outputs canvas as MediaStream at specified FPS
 
 ### Stream Combination
+
 ```javascript
 // Final stream: Web Audio output + Canvas output
 const finalStream = new MediaStream();
@@ -68,7 +74,9 @@ finalStream.addTrack(canvas.captureStream(fps).getVideoTracks()[0]);
 ```
 
 ### Live Device Switching
+
 The mixer enables seamless device switching during recording:
+
 - **Audio switching**: Reconnects Web Audio nodes without interrupting recording
 - **Video switching**: Updates canvas source video element dynamically
 - **Recording continuity**: MediaRecorder.requestData() ensures no gaps in output
@@ -78,6 +86,7 @@ The mixer enables seamless device switching during recording:
 The app uses JSON Schemas with AJV validation for session metadata:
 
 ### Schema Files
+
 - **`schemas/session.schema.json`**: Defines `session.json` structure
   - Fields: `createdAt` (ISO date-time), `mediaFile` (string or null), `notesFile` (string), `version` (integer)
   - Ensures data integrity when loading saved sessions
@@ -87,6 +96,7 @@ The app uses JSON Schemas with AJV validation for session metadata:
   - `ImageValueString`: "src|widthxheight" format
 
 ### Validation Integration
+
 ```javascript
 // In main.js - lazy-loaded validation during session load
 const validate = await getSessionValidator();
@@ -99,6 +109,7 @@ if (validate) {
 ```
 
 **Key Points**:
+
 - Validation is **non-blocking**: logs warnings only, never interrupts file picker operations
 - Ajv instance is lazy-loaded and schema compiled once per app run for performance
 - `types/global.d.ts` `SessionMeta` mirrors schema fields for type consistency
@@ -109,6 +120,7 @@ if (validate) {
 All app settings are centralized in `src/config.js`:
 
 ### Usage Patterns
+
 ```javascript
 import { CONFIG, STATES, ERRORS, MESSAGES } from './config.js';
 
@@ -124,13 +136,16 @@ const imageMaxSize = CONFIG.IMAGE.MAX_FILE_SIZE; // 15MB
 localStorage.getItem(CONFIG.STORAGE_KEYS.SELECTED_MIC);
 
 // State constants
-if (recordingState === STATES.RECORDING.PAUSED) { /* ... */ }
+if (recordingState === STATES.RECORDING.PAUSED) {
+  /* ... */
+}
 
 // Consistent messaging
 statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
 ```
 
 ### Key Configuration Categories
+
 - **RECORDING**: MediaRecorder settings, codecs, framerates, bitrates
 - **AUDIO**: Web Audio API settings, analyser configuration
 - **TIMER**: Update intervals, timeout handling
@@ -149,11 +164,13 @@ statusEl.textContent = MESSAGES.RECORDING.STARTED; // "Recording…"
 Error handling uses coded errors for consistency across modules.
 
 ### Definitions
+
 - `ERROR_CODES` in `src/config.js` is the canonical catalog (e.g., `DEVICE_PERMISSION_DENIED`, `DEVICE_NOT_FOUND`, `DEVICE_IN_USE`, `MIC_SWITCH_FAILED`, `CAMERA_INIT_TIMEOUT`, `RECORDING_START_FAILED`, `CODEC_UNSUPPORTED`, `IPC_TIMEOUT`, `FILE_SYSTEM_ERROR`, `SESSION_VALIDATION_FAILED`, `UNKNOWN`).
 - `createError(code, message?, cause?)` in `src/modules/utils.js` constructs an `Error` with `.code` and optional `.cause`.
 - `errorBoundary` prefers `error.code` and maps it to actionable text via an internal mapping function.
 
 ### Usage Guidelines
+
 - Throw coded errors from modules: `throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND)`.
 - Don’t throw from event handlers (e.g., `MediaRecorder.onerror`) — set status or signal upstream safely.
 - Use wrappers:
@@ -162,6 +179,7 @@ Error handling uses coded errors for consistency across modules.
 - Session persistence: Prefer `zipUtils.saveSessionWithCodes()` / `zipUtils.loadSessionWithCodes()` which return success objects or coded errors. Preserve cancel semantics. Do not apply timeouts to file picker dialogs.
 
 ### Example
+
 ```javascript
 import { ERROR_CODES, ERRORS } from '../config.js';
 import { createError } from './utils.js';
@@ -170,10 +188,13 @@ async function ensureMic() {
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    const name = /** @type {any} */(e).name;
-    if (name === 'NotAllowedError') throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, ERRORS.MIC.PERMISSION_DENIED, e);
-    if (name === 'NotFoundError') throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND, e);
-    if (name === 'NotReadableError') throw createError(ERROR_CODES.DEVICE_IN_USE, ERRORS.MIC.IN_USE, e);
+    const name = /** @type {any} */ (e).name;
+    if (name === 'NotAllowedError')
+      throw createError(ERROR_CODES.DEVICE_PERMISSION_DENIED, ERRORS.MIC.PERMISSION_DENIED, e);
+    if (name === 'NotFoundError')
+      throw createError(ERROR_CODES.DEVICE_NOT_FOUND, ERRORS.MIC.NOT_FOUND, e);
+    if (name === 'NotReadableError')
+      throw createError(ERROR_CODES.DEVICE_IN_USE, ERRORS.MIC.IN_USE, e);
     throw createError(ERROR_CODES.UNKNOWN, 'Unexpected microphone error', e);
   }
 }
@@ -182,6 +203,7 @@ async function ensureMic() {
 ## � Session Persistence Architecture (Zip-Based)
 
 ### .notepack File Format
+
 All user sessions are saved as zip files with `.notepack` extension:
 
 ```
@@ -192,20 +214,23 @@ mySession.notepack (zip file)
 ```
 
 **File Characteristics:**
+
 - Single `.notepack` file per session (no folders)
 - Uses standard zip compression (compatible with any zip reader)
 - Typical size: 50MB-2GB+ depending on recording length
 - Compatible with yazl (write) and yauzl (read) Node.js libraries
 
 ### Streaming Architecture for Large Files
+
 The save process implements zero-buffering streaming to handle multi-gigabyte recordings:
 
 **Renderer → Main Process (via IPC):**
+
 ```javascript
 // 1. Create temp file
 const { id } = await window.api.createTempMedia({
   fileName: 'recording.webm',
-  sessionId: 'save-123-abc'
+  sessionId: 'save-123-abc',
 });
 
 // 2. Stream blob in chunks (no buffering)
@@ -224,11 +249,12 @@ const { path } = await window.api.closeTempMedia(id);
 await window.api.saveSession({
   noteHtml,
   mediaFilePath: path,
-  sessionId
+  sessionId,
 });
 ```
 
 **Main Process (file operations):**
+
 ```javascript
 // Create temp file with unique ID
 ipcMain.handle('create-temp-media', async (evt, { fileName, sessionId }) => {
@@ -252,7 +278,7 @@ ipcMain.handle('append-temp-media', async (evt, id, chunk) => {
     phase: 'streaming-media',
     percent: Math.min(100, (stream.bytesWritten / expectedSize) * 100),
     bytesWritten: stream.bytesWritten,
-    statusText: `Streaming... ${stream.bytesWritten / 1024 / 1024 | 0}MB`
+    statusText: `Streaming... ${(stream.bytesWritten / 1024 / 1024) | 0}MB`,
   });
 
   return { ok: true, bytesWritten: stream.bytesWritten };
@@ -276,42 +302,45 @@ zipfile.end();
 ```
 
 **Benefits:**
+
 - Handles 2GB+ recordings without memory spikes
 - Temp file cleanup prevents disk space issues
 - Progress events enable UI feedback during streaming
 - Separation of concerns: blob streaming (renderer), file I/O (main), zip creation (yazl)
 
 ### Progress Reporting System
+
 Five-phase progress reporting with real-time percent updates:
 
 ```javascript
 reportSaveProgress(mainWindow, sessionId, {
-  phase: 'creating-zip',        // Start: Initialize zip structure
+  phase: 'creating-zip', // Start: Initialize zip structure
   percent: 0,
-  statusText: 'Creating zip...'
+  statusText: 'Creating zip...',
 });
 
 reportSaveProgress(mainWindow, sessionId, {
-  phase: 'streaming-media',     // During: Streaming blob to temp file
+  phase: 'streaming-media', // During: Streaming blob to temp file
   percent: 45,
-  bytesWritten: 2147483648,     // 2GB streamed
-  statusText: 'Streaming... 2048MB'
+  bytesWritten: 2147483648, // 2GB streamed
+  statusText: 'Streaming... 2048MB',
 });
 
 reportSaveProgress(mainWindow, sessionId, {
-  phase: 'writing-zip',         // After: yazl writing final zip
+  phase: 'writing-zip', // After: yazl writing final zip
   percent: 95,
-  statusText: 'Finalizing...'
+  statusText: 'Finalizing...',
 });
 
 reportSaveProgress(mainWindow, sessionId, {
-  phase: 'completed',           // Done: Auto-hide progress modal
+  phase: 'completed', // Done: Auto-hide progress modal
   percent: 100,
-  statusText: 'Saved!'
+  statusText: 'Saved!',
 });
 ```
 
 **Event Flow:**
+
 1. Renderer calls `saveSession()` with sessionId
 2. Main process sends `save-progress` events to renderer window
 3. Renderer listener (via `menu.onSaveProgress()` from preload) updates progress modal UI
@@ -319,6 +348,7 @@ reportSaveProgress(mainWindow, sessionId, {
 5. Main returns `{ ok, path }` to renderer after cleanup
 
 ### Cleanup of Orphaned Temp Files
+
 Temp files match pattern `/^\d+-[a-z0-9]+-/` (timestamp-randomId-):
 
 ```javascript
@@ -328,7 +358,7 @@ function cleanupOrphanedTempFiles() {
   const files = fs.readdirSync(tmpdir);
   const pattern = /^\d+-[a-z0-9]+-/;
 
-  files.forEach(file => {
+  files.forEach((file) => {
     if (pattern.test(file)) {
       const fullPath = path.join(tmpdir, file);
       fs.rmSync(fullPath, { force: true });
@@ -338,6 +368,7 @@ function cleanupOrphanedTempFiles() {
 ```
 
 **When cleanup runs:**
+
 - On `app.whenReady()` initialization
 - Removes files from interrupted saves or app crashes
 - Safe to run frequently; ignores non-matching files
@@ -346,11 +377,13 @@ function cleanupOrphanedTempFiles() {
 ## �🔧 Development Workflows
 
 ### Dependencies & Vendor Files
+
 - **npm scripts**: `postinstall` automatically copies vendor assets from node_modules
 - **Scripts**: `scripts/fetch-*.mjs` copy Quill.js, Fabric.js, FontAwesome to `/vendor/`
 - **Electron**: `npm start` for dev, `npm run build:mac/build:win` for packaging
 
 ### Key Files to Modify
+
 - **Type definitions**: `types/global.d.ts` (add new types for data structures)
 - **JSON Schemas**: `schemas/session.schema.json`, `schemas/notes-embed.schema.json` (validation rules)
 - **Mixing logic**: `src/recording/mixerSystem.js` (Web Audio + Canvas coordination, @ts-check enabled)
@@ -364,6 +397,7 @@ function cleanupOrphanedTempFiles() {
 ## 📦 Critical Patterns
 
 ### Type Safety & Documentation
+
 All key modules use `// @ts-check` for TypeScript validation without transpilation:
 
 ```javascript
@@ -402,6 +436,7 @@ async myMethod(param) { ... }
 ```
 
 **Type Definitions** (`types/global.d.ts`):
+
 - Recording types: `RecordingState`, `Mixer`, `RecordingInitOptions`
 - Device types: `Resolution`, `DeviceSelection`, `AudioBitrateOption`
 - Editor types: `TimestampValue`, `ImageValue`, `ImageDimensions`
@@ -410,6 +445,7 @@ async myMethod(param) { ... }
 - Error types: `ErrorBoundaryWrapOptions`, `ErrorLogEntry`
 
 **Documentation Standards**:
+
 - **Public API Surface**: Add a concise "Public API Surface" section at the top of each module listing all callable methods with brief descriptions
 - `@param`: Include proper TypeScript type references from `types/global.d.ts`
 - `@returns`: Document return types including Promise and union types
@@ -420,6 +456,7 @@ async myMethod(param) { ... }
 - **Module Contract Block**: Immediately after the Public API Surface add a high-level contract block listing Inputs, Outputs, Side-effects, Invariants, Failure Modes (coded `ERROR_CODES` where applicable). Keep it concise and implementation-agnostic.
 
 ### Module Contract Blocks
+
 Each key module must include a "Module Contract" block (after its Public API Surface) with the following ordered sections:
 
 ```
@@ -436,6 +473,7 @@ Each key module must include a "Module Contract" block (after its Public API Sur
 ```
 
 Guidelines:
+
 - Use present tense and bullet-style single-line entries.
 - List only externally observable effects; internal algorithm details belong in method JSDoc if needed.
 - When a module is pure (e.g., `utils.js` except for timeout allocation) explicitly state minimal side-effects.
@@ -444,22 +482,31 @@ Guidelines:
 - For new modules: add both Public API Surface and Module Contract blocks prior to first commit.
 
 Quality Checks:
+
 - No duplicated information (avoid repeating entire Public API list).
 - Failure Modes should not invent codes; use existing or add new to `config.js` then update docs.
 - Review contracts in PRs as part of documentation completeness.
 
 ### Module Initialization
+
 All modules follow this pattern:
+
 ```javascript
 class MySystem {
-  constructor() { /* private state */ }
-  init(domElements, callbacks) { /* setup */ }
+  constructor() {
+    /* private state */
+  }
+  init(domElements, callbacks) {
+    /* setup */
+  }
 }
 export const mySystem = new MySystem(); // singleton
 ```
 
 ### Error Boundary Usage
+
 Wrap critical operations with appropriate error boundary methods:
+
 ```javascript
 // IPC operations (background file operations only - NOT file pickers)
 await errorBoundary.wrapIPC(
@@ -493,6 +540,7 @@ await errorBoundary.wrapAsync(
 ```
 
 ### State Management Architecture
+
 - **Recording State**: Managed in `recordingSystem` with `isRecording()` method and `onStateChange()` callbacks
 - **UI Synchronization**: Multiple specialized update methods prevent state conflicts:
   - `updateUIState()`: Full UI refresh for major state changes
@@ -503,6 +551,7 @@ await errorBoundary.wrapAsync(
 - **Centralized Constants**: State values defined in `STATES` object prevent magic strings
 
 ### State Synchronization Patterns
+
 ```javascript
 // Recording state changes trigger UI updates
 recordingSystem.onStateChange = () => {
@@ -523,6 +572,7 @@ async handleStartRecording() {
 ```
 
 ### Custom Quill.js Blots
+
 - **TimestampBlot**: Creates `<button class="ts" data-ts="123.45">` for clickable timestamps
 - **CustomImage**: Extends default image to support dimensions (`src|widthxheight`) and fabric data
   - Handles object format: `{ src, width, height, fabricJSON }` for editable drawings
@@ -535,12 +585,14 @@ async handleStartRecording() {
 The app features sophisticated drawing creation and editing capabilities:
 
 ### Core Workflow
+
 1. **Create Drawing**: User clicks Draw tool → Drawing modal opens → Creates drawing → Returns `{ dataUrl, fabricJSON }`
 2. **Insert Drawing**: `imageManager.insertDrawingImage(dataUrl, fabricJSON)` embeds both image and metadata
 3. **Edit Drawing**: User double-clicks image → Modal reopens with `fabricJSON` loaded → Updates image in place
 4. **Export**: `stripFabricData()` removes editing metadata before external sharing
 
 ### Data Flow
+
 ```javascript
 // Creating a new drawing
 const result = await drawingSystem.openDrawingModal();
@@ -556,11 +608,14 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 ### Key Implementation Details
 
 **Drawing System (`src/ui/drawingSystem.js`):**
+
 - `openDrawingModal(fabricJSON = null)` accepts optional fabric data for editing
 - Returns `{ dataUrl, fabricJSON }` with both rendered PNG and canvas JSON
+
 ## 🎯 Common Tasks
 
 ### Adding New Recording Features
+
 1. **Add types** to `types/global.d.ts` if introducing new data structures
 2. Modify `recordingSystem.js` for MediaRecorder changes
 3. Update `mixerSystem.js` if audio/video mixing is involved
@@ -571,6 +626,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 8. **Update IPC contract documentation**: If preload APIs change, update `docs/ipc-api.md` to reflect new arguments, return types, timeout/error handling, and non-wrapped calls.
 
 ### Editor Customizations
+
 1. **Add types** to `types/global.d.ts` for new Quill embed formats
 2. Create custom blots in `src/editor/customBlots.js` (use @ts-check)
 3. Add toolbar handlers in main app's `setupCustomToolbarButtons()`
@@ -581,6 +637,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 8. **Write tests**: Add jsdom-based tests for DOM-dependent blot behavior
 
 ### Adding New Tests
+
 1. Create test file in `tests/` directory with `.test.mjs` extension
 2. Use `// @vitest-environment jsdom` comment for DOM-dependent tests
 3. Mock external dependencies (window.api, device APIs) as needed
@@ -590,27 +647,32 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 7. Update test count in documentation if adding significant coverage
 
 **Clipboard Handler (`src/main.js`):**
+
 - `setupClipboardHandlers()` includes matcher for `img` elements
 - Detects `data-fabric-json` attribute when loading sessions or pasting
 - Preserves fabric data using object format: `{ src, width, height, fabricJSON }`
 
 **Double-Click Handler (`src/main.js`):**
+
 - `onImageDoubleClick()` listens for clicks on `img.editable-drawing` elements
 - Extracts fabric JSON and reopens drawing modal in edit mode
 - Replaces image in place by deleting old blot and inserting updated one
 
 **Export System (`src/modules/exportSystem.js`):**
+
 - `stripFabricData(html)` removes all editing metadata before export
 - Cleans up `data-fabric-json`, `editable-drawing` class, title attributes
 - Resets cursor styles to ensure clean exported HTML
 
 ### Persistence Strategy
+
 - Drawing metadata stored directly in `data-fabric-json` attribute (not separate files)
 - Data travels with image through all operations (save, load, copy, paste, undo, redo)
 - Preserved in `.notepack` sessions for re-editing within app
 - Automatically stripped from exports to keep external files clean
 
 ### Benefits
+
 - No separate JSON file management needed
 - Seamless integration with existing image system
 - Drawing data survives all editor operations
@@ -619,23 +681,27 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 ## 🎯 Common Tasks
 
 ### Adding New Recording Features
+
 1. Modify `recordingSystem.js` for MediaRecorder changes
 2. Update `mixerSystem.js` if audio/video mixing is involved
 3. Add UI state handling in main app's `updateRecordingControlsState()`
 
 ### Editor Customizations
+
 1. Create custom blots in `src/editor/customBlots.js`
 2. Add toolbar handlers in main app's `setupCustomToolbarButtons()`
 3. Update clipboard handling in `setupClipboardHandlers()` for paste support
 4. Consider whether new blots need special export handling (like fabric data stripping)
 
 ### Drawing System Extensions
+
 1. Add new Fabric.js tools in `drawingSystem.setupDrawingUI()`
 2. Extend toolbar HTML in `createDrawingModal()`
 3. Add event handlers for new tools in `setupDrawingUI()`
 4. New tools automatically work with edit system (no additional changes needed)
 
 ### Device/Hardware Integration
+
 1. Extend `deviceManager.js` for new device types or constraints
 2. Update `CONFIG.CONSTRAINTS` in `src/config.js` for recording parameters
 3. Handle permissions in `deviceManager.ensurePermissions()`
@@ -643,11 +709,13 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 ## ⚠️ Critical Integration Points
 
 ### MediaRecorder + Web Audio
+
 - `mixerSystem.js` combines separate audio/video streams using AudioContext
 - Required for live device switching during recording
 - Canvas-based video mixing for visual audio levels
 
 ### Error Handling Architecture
+
 - **Device Access Errors**: `mixerSystem.js` detects specific MediaStream API errors and throws coded errors via `createError()`
   - `NotAllowedError` → `ERROR_CODES.DEVICE_PERMISSION_DENIED`
   - `NotFoundError` → `ERROR_CODES.DEVICE_NOT_FOUND`
@@ -671,6 +739,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **IPC Timeout Pattern**: Wrap background IPC operations with `errorBoundary.wrapIPC()`, but NOT file picker dialogs
 
 ### Electron IPC (Main ↔ Renderer)
+
 - `preload.cjs` exposes session and file operation APIs with four categories:
   - **Session Handlers**: `saveSession(payload)`, `loadSession()`
   - **File Operations**: `saveHtml(html)`, `pickImage()`
@@ -687,35 +756,42 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   - For coded persistence flows, use `zipUtils.loadSessionWithCodes()` / `zipUtils.saveSessionWithCodes()`; wrap background work with `errorBoundary.wrapIPC`, never the file picker itself.
 
 ### Electron Security (Permission Handling)
+
 - **Media Permissions**: `main.js` uses `setPermissionRequestHandler` with origin validation
 - **Security Pattern**: Only allows media access from trusted `file://` origins
   ```javascript
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
-    if (permission === 'media') {
-      const requestingUrl = details.requestingUrl || '';
-      const isLocalFile = requestingUrl.startsWith('file://');
-      callback(isLocalFile); // Only allow local file origins
-    } else {
-      callback(false); // Deny all other permissions
+  session.defaultSession.setPermissionRequestHandler(
+    (webContents, permission, callback, details) => {
+      if (permission === 'media') {
+        const requestingUrl = details.requestingUrl || '';
+        const isLocalFile = requestingUrl.startsWith('file://');
+        callback(isLocalFile); // Only allow local file origins
+      } else {
+        callback(false); // Deny all other permissions
+      }
     }
-  });
+  );
   ```
 - **Why This Matters**: Prevents malicious external content from accessing camera/microphone
 - **Pattern to Follow**: Always validate `details.requestingUrl` before granting permissions
 
 ### Quill.js Event Handling
+
 - Text changes trigger `onQuillTextChange()` → updates save/export button states
 - Custom keyboard shortcuts via `quill.keyboard.addBinding()`
 - Timestamp clicks handled in `onTimestampClick()` → jumps video player time
 
 ### State Synchronization
+
 - DOM changes must trigger `updateUIState()` to sync button states
 - Recording state changes propagate via `onStateChange` callbacks
 - Device selection persistence uses localStorage keys in `CONFIG.STORAGE_KEYS`
 
 ### Memory Management
+
 - **Blob URL Cleanup**: Always revoke blob URLs created with `URL.createObjectURL()` to prevent memory leaks
 - **Pattern in recordingSystem.js**:
+
   ```javascript
   // Track blob URLs for cleanup
   this.currentBlobUrl = null;
@@ -730,6 +806,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
   const url = URL.createObjectURL(blob);
   this.currentBlobUrl = url;
   ```
+
 - **Critical Cleanup Points**:
   - `finalizePreview()`: Revoke before creating preview URL
   - `loadRecording()`: Revoke before loading new session
@@ -739,16 +816,19 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 ## �️ Planned Feature Areas
 
 ### Drawing System Enhancements (`src/ui/drawingSystem.js`)
+
 - **Fabric.js Tools**: Bucket fill, text with font selection, straight lines, arrows, highlight
 - **Pattern**: Add new tools to Fabric.js canvas, extend toolbar in drawing modal
 - **Integration**: New tools should export to same base64 format for `imageManager`
 
 ### Export System Improvements (`src/modules/exportSystem.js`)
+
 - **Folder Structure**: Separate media files into subfolders in export output
 - **HTML Enhancement**: Add click-to-expand functionality for images in exported HTML
 - **File Organization**: Update both embedded and separate file export modes
 
 ### UI/UX Enhancements
+
 - **Layout**: Maximize note editor viewport for better writing experience
 - **Video Processing**: Add filter system (likely in `mixerSystem.js` or new module)
 - **Image Interaction**: Enhanced image viewing in both editor and exported HTML
@@ -756,6 +836,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 ## ⚠️ Critical Pitfalls
 
 ### Code Patterns
+
 - **Don't** modify recording controls directly - use `updateRecordingControlsState()`
 - **Don't** forget to call module `.init()` methods with proper DOM references
 - **Don't** assume synchronous MediaRecorder operations - use await/promises
@@ -768,6 +849,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Don't** add new features without corresponding tests - maintain test coverage
 
 ### Type Safety & Documentation
+
 - **Don't** add new modules without `// @ts-check` directive
 - **Don't** create new modules without adding a "Public API Surface" documentation block
 - **Don't** create new data structures without adding types to `types/global.d.ts`
@@ -783,6 +865,7 @@ const result = await drawingSystem.openDrawingModal(fabricJSON);
 - **Do** include `@throws` for all error conditions
 
 ### Best Practices
+
 - **Do** check `recordingSystem.isRecording()` before UI state changes
 - **Do** handle device enumeration failures gracefully (permissions, hardware)
 - **Do** validate all IPC handler inputs to prevent security vulnerabilities

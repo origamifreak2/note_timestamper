@@ -4,8 +4,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     coverage: {
-      enabled: false
+      enabled: false,
     },
-    include: ['tests/**/*.test.{js,mjs}']
-  }
+    include: ['tests/**/*.test.{js,mjs}'],
+  },
 });

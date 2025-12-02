@@ -164,7 +164,7 @@ export class ImageResizer {
     `;
 
     // Create drag handles for each corner
-    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+    ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
       const handle = document.createElement('div');
       handle.className = `img-resize-handle img-h-${pos}`;
       handle.dataset.pos = pos;
@@ -175,9 +175,15 @@ export class ImageResizer {
         background: #2563eb;
         border: 1px solid white;
         pointer-events: auto;
-        cursor: ${pos.includes('n') && pos.includes('w') ? 'nw' :
-                   pos.includes('n') && pos.includes('e') ? 'ne' :
-                   pos.includes('s') && pos.includes('w') ? 'sw' : 'se'}-resize;
+        cursor: ${
+          pos.includes('n') && pos.includes('w')
+            ? 'nw'
+            : pos.includes('n') && pos.includes('e')
+              ? 'ne'
+              : pos.includes('s') && pos.includes('w')
+                ? 'sw'
+                : 'se'
+        }-resize;
       `;
 
       // Position handles at corners
@@ -204,8 +210,9 @@ export class ImageResizer {
    */
   removeOverlay() {
     if (this.overlay) {
-      this.overlay.querySelectorAll('.img-resize-handle')
-        .forEach(h => h.removeEventListener('mousedown', this.onHandleDown));
+      this.overlay
+        .querySelectorAll('.img-resize-handle')
+        .forEach((h) => h.removeEventListener('mousedown', this.onHandleDown));
       this.overlay.remove();
     }
     this.overlay = null;
@@ -284,8 +291,8 @@ export class ImageResizer {
       w: imgRect.width,
       h: imgRect.height,
       ar: imgRect.width / imgRect.height,
-      handle: e.currentTarget.dataset.pos,
-      keepAR: e.shiftKey
+      handle: /** @type {HTMLElement} */ (e.currentTarget).dataset.pos,
+      keepAR: e.shiftKey,
     };
 
     document.addEventListener('mousemove', this.onDrag);
@@ -312,12 +319,25 @@ export class ImageResizer {
     const dx = e.clientX - this.start.x;
     const dy = e.clientY - this.start.y;
 
-    let dw = 0, dh = 0;
+    let dw = 0,
+      dh = 0;
     switch (this.start.handle) {
-      case 'se': dw = dx; dh = dy; break;
-      case 'ne': dw = dx; dh = -dy; break;
-      case 'sw': dw = -dx; dh = dy; break;
-      case 'nw': dw = -dx; dh = -dy; break;
+      case 'se':
+        dw = dx;
+        dh = dy;
+        break;
+      case 'ne':
+        dw = dx;
+        dh = -dy;
+        break;
+      case 'sw':
+        dw = -dx;
+        dh = dy;
+        break;
+      case 'nw':
+        dw = -dx;
+        dh = -dy;
+        break;
     }
 
     let newW = Math.max(20, this.start.w + dw);
@@ -368,10 +388,11 @@ export class ImageResizer {
    * - Removes overlay if clicking outside
    */
   onClick(e) {
-    const img = e.target.closest('img');
+    const target = /** @type {HTMLElement} */ (e.target);
+    const img = target.closest('img');
     if (img) {
       this.selectImage(img);
-    } else if (!e.target.closest('.img-resize-overlay')) {
+    } else if (!target.closest('.img-resize-overlay')) {
       this.removeOverlay();
     }
   }

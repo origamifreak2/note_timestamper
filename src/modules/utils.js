@@ -1,4 +1,3 @@
-
 /**
  * @file Utility functions for the Note Timestamper application
  * Common helper functions used throughout the application
@@ -48,11 +47,11 @@
  * @returns {string} Formatted time string like "02:34.56"
  */
 export function formatTime(s) {
-  const ms = Math.floor((s % 1) * 100);  // Extract centiseconds (0-99)
-  s = Math.floor(s);                     // Get whole seconds
-  const m = Math.floor(s / 60);          // Extract minutes
-  const sec = s % 60;                    // Get remaining seconds
-  const pad = (n) => String(n).padStart(2, '0');  // Zero-pad helper
+  const ms = Math.floor((s % 1) * 100); // Extract centiseconds (0-99)
+  s = Math.floor(s); // Get whole seconds
+  const m = Math.floor(s / 60); // Extract minutes
+  const sec = s % 60; // Get remaining seconds
+  const pad = (n) => String(n).padStart(2, '0'); // Zero-pad helper
   return `${pad(m)}:${pad(sec)}.${pad(ms)}`;
 }
 
@@ -76,7 +75,7 @@ export function arrayBufferToBase64(ab) {
  * @returns {Promise} Resolves after the delay
  */
 export function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 /**
@@ -100,14 +99,16 @@ export function withTimeout(promise, ms, errorMsg = 'Operation timed out') {
 
   // Race the promises and clear timeout when done
   return Promise.race([
-    promise.then((result) => {
-      clearTimeout(timeoutHandle);
-      return result;
-    }).catch((error) => {
-      clearTimeout(timeoutHandle);
-      throw error;
-    }),
-    timeoutPromise
+    promise
+      .then((result) => {
+        clearTimeout(timeoutHandle);
+        return result;
+      })
+      .catch((error) => {
+        clearTimeout(timeoutHandle);
+        throw error;
+      }),
+    timeoutPromise,
   ]);
 }
 

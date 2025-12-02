@@ -29,15 +29,22 @@ describe('errorBoundary', () => {
       if (attempts < 2) throw new Error('fail first');
       return 'ok';
     });
-    const result = await errorBoundary.wrapAsync(fn, { operationName: 'retryOp', maxRetries: 1, timeout: 0 });
+    const result = await errorBoundary.wrapAsync(fn, {
+      operationName: 'retryOp',
+      maxRetries: 1,
+      timeout: 0,
+    });
     expect(result).toBe('ok');
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
   it('wrapAsync throws after exhausting retries', async () => {
-    const fn = vi.fn(async () => { throw new Error('always fails'); });
-    await expect(errorBoundary.wrapAsync(fn, { operationName: 'alwaysFail', maxRetries: 1, timeout: 0 }))
-      .rejects.toThrow('always fails');
+    const fn = vi.fn(async () => {
+      throw new Error('always fails');
+    });
+    await expect(
+      errorBoundary.wrapAsync(fn, { operationName: 'alwaysFail', maxRetries: 1, timeout: 0 })
+    ).rejects.toThrow('always fails');
     expect(fn).toHaveBeenCalledTimes(2);
     expect(statusEl.textContent.toLowerCase()).toContain('failed');
   });

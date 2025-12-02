@@ -3,7 +3,9 @@
 All notable changes to **Note Timestamper** will be documented here.
 
 ## [0.12.4] - 2025-11-30
+
 ### Added
+
 - **Module Contract blocks** across all key modules: explicit Inputs / Outputs / Side-effects / Invariants / Failure Modes documentation added to:
   - Recording: `recordingSystem.js`, `mixerSystem.js`
   - Core Modules: `deviceManager.js`, `exportSystem.js`, `timer.js`, `audioLevel.js`, `utils.js`, `zipUtils.js`, `errorBoundary.js`
@@ -12,17 +14,21 @@ All notable changes to **Note Timestamper** will be documented here.
   - Config & Coordinator: `config.js`, `main.js`
 
 ### Enhanced
+
 - **AI & Developer Clarity**: Each module now begins with a concise operational contract summarizing runtime expectations and failure surfaces; complements existing Public API Surface.
 - **Error Transparency**: Failure Modes sections enumerate relevant `ERROR_CODES`, improving guided recovery and searchability.
 - **Non-invasive change**: Comment-only additions; no runtime logic altered.
 - **Test Confidence**: Existing 39-test Vitest suite passes unchanged after documentation update.
 
 ### Notes
+
 - Serves as foundation for upcoming ADRs and AI guide; TODO item "Module contracts" marked complete.
 - No versioned API changes; semantic bump for documentation improvements.
 
 ## [0.12.3] - 2025-11-29
+
 ### Added
+
 - **Comprehensive test suite with Vitest**
   - Added Vitest framework for fast ESM-friendly testing
   - Created `vitest.config.mjs` with Node environment configuration
@@ -59,13 +65,16 @@ All notable changes to **Note Timestamper** will be documented here.
   - Script tag escaping in user content
 
 ### Enhanced
+
 - **NPM scripts**: Added `npm test` to run Vitest suite
 - **Development workflow**: Fast test execution (< 3 seconds for full suite)
 - **Code quality**: Test coverage for critical data transformation paths
 - **CI readiness**: Foundation for GitHub Actions integration
 
 ## [0.12.2] - 2025-11-28
+
 ### Added
+
 - **Public API Surface Documentation** across all modules
   - Added comprehensive "Public API Surface" documentation blocks to 17 modules
   - Each module now lists all public methods with parameters, return types, and side effects
@@ -79,6 +88,7 @@ All notable changes to **Note Timestamper** will be documented here.
     - Main: `main.js`
 
 ### Enhanced
+
 - **AI-Readability and Developer Experience**
   - Consistent API documentation format across entire codebase
   - Clear method contracts with documented side effects and invariants
@@ -86,7 +96,9 @@ All notable changes to **Note Timestamper** will be documented here.
   - Improved code discoverability and maintainability
 
 ## [0.12.1] - 2025-11-28
+
 ### Added
+
 - Standardized error code system
   - `ERROR_CODES` in `src/config.js`
   - `createError(code, message?, cause?)` in `src/modules/utils.js`
@@ -94,6 +106,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - `loadSessionWithCodes()` and `saveSessionWithCodes()` in `src/modules/zipUtils.js`
 
 ### Enhanced
+
 - Error boundary mapping and messaging
   - Added `mapErrorToMessage()` and preference for `error.code` in `src/modules/errorBoundary.js`
   - Consistent status/dialog messages across device, IPC, and recording failures
@@ -104,6 +117,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - `src/main.js`: session save/load now use coded wrappers from `zipUtils`
 
 ### Fixed
+
 - `@ts-check` warnings in mixer/exports
   - Mixer: removed `webkitAudioContext` reference, added null guards for canvas/video/context
   - Export: typed `HTMLImageElement` in fabric cleanup; annotated extracted images array
@@ -111,7 +125,9 @@ All notable changes to **Note Timestamper** will be documented here.
 - Marked “Standard error codes” as completed in `TODO.md`
 
 ## [0.12.0] - 2025-11-28
+
 ### Added
+
 - **Type Safety without TypeScript Migration**
   - Created `types/global.d.ts` with comprehensive TypeScript definitions for all domain types:
     - Recording types: `RecordingState`, `PlayerState`, `Mixer`, `RecordingInitOptions`
@@ -138,6 +154,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - Type references link to shared types in `types/global.d.ts` using import syntax
 
 ### Enhanced
+
 - **AI-Friendly Codebase**: Type definitions make data structures explicit and discoverable for AI tools
 - **Developer Experience**: Full IDE IntelliSense, autocomplete, and type checking without build step
 - **Error Prevention**: Catch type errors at development time with VS Code type checking
@@ -145,6 +162,7 @@ All notable changes to **Note Timestamper** will be documented here.
 - **Architecture Documentation**: Updated `ARCHITECTURE.md` and `README.md` to document type safety approach
 
 ### Schema & Validation
+
 - **JSON Schemas** added under `schemas/`:
   - `schemas/session.schema.json` describing `session.json` (`createdAt`, `mediaFile`, `notesFile`, `version`).
   - `schemas/notes-embed.schema.json` defining editor embed formats (`TimestampValue`, `ImageValueObject`, string `ImageValue`).
@@ -153,12 +171,14 @@ All notable changes to **Note Timestamper** will be documented here.
   - Non-blocking: logs warnings on validation errors, does not interrupt file picker flows.
 
 ### Consistency & Types
+
 - **SessionMeta alignment**: Updated `types/global.d.ts` `SessionMeta` to mirror schema fields (`createdAt`, `mediaFile`, `notesFile`, `version`).
 - **IPC response rename**: Changed `load-session` return field from `mediaFileName` → `mediaFile` in `main.js`.
 - **WindowAPI types**: Updated `types/global.d.ts` `WindowAPI.loadSession()` to return `{ notesHtml, mediaArrayBuffer, mediaFile }`.
 - **Docs updated**: `ARCHITECTURE.md` and `.github/copilot-instructions.md` now reference `createdAt/mediaFile/notesFile/version` and `mediaFile` response.
 
 ### Benefits
+
 - ✅ Type safety with zero build overhead (no TypeScript compilation required)
 - ✅ Gradual migration path - can move to full TypeScript incrementally
 - ✅ Jump-to-definition works for all custom types across the codebase
@@ -166,7 +186,9 @@ All notable changes to **Note Timestamper** will be documented here.
 - ✅ Consistent type annotations across all 7 core modules
 
 ## [0.11.1]
+
 ### Refactored
+
 - **Export System** (`src/modules/exportSystem.js`)
   - Extracted shared HTML templates into reusable helper methods
   - Created modular template builder with 6 specialized methods:
@@ -181,6 +203,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - Both export modes now share single source of truth for HTML/CSS/JS
 
 ### Added
+
 - **Error Boundary System** (`src/modules/errorBoundary.js`)
   - Comprehensive error handling wrapper for critical operations
   - `wrapAsync()`: Generic async operation wrapper with timeout and retry logic
@@ -206,6 +229,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - Prevents DOM pollution and resource leaks on failures
 
 ### Security
+
 - **Fixed critical security vulnerability** in media permission handler
   - Added origin validation to `setPermissionRequestHandler` in `main.js`
   - Now validates `details.requestingUrl` to ensure requests come from trusted `file://` origins
@@ -213,6 +237,7 @@ All notable changes to **Note Timestamper** will be documented here.
   - Logs warning when blocking untrusted permission requests
 
 ### Enhanced
+
 - **Improved error handling** in `src/recording/mixerSystem.js`
   - Replaced silent console warnings with actionable error messages
   - Added user-facing notifications for microphone/camera failures
@@ -224,12 +249,13 @@ All notable changes to **Note Timestamper** will be documented here.
   - Enhanced error messages in `src/config.js` with comprehensive ERRORS object
   - Errors properly caught and displayed in status bar via `src/main.js`
   - Live device switching failures now provide actionable feedback
- - **Drawing modal error recovery** in `src/ui/drawingSystem.js`
-   - Added initialization success flag plus `finally` block guaranteeing cleanup when Fabric.js setup fails early
-   - Stored Escape key handler reference on modal and removed it in `cleanup()` to prevent orphaned listeners
-   - Consolidated cleanup path (removed duplicate catch cleanup) for consistent resource release
+- **Drawing modal error recovery** in `src/ui/drawingSystem.js`
+  - Added initialization success flag plus `finally` block guaranteeing cleanup when Fabric.js setup fails early
+  - Stored Escape key handler reference on modal and removed it in `cleanup()` to prevent orphaned listeners
+  - Consolidated cleanup path (removed duplicate catch cleanup) for consistent resource release
 
 ### Fixed
+
 - **Fixed memory leaks** in `src/recording/recordingSystem.js`
   - Added blob URL tracking with `currentBlobUrl` property
   - Properly revoke blob URLs with `URL.revokeObjectURL()` before creating new ones
@@ -247,7 +273,9 @@ All notable changes to **Note Timestamper** will be documented here.
   - Ensures timed operations cancel cleanly when underlying promise settles first
 
 ## [0.11.0] - 2025-11-16
+
 ### Added
+
 - **Drawing edit functionality** with double-click to re-edit inserted drawings
   - Fabric.js canvas JSON stored in `data-fabric-json` attribute on image elements
   - Double-click on any drawing reopens the drawing modal with all objects loaded
@@ -267,13 +295,16 @@ All notable changes to **Note Timestamper** will be documented here.
   - Ensures exported files contain only final rendered images
 
 ### Enhanced
+
 - Drawing system now returns `{ dataUrl, fabricJSON }` instead of just data URL
 - `openDrawingModal()` accepts optional `fabricJSON` parameter for editing mode
 - Image resizing preserves fabric data using object format internally
 - Visual feedback: editable drawings show pointer cursor and "Double-click to edit" tooltip
 
 ## [0.10.0] - 2025-11-16
+
 ### Added
+
 - **Zip-based session persistence** using `.notepack` file format (yazl/yauzl libraries)
   - Sessions saved as compressed zip files instead of folders
   - Includes `notes.html`, encoded media file, and `session.json` metadata
@@ -313,28 +344,35 @@ All notable changes to **Note Timestamper** will be documented here.
   - `menu.onFileLoadingComplete(callback)`: Called when file is fully loaded
 
 ### Fixed
+
 - Save operation no longer buffers entire recorded blob in memory before writing
 - Temp files from interrupted saves are automatically cleaned up on app restart
 - File loading operations provide visual feedback to user (prevents appearance of frozen UI)
 
 ### Enhanced
+
 - Session persistence now uses industry-standard zip format for better compatibility
 - Progress events enable real-time feedback during large file operations
 - Main process session management is now more transparent with detailed phase reporting
 
 ## [0.9.2] - 2025-11-15
+
 ### Added
+
 - Native File menu (Save, Save As, Load, Export, Reset) with platform-appropriate accelerators
 - "Save" now overwrites the loaded session directory when a session was opened with Load; "Save" prompts for a location when creating a new session
 - "Save As" always prompts for a save location (force-save-as)
 - Menu-state synchronization: renderer sends enabled/disabled state to main so native menu items mirror the app UI
 
 ### Fixed
+
 - Ensure macOS application menu is refreshed after state changes so menu enabled flags update correctly
 - Prevent accidental ReferenceError in main save handler (use explicit payload param instead of `arguments`)
 
 ## [0.9.1] - 2025-11-14
+
 ### Added
+
 - **Centralized CONFIG system** (`src/config.js`) with organized constants:
   - Recording settings (MIME types, resolutions, framerates, audio bitrates)
   - Audio analyzer configuration and level monitoring settings
@@ -352,60 +390,75 @@ All notable changes to **Note Timestamper** will be documented here.
   - Proper separation of concerns between recording and content state
 
 ### Enhanced
+
 - **Audio level monitoring** (`src/modules/audioLevel.js`) integrated with Web Audio analyzer
 - **Recording system** with improved MediaRecorder lifecycle management
 - **Device manager** with enhanced permission handling and device persistence
 - **Module initialization** with proper dependency injection patterns
 
 ### Fixed
+
 - Race conditions in UI state updates during recording state changes
 - Proper cleanup and destruction of Web Audio contexts and canvas streams
 - Enhanced recording control synchronization to prevent UI flicker
 
 ## [0.9.0] - 2025-11-01
+
 ### Added
+
 - **Mic & Camera selectors** with live device switching **without stopping** the recording via a stable **mixer stream** (WebAudio + canvas capture).
 - **Overwrite warning** when starting a new recording while one already exists.
 - **“Save before Reset?”** prompt, with cancel-safe flow.
 - **Force Finalize** safety path for edge cases where `stop` events misbehave.
 
 ### Fixed
+
 - Stop button reliability: 100ms flush delay + 3s fallback; safer `requestData()` use.
 - Duplicate function definitions (`switchMicLive` / `switchCamLive`) removed.
 - Quill styling issues: ensured `quill.core.css` and `quill.snow.css` are both loaded.
 - Quill CDN fallback added if `/vendor` assets are missing.
 
 ## [0.8.1] - 2025-10-31
+
 ### Added
+
 - Image handling: insert via picker, paste, or drag-drop.
 - **Image resize handles** with overlay (shift-drag to keep aspect ratio).
 - Keyboard shortcut **⌘/Ctrl + Alt + T** to insert timestamp buttons at caret.
 - “Export HTML” (single-file export with embedded media + clickable timestamp buttons).
 
 ### Fixed
+
 - Timestamp caret placement (cursor now lands **after** the timestamp button).
 
 ## [0.8.0] - 2025-10-31
+
 ### Added
+
 - Switched from TinyMCE to **Quill** (local vendored assets).
 - Quill toolbar (headers, bold/italic/underline/strike, lists, align, color, background, link, quote, code block, clean, undo/redo, image, timestamp).
 - **Save / Load `.notepack`** (notes.html + media + session.json).
 - Reset button to clear notes and recording.
 
 ### Fixed
+
 - “Export HTML” video playback issues in the exported file.
 
 ## [0.7.x] - 2025-10-30
+
 ### Added
+
 - Basic recorder UI: Start, Pause/Resume, Stop, status text, current time display.
 - Timestamp buttons in HTML notes that jump playback to that time.
 - Audio-only toggle.
 
 ### Fixed
+
 - Initial stop reliability improvements; preview finalization after stop.
 
 ## [0.6.x] - 2025-10-29
+
 ### Added
+
 - Initial Electron scaffolding (main/preload/renderer), IPC for save/load/export.
 - Minimal in-app HTML editor and timestamp insertion prototype.
-

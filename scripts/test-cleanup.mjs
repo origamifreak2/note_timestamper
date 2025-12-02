@@ -14,7 +14,7 @@ async function testCleanup() {
   const fakeFiles = [
     `${Date.now()}-abc123-media.webm`,
     `${Date.now()}-xyz789-media.webm`,
-    `${Date.now()}-def456-notes.json`
+    `${Date.now()}-def456-notes.json`,
   ];
 
   console.log('Creating fake temp files...');
@@ -26,12 +26,12 @@ async function testCleanup() {
 
   // Verify they exist
   const beforeCleanup = await fs.readdir(tmpdir);
-  const matchesBefore = beforeCleanup.filter(f => /^\d+-[a-z0-9]+-/.test(f));
+  const matchesBefore = beforeCleanup.filter((f) => /^\d+-[a-z0-9]+-/.test(f));
   console.log(`\nBefore cleanup: found ${matchesBefore.length} temp files matching pattern`);
 
   // Run cleanup
   console.log('\nRunning cleanup...');
-  const result = {removed: 0, failed: 0};
+  const result = { removed: 0, failed: 0 };
 
   for (const file of fakeFiles) {
     const filePath = path.join(tmpdir, file);
@@ -47,14 +47,14 @@ async function testCleanup() {
 
   // Verify they're gone
   const afterCleanup = await fs.readdir(tmpdir);
-  const matchesAfter = afterCleanup.filter(f => /^\d+-[a-z0-9]+-/.test(f));
+  const matchesAfter = afterCleanup.filter((f) => /^\d+-[a-z0-9]+-/.test(f));
   console.log(`\nAfter cleanup: found ${matchesAfter.length} temp files matching pattern`);
 
   console.log(`\nCleanup result: removed=${result.removed}, failed=${result.failed}`);
   console.log('✓ Cleanup test passed!');
 }
 
-testCleanup().catch(err => {
+testCleanup().catch((err) => {
   console.error('Test failed:', err);
   process.exit(1);
 });

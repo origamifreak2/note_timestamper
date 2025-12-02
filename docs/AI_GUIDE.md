@@ -44,32 +44,38 @@ These areas are intended for feature work, bug fixes, and enhancements. Keep cha
 
 Follow these patterns to add features safely and consistently.
 
-1) Types first
+1. Types first
+
 - Add/extend types in `types/global.d.ts` (e.g., new options, payloads, state types).
 - Reference types via JSDoc: `@param {import('../types/global').TypeName}`.
 
-2) Public API Surface + Module Contract
+2. Public API Surface + Module Contract
+
 - For any edited or new module, include at the top:
   - Public API Surface: list public methods with brief descriptions.
   - Module Contract: Inputs, Outputs, Side‑effects, Invariants, Failure Modes (reference `ERROR_CODES`).
 
-3) Recording & Mixing changes
+3. Recording & Mixing changes
+
 - Update `src/recording/recordingSystem.js` for MediaRecorder behavior.
 - Update `src/recording/mixerSystem.js` for Web Audio/Canvas pipeline and device switching.
 - Use coded errors via `createError()` and wrap device access in `errorBoundary.wrapDeviceAccess()`.
 - Maintain blob URL lifecycle invariants (always revoke previous URL before creating a new one).
 
-4) Editor customizations
+4. Editor customizations
+
 - Add blots in `src/editor/customBlots.js`; register before initializing Quill.
 - Update toolbar and handlers in `src/main.js` (renderer) with clear wiring.
 - For images/drawings, integrate with `imageManager` and ensure export cleanup in `exportSystem.stripFabricData()`.
 
-5) IPC & Persistence
+5. IPC & Persistence
+
 - Changing preload APIs: update `docs/ipc-api.md` and tests. Never wrap file picker dialogs with timeouts.
 - For background I/O/streaming, use `errorBoundary.wrapIPC()` and report progress using existing event channels.
 - Keep `.notepack` structure stable; if adding files, update load/save, schema(s), and docs.
 
-6) Validation & Schemas
+6. Validation & Schemas
+
 - `schemas/session.schema.json` and `schemas/notes-embed.schema.json`: adjust only with corresponding code and type updates.
 - Session validation remains non‑blocking: log warnings; never block file pickers.
 

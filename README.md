@@ -7,6 +7,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 ## ✨ Features
 
 ### 📝 Rich Text Editing
+
 - **Quill.js Editor**: Full-featured rich text editor with formatting options
 - **Timestamped Notes**: Insert clickable timestamps that jump to specific moments in recordings
 - **Image Support**: Paste, drag-and-drop, or capture images directly in notes
@@ -15,6 +16,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Drawing Tools**: Built-in drawing canvas with Fabric.js for sketching and annotations
 
 ### 🎥 Recording System
+
 - **Audio/Video Recording**: High-quality recording with multiple codec support
 - **Live Device Switching**: Change microphone or camera without stopping recording
 - **Audio-Only Mode**: Record just audio with visual level monitoring
@@ -23,6 +25,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Memory Management**: Efficient blob URL cleanup prevents memory leaks across sessions
 
 ### 💾 Session Management
+
 - **Save/Load Sessions**: Save complete sessions as `.notepack` zip files
 - **Export Options**:
   - Single HTML file with embedded media (self-contained)
@@ -31,6 +34,7 @@ A desktop application for recording audio/video with synchronized timestamped no
 - **Session Reset**: Clean slate with save confirmation
 
 ### 🔧 Advanced Features
+
 - **Device Management**: Automatic device enumeration and selection persistence
 - **Live Preview**: Real-time preview during recording
 - **Keyboard Shortcuts**: `Cmd+Alt+T` (Mac) / `Ctrl+Alt+T` (Windows/Linux) for timestamps
@@ -50,10 +54,12 @@ Brief overview: modular ES6 architecture with single-responsibility modules (edi
 ## 🚀 Development
 
 ### Prerequisites
+
 - Node.js 16+
 - npm or yarn
 
 ### Setup
+
 ```bash
 # Clone and install dependencies
 npm install
@@ -69,6 +75,7 @@ npm run lint
 ```
 
 ### Building
+
 ```bash
 # Build for macOS
 npm run build:mac
@@ -77,8 +84,8 @@ npm run build:mac
 npm run build:win
 ```
 
-Notes for Windows builds
-------------------------
+## Notes for Windows builds
+
 - electron-builder expects a Windows icon file at `build/icon.ico`. Add your .ico file there before running `npm run build:win`. If you don't have an icon yet, you can generate one from a PNG using many online tools or ImageMagick (convert sample.png -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico).
 - Building a Windows installer from macOS or Linux requires extra tooling (wine and nsis). It's recommended to run `npm run build:win` on a Windows machine. If you must build cross-platform, install Wine and the NSIS binaries and follow electron-builder docs: https://www.electron.build/multi-platform-build
 - Code signing for Windows is optional for creating an installer, but required if you want the installer/app to be signed. See electron-builder docs for signing instructions and CI configuration.
@@ -116,6 +123,7 @@ Notes for Windows builds
 - **Media Files**: WebM format with VP9/VP8 video and Opus audio codecs
 
 ## 📚 Documentation Map
+
 **Project Overview**: `README.md` (this file)
 **Architecture Deep Dive**: `ARCHITECTURE.md`
 **Change History**: `CHANGELOG.md`
