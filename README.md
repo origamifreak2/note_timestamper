@@ -134,6 +134,11 @@ The modular architecture makes contributions easier:
 6. Document side effects and invariants for all public methods
 7. Consistent coding standards
 
+Start here for contribution guardrails and IPC contracts:
+
+- AI Guide: see `docs/AI_GUIDE.md` for safe-to-edit zones, do-not-alter areas, extension patterns, and the PR checklist.
+- IPC Contracts: see `docs/ipc-api.md` for preload APIs, arguments/returns, event shapes, and timeout policy (no timeouts for file pickers).
+
 ## 📝 License
 
 This project is available under the MIT License.

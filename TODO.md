@@ -34,24 +34,24 @@
   - Removed legacy `.eslintrc.*` and `.eslintignore` (migrated ignores into flat config)
   - Relaxed internal JSDoc param/returns noise; preserved public API doc warnings only
 - [x] **Testing migration to Vitest**
-  - ✅ Added Vitest (`vitest` dev dependency, `jsdom` for DOM tests) and `npm test` script
-  - ✅ Created `vitest.config.mjs` with Node environment
-  - ✅ Added initial tests:
+  - Added Vitest (`vitest` dev dependency, `jsdom` for DOM tests) and `npm test` script
+  - Created `vitest.config.mjs` with Node environment
+  - Added initial tests:
     - `tests/utils.test.mjs`: formatTime, withTimeout, createError
     - `tests/notepack.test.mjs`: zip creation/read roundtrip
     - `tests/errorBoundary.test.mjs`: error code mapping, wrapAsync retry logic
     - `tests/customBlots.test.mjs`: TimestampBlot and CustomImage create/value under jsdom
     - `tests/zipUtils.test.mjs`: coded error flows (success, cancellation, failure) for save/load
     - `tests/exportSystem.test.mjs`: stripFabricData, extractAndReplaceImages, HTML template generation
-  - ✅ All 39 tests passing across 6 test files
-  - 🚧 Future: add integration tests for recording flows and main process IPC handlers
+  - All 39 tests passing across 6 test files
+  - Future: add integration tests for recording flows and main process IPC handlers
 - [x] **CI workflow**
   - GitHub Actions: run `postinstall`, `lint`, `test` on push/PR
 
 ### Documentation Additions
 - [x] **Module contracts**: Inputs / Outputs / Side-effects / Invariants / Failure modes blocks at top of key modules
 - [ ] **Decision records**: Add `docs/adr/` for major choices (Canvas capture, streaming save pipeline, file picker timeout policy)
-- [ ] **AI Guide**: `docs/AI_GUIDE.md` covering safe-to-edit zones, do-not-alter areas, extension patterns, and PR checklists
+- [x] **AI Guide**: `docs/AI_GUIDE.md` covering safe-to-edit zones, do-not-alter areas, extension patterns, and PR checklists
 
 ### Developer Experience
 - [ ] **NPM scripts**: add `lint`, `format`, `test`, `typecheck` (`tsc --noEmit` with `checkJs`)
