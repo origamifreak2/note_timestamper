@@ -4,6 +4,10 @@
   "private": true,
   "main": "main.js",
   "type": "module",
+  "engines": {
+    "node": ">=25",
+    "electron": ">=30"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",

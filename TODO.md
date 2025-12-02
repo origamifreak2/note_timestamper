@@ -59,7 +59,7 @@
 ### Developer Experience
 
 - [x] **NPM scripts**: add `lint`, `format`, `test`, `typecheck` (`tsc --noEmit` with `checkJs`)
-- [ ] **Version pinning**: add `.nvmrc` and `engines` to align Node/Electron versions
+ - [x] **Version pinning**: add `.nvmrc` and `engines` to align Node/Electron versions
 - [ ] **.editorconfig** for consistent whitespace/indent
 
 ### Example & Validation
